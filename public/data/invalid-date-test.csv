@@ -1,0 +1,3 @@
+Employee_ID,Employee_Name,Department,Job_Title,Employment_Status,Course_Name,Course_Code,Training_Required,Completion_Status,Issue_Date,Expiry_Date,Certificate_Number,Training_Provider,Remarks
+EMP_BAD1,Test Employee,Operations,Field Supervisor,Active,H2S Safety,H2S001,Yes,Completed,2025-13-45,2026-13-45,CERT-BAD1,Test,Invalid dates (month 13)
+EMP_BAD2,Test Employee 2,Operations,Field Supervisor,Active,PTW,PTW001,Yes,Completed,not-a-date,also-bad,CERT-BAD2,Test,Non-date strings

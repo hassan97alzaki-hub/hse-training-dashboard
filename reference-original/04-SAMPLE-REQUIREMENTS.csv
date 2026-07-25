@@ -1,0 +1,27 @@
+Department,Job_Title,Course_Code,Course_Name,Mandatory,Validity_Months,Description
+Operations,Field Supervisor,H2S001,H2S Safety,Yes,12,Mandatory for all field supervisors - Health and Safety Executive training
+Operations,Field Supervisor,PTW001,PTW,Yes,12,Permit-to-Work system and procedures
+Operations,Field Supervisor,WAH001,Working at Height,Yes,12,Scaffold and elevated work safety
+Operations,Equipment Operator,H2S001,H2S Safety,Yes,12,Mandatory for equipment operators
+Operations,Equipment Operator,PTW001,PTW,Yes,12,Permit-to-Work system and procedures
+Operations,Equipment Operator,CS001,Confined Space,Yes,12,Confined space entry and rescue procedures
+Operations,Site Coordinator,H2S001,H2S Safety,Yes,12,Mandatory for all site coordinators
+Operations,Site Coordinator,PTW001,PTW,Yes,12,Permit-to-Work system and procedures
+Maintenance,Technician,H2S001,H2S Safety,Yes,12,Mandatory for all technicians
+Maintenance,Technician,PTW001,PTW,Yes,12,Permit-to-Work system and procedures
+Maintenance,Technician,WAH001,Working at Height,Yes,12,For maintenance work at height
+Maintenance,Maintenance Lead,H2S001,H2S Safety,Yes,12,Mandatory for maintenance leads
+Maintenance,Maintenance Lead,CS001,Confined Space,Yes,12,Leadership and supervision in confined spaces
+Maintenance,Maintenance Lead,WAH001,Working at Height,Yes,12,Supervision and safety at height
+Logistics,Warehouse Manager,H2S001,H2S Safety,Yes,12,Mandatory for warehouse management
+Logistics,Warehouse Manager,FF001,Fire Fighting,Yes,12,Fire safety and emergency response
+Logistics,Warehouse Manager,PTW001,PTW,Yes,12,Permit-to-Work system and procedures
+Logistics,Driver,H2S001,H2S Safety,No,0,Not required for drivers
+Logistics,Driver,PTW001,PTW,No,0,Not required for drivers
+Admin,Safety Officer,H2S001,H2S Safety,Yes,12,Mandatory for all safety officers - Critical role
+Admin,Safety Officer,FF001,Fire Fighting,Yes,12,Fire safety leadership
+Admin,Safety Officer,PTW001,PTW,Yes,12,Permit-to-Work oversight
+Admin,Manager,H2S001,H2S Safety,Yes,12,Mandatory for all managers
+Planning,Safety Consultant,H2S001,H2S Safety,Yes,12,Mandatory for safety consultants
+Planning,Safety Consultant,PTW001,PTW,Yes,12,Permit-to-Work expertise
+Planning,Safety Consultant,CS001,Confined Space,Yes,12,Confined space assessment

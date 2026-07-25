@@ -1,0 +1,28 @@
+Employee_ID,Employee_Name,Department,Job_Title,Employment_Status,Course_Name,Course_Code,Training_Required,Completion_Status,Issue_Date,Expiry_Date,Certificate_Number,Training_Provider,Remarks
+EMP0001,Ahmed Al-Mansouri,Operations,Field Supervisor,Active,H2S Safety,H2S001,Yes,Completed,2025-10-25,2026-10-25,CERT001-2026,SafetyPlus Training,Valid — 91 days remaining on As Of Date
+EMP0001,Ahmed Al-Mansouri,Operations,Field Supervisor,Active,PTW,PTW001,Yes,Completed,2025-10-20,2026-10-20,CERT002-2026,SafetyPlus Training,Expiring_90 — 86 days remaining
+EMP0001,Ahmed Al-Mansouri,Operations,Field Supervisor,Active,Working at Height,WAH001,Yes,Completed,2025-09-15,2026-09-15,CERT003-2026,SafetyPlus Training,Expiring_60 — 51 days remaining
+EMP0002,Fatima Al-Dosari,Operations,Equipment Operator,Active,H2S Safety,H2S001,Yes,Completed,2025-07-20,2026-08-20,CERT004-2026,SafetyPlus Training,Expiring_30 — 25 days remaining
+EMP0002,Fatima Al-Dosari,Operations,Equipment Operator,Active,PTW,PTW001,Yes,Completed,2025-04-30,2026-04-30,CERT005-2026,SafetyPlus Training,Expired — 87 days past As Of Date
+EMP0002,Fatima Al-Dosari,Operations,Equipment Operator,Active,Confined Space,CS001,Yes,Not Started,,,,,Not Started — no training record yet
+EMP0003,Mohammed Hassan,Operations,Site Coordinator,Active,H2S Safety,H2S001,Yes,Completed,2024-08-20,2025-08-20,CERT006-2025,SafetyPlus Training,Expired — 340 days past As Of Date
+EMP0003,Mohammed Hassan,Operations,Site Coordinator,Active,PTW,PTW001,Yes,Completed,2025-07-26,2026-07-26,CERT007-2026,SafetyPlus Training,Expiring_30 — 0 days (expiry exactly on As Of Date)
+EMP0004,Sara Al-Khalifa,Maintenance,Technician,Active,H2S Safety,H2S001,Yes,Completed,2026-01-10,2027-01-10,CERT008-2026,SafetyPlus Training,Valid — 168 days remaining
+EMP0004,Sara Al-Khalifa,Maintenance,Technician,Active,PTW,PTW001,Yes,Completed,2026-02-08,2027-02-08,CERT009-2026,SafetyPlus Training,Valid — 197 days remaining
+EMP0004,Sara Al-Khalifa,Maintenance,Technician,Active,Working at Height,WAH001,Yes,In Progress,,,,,In Progress — online course
+EMP0005,Omar Al-Shehri,Maintenance,Maintenance Lead,Active,H2S Safety,H2S001,Yes,Completed,2025-08-10,2026-08-10,CERT010-2026,SafetyPlus Training,Expiring_30 — 15 days remaining
+EMP0005,Omar Al-Shehri,Maintenance,Maintenance Lead,Active,Confined Space,CS001,Yes,Completed,2026-01-20,2027-01-20,CERT011-2026,SafetyPlus Training,Valid — 178 days (best record selected per duplicate policy)
+EMP0005,Omar Al-Shehri,Maintenance,Maintenance Lead,Active,Confined Space,CS001,Yes,Completed,2025-01-15,2026-01-15,CERT011-OLD-2025,SafetyPlus Training,Previous cycle — historical duplicate (expired)
+EMP0006,Amira Al-Otaibi,Logistics,Warehouse Manager,Active,H2S Safety,H2S001,Yes,Completed,2026-01-05,2027-01-05,CERT012-2026,SafetyPlus Training,Valid — 163 days remaining
+EMP0006,Amira Al-Otaibi,Logistics,Warehouse Manager,Active,Fire Fighting,FF001,Yes,Completed,2025-09-01,2026-09-01,CERT013-2026,SafetyPlus Training,Expiring_60 — 37 days remaining
+EMP0006,Amira Al-Otaibi,Logistics,Warehouse Manager,Active,PTW,PTW001,Yes,Completed,2025-05-30,2026-05-30,CERT014-2026,SafetyPlus Training,Expired — 57 days past As Of Date
+EMP0007,Hassan Al-Nasser,Logistics,Driver,Active,H2S Safety,H2S001,No,Completed,2026-01-01,2027-01-01,CERT015-2026,SafetyPlus Training,Not required for Driver role per requirements matrix
+EMP0007,Hassan Al-Nasser,Logistics,Driver,Active,PTW,PTW001,No,Not Started,,,,,Not required for Driver role per requirements matrix
+EMP0008,Layla Al-Jaber,Admin,Safety Officer,Active,H2S Safety,H2S001,Yes,Completed,2024-06-10,2025-06-10,CERT016-2025,SafetyPlus Training,Expired — 411 days past As Of Date
+EMP0008,Layla Al-Jaber,Admin,Safety Officer,Active,Fire Fighting,FF001,Yes,Completed,2026-01-30,2027-01-30,CERT017-2026,SafetyPlus Training,Valid — 188 days remaining
+EMP0008,Layla Al-Jaber,Admin,Safety Officer,Active,PTW,PTW001,Yes,Completed,2026-03-01,2027-03-01,CERT018-2026,SafetyPlus Training,Valid — 217 days remaining
+EMP0009,Khalid Al-Malik,Admin,Manager,Active,H2S Safety,H2S001,Yes,Completed,2025-10-01,2026-10-01,CERT019-2026,SafetyPlus Training,Expiring_90 — 67 days remaining
+EMP0010,Zainab Al-Rashid,Planning,Safety Consultant,Active,H2S Safety,H2S001,Yes,Completed,2026-02-01,2027-02-01,CERT020-2026,SafetyPlus Training,Valid — 190 days remaining
+EMP0010,Zainab Al-Rashid,Planning,Safety Consultant,Active,PTW,PTW001,Yes,Completed,2026-03-01,2027-03-01,CERT021-2026,SafetyPlus Training,Valid — 217 days remaining
+EMP0011,Ali Al-Harbi,Operations,Field Supervisor,Inactive,H2S Safety,H2S001,Yes,Completed,2025-10-10,2026-10-10,CERT022-2026,SafetyPlus Training,Inactive — excluded from KPI denominators
+EMP0012,Nora Al-Ghamdi,Human Resources,HR Officer,Active,Basic Safety Awareness,BSA001,Yes,Completed,2026-01-15,2027-01-15,CERT023-2026,SafetyPlus Training,HR Officer — no requirements configured in matrix

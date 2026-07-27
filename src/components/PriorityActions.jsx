@@ -1,8 +1,18 @@
+import { AlertOctagon, AlertTriangle, Clock, Info, ListChecks } from 'lucide-react';
+
+const PRIORITY_META = {
+  Critical: { icon: AlertOctagon, accent: 'var(--critical)' },
+  High:     { icon: AlertTriangle, accent: 'var(--warning-strong)' },
+  Medium:   { icon: Clock,         accent: 'var(--warning)' },
+  Low:      { icon: Info,          accent: 'var(--neutral)' },
+};
+
 export default function PriorityActions({ actions, t, lang }) {
   if (!actions || actions.length === 0) {
     return (
-      <div className="text-muted" style={{ padding: '16px 0', fontSize: 13 }}>
-        {t('noPriorityActions')}
+      <div className="empty-state" style={{ padding: '32px 20px' }}>
+        <div className="empty-icon"><ListChecks size={26} /></div>
+        <h3 style={{ fontSize: 15 }}>{t('noPriorityActions')}</h3>
       </div>
     );
   }
@@ -10,38 +20,33 @@ export default function PriorityActions({ actions, t, lang }) {
   const slice = actions.slice(0, 20);
 
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>{t('priority')}</th>
-            <th>{t('employeeId')}</th>
-            <th>{t('employeeName')}</th>
-            <th>{t('department')}</th>
-            <th>{t('course')}</th>
-            <th>{t('status')}</th>
-            <th>{t('expiryDate')}</th>
-            <th>{t('action')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {slice.map((a, i) => (
-            <tr key={i}>
-              <td><span className={`priority-badge ${a.priority}`}>{t(`priority${a.priority}`)}</span></td>
-              <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{a.Employee_ID}</td>
-              <td>{a.Employee_Name}</td>
-              <td>{a.Department}</td>
-              <td>{a.Course_Code} — {a.Course_Name}</td>
-              <td><span className={`status-badge ${a.Status}`}>{a.Status.replace(/_/g, ' ')}</span></td>
-              <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{a.Expiry_Date || '—'}</td>
-              <td style={{ fontSize: 11 }}>{t(a.actionKey)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      {slice.map((a, i) => {
+        const meta = PRIORITY_META[a.priority] || PRIORITY_META.Low;
+        const Icon = meta.icon;
+        return (
+          <div className="priority-row" key={i} style={{ '--row-accent': meta.accent }}>
+            <span className="priority-row-icon" style={{ color: meta.accent }}>
+              <Icon size={18} />
+            </span>
+            <div className="priority-row-body">
+              <div className="priority-row-top">
+                <span className="priority-row-name">{a.Employee_Name}</span>
+                <span className={`priority-badge ${a.priority}`}>{t(`priority${a.priority}`)}</span>
+                <span className={`status-badge ${a.Status}`}>{a.Status.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="priority-row-meta">
+                {a.Employee_ID} · {a.Department} · {a.Course_Code} — {a.Course_Name}
+                {a.Expiry_Date ? ` · ${t('expiryDate')}: ${a.Expiry_Date}` : ''}
+              </div>
+            </div>
+            <div className="priority-row-action">{t(a.actionKey)}</div>
+          </div>
+        );
+      })}
       {actions.length > 20 && (
-        <div className="text-muted text-sm" style={{ padding: '8px 12px' }}>
-          Showing 20 of {actions.length} priority actions. Export CSV to see all.
+        <div className="text-muted text-sm" style={{ padding: '8px 4px' }}>
+          {t('showing')} 20 {t('of')} {actions.length} {t('records')}
         </div>
       )}
     </div>

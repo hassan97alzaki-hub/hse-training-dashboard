@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { ClipboardList } from 'lucide-react';
 import { DEMO_AS_OF_DATE, DEFAULT_COMPANY, DEFAULT_PROJECT } from './lib/constants.js';
 import { createI18n } from './lib/i18n.js';
 import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from './lib/complianceEngine.js';
@@ -8,12 +9,14 @@ import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } fr
 
 import Header from './components/Header.jsx';
 import ImportPanel from './components/ImportPanel.jsx';
+import ExecutiveSummary from './components/ExecutiveSummary.jsx';
 import KpiCards from './components/KpiCards.jsx';
 import Filters from './components/Filters.jsx';
 import ComplianceTable from './components/ComplianceTable.jsx';
 import { DeptComplianceChart, StatusBreakdownChart, CourseComplianceChart } from './components/Charts.jsx';
 import PriorityActions from './components/PriorityActions.jsx';
 import DataQualityPanel from './components/DataQualityPanel.jsx';
+import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
 
@@ -38,6 +41,7 @@ export default function App() {
   const [sourceFileName, setSourceFileName] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   const complianceResult = useMemo(() => {
     if (trainingRecords.length === 0) return null;
@@ -89,6 +93,7 @@ export default function App() {
         `Requirements: ${reqResult.importSummary.valid} rows loaded`,
       ];
       showBanner('success', t('demoLoaded'), lines);
+      setLastRefresh(new Date().toLocaleString());
     } catch (e) {
       showBanner('error', t('importError'), [e.message]);
     } finally {
@@ -110,6 +115,7 @@ export default function App() {
           ...result.warnings,
         ];
         showBanner(result.importSummary.invalid > 0 ? 'warning' : 'success', t('importSuccess'), lines);
+        setLastRefresh(new Date().toLocaleString());
       } else {
         showBanner('error', t('importError'), result.errors.slice(0, 6));
       }
@@ -168,7 +174,7 @@ export default function App() {
   function handleReset() {
     setTrainingRecords([]); setRequirements([]); setLastImportResult(null);
     setImportBanner({ type: 'success', title: t('dataReset'), lines: [] });
-    setSourceFileName(''); setFilters(EMPTY_FILTERS);
+    setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null);
   }
 
   const hasData = trainingRecords.length > 0;
@@ -181,6 +187,9 @@ export default function App() {
         asOfDate={DEMO_AS_OF_DATE} lang={lang} t={t}
         onLangToggle={() => setLang(l => l === 'en' ? 'ar' : 'en')}
         onCompanyChange={setCompanyName} onProjectChange={setProjectName}
+        lastRefresh={lastRefresh}
+        onExportPDF={handleExportPDF} onExportCSV={handleExportCSV}
+        onExportPriorityCSV={handleExportPriorityCSV} hasData={hasData}
       />
 
       <main className="main-content">
@@ -189,9 +198,6 @@ export default function App() {
           onLoadDemo={handleLoadDemo}
           onTrainingImport={handleTrainingImport}
           onRequirementsImport={handleRequirementsImport}
-          onExportPDF={handleExportPDF}
-          onExportCSV={handleExportCSV}
-          onExportPriorityCSV={handleExportPriorityCSV}
           onReset={handleReset}
           hasData={hasData} hasRequirements={hasRequirements}
           isLoading={isLoading} importBanner={importBanner}
@@ -199,7 +205,7 @@ export default function App() {
 
         {!hasData && (
           <div className="empty-state">
-            <div className="empty-icon">📋</div>
+            <div className="empty-icon"><ClipboardList size={26} /></div>
             <h3>{t('noData')}</h3>
             <p>{t('noDataHint')}</p>
             {!hasRequirements && (
@@ -210,6 +216,13 @@ export default function App() {
 
         {hasData && (
           <>
+            <ExecutiveSummary
+              kpis={kpis}
+              priorityActions={priorityActions}
+              duplicateCount={complianceResult?.duplicates?.length || 0}
+              t={t}
+            />
+
             <KpiCards kpis={kpis} t={t} />
 
             <div className="charts-grid">
@@ -232,14 +245,14 @@ export default function App() {
 
             <div className="section">
               <div className="section-header">
-                <span className="section-title">Compliance Detail</span>
-                <label style={{ fontSize: 12, color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="section-title">{t('complianceDetailTitle')}</span>
+                <label className="checkbox-label">
                   <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-                  Show Inactive/Left employees
+                  {t('showInactiveLabel')}
                 </label>
               </div>
-              <p style={{ fontSize: 11, color: '#64748b', marginBottom: 12 }}>
-                Global KPI cards reflect the full dataset. Table filters apply to this table only.
+              <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
+                {t('complianceDetailHint')}
               </p>
               <Filters
                 filters={filters} options={filterOptions} t={t}
@@ -277,13 +290,12 @@ export default function App() {
             </div>
 
             {(complianceResult?.unconfiguredEmployees?.length ?? 0) > 0 && (
-              <div className="section" style={{ borderColor: '#7c3aed' }}>
-                <div className="section-title" style={{ color: '#a78bfa', marginBottom: 8 }}>
-                  Requirements Not Configured ({complianceResult.unconfiguredEmployees.length} employee(s))
+              <div className="section" style={{ '--accent-line': 'var(--info)', borderLeft: '3px solid var(--info)' }}>
+                <div className="section-title" style={{ color: 'var(--info)', marginBottom: 8 }}>
+                  {t('unconfiguredSectionTitle')} ({complianceResult.unconfiguredEmployees.length} {t('employeesSuffix')})
                 </div>
-                <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>
-                  These active employees have training records but no matching Department/Job_Title in the requirements matrix.
-                  They are excluded from compliance KPI denominators until requirements are configured.
+                <p className="text-muted text-sm" style={{ marginBottom: 8 }}>
+                  {t('unconfiguredSectionHint')}
                 </p>
                 <div className="table-wrap">
                   <table>
@@ -312,6 +324,8 @@ export default function App() {
           </>
         )}
       </main>
+
+      <Footer t={t} />
     </div>
   );
 }

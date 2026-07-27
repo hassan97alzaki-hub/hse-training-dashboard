@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
 import { STATUS } from '../lib/constants.js';
 import { formatDateDisplay } from '../lib/normalization.js';
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from '../lib/constants.js';
@@ -97,8 +98,11 @@ export default function ComplianceTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={12} style={{ textAlign: 'center', padding: 24, color: '#64748b' }}>
-                  {t('noResults')}
+                <td colSpan={12} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <SearchX size={28} style={{ opacity: 0.5 }} />
+                    <span>{t('noResults')}</span>
+                  </div>
                 </td>
               </tr>
             ) : paginated.map((item, i) => {
@@ -119,8 +123,8 @@ export default function ComplianceTable({
                   </td>
                   <td style={{
                     textAlign: 'center',
-                    color: item.daysRemaining != null && item.daysRemaining < 0 ? '#dc2626' :
-                           item.daysRemaining != null && item.daysRemaining <= 30 ? '#ea580c' : '#94a3b8',
+                    color: item.daysRemaining != null && item.daysRemaining < 0 ? 'var(--critical)' :
+                           item.daysRemaining != null && item.daysRemaining <= 30 ? 'var(--warning-strong)' : 'var(--text-muted)',
                     fontWeight: item.daysRemaining != null && item.daysRemaining <= 30 ? 700 : 400,
                   }}>
                     {daysDisplay}
@@ -157,7 +161,9 @@ export default function ComplianceTable({
             className="page-btn"
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={safePage <= 1}
+            aria-label={t('ariaPrevPage')}
           >
+            <ChevronLeft size={14} />
             {t('previous')}
           </button>
           <span className="page-info">{safePage} / {totalPages}</span>
@@ -165,8 +171,10 @@ export default function ComplianceTable({
             className="page-btn"
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={safePage >= totalPages}
+            aria-label={t('ariaNextPage')}
           >
             {t('next')}
+            <ChevronRight size={14} />
           </button>
         </div>
       </div>

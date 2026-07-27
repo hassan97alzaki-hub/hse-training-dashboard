@@ -1,9 +1,18 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, Legend,
+  PieChart, Pie,
 } from 'recharts';
 
-const DEPT_COLORS = ['#dc2626', '#ea580c', '#d97706', '#2563eb', '#7c3aed', '#16a34a', '#0891b2'];
+// Enterprise 5-colour semantic system (success / info / warning / critical / neutral).
+// Tonal variants keep adjacent segments distinguishable without adding new hues.
+const SUCCESS = '#22c55e';
+const INFO = '#3b82f6';
+const INFO_ALT = '#60a5fa';
+const WARNING = '#f59e0b';
+const WARNING_STRONG = '#ea6a1f';
+const CRITICAL = '#ef4444';
+const CRITICAL_DEEP = '#b91c1c';
+const NEUTRAL = '#7c869c';
 
 export function DeptComplianceChart({ data, t, lang }) {
   if (!data || data.length === 0) return <div className="text-muted text-sm">{t('noResults')}</div>;
@@ -11,22 +20,23 @@ export function DeptComplianceChart({ data, t, lang }) {
   const fmt = (v) => `${v}%`;
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 30, top: 4, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-        <XAxis type="number" domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={fmt} />
-        <YAxis type="category" dataKey="department" tick={{ fill: '#94a3b8', fontSize: 10 }} width={90} />
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={data} layout="vertical" margin={{ left: 16, right: 36, top: 8, bottom: 8 }} barCategoryGap={14}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+        <XAxis type="number" domain={[0, 100]} tick={{ fill: '#9aa5ba', fontSize: 12 }} tickFormatter={fmt} />
+        <YAxis type="category" dataKey="department" tick={{ fill: '#e2e8f0', fontSize: 12, fontWeight: 600 }} width={110} />
         <Tooltip
           formatter={(v) => [`${v}%`, t('compliancePct')]}
-          contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: 12 }}
-          labelStyle={{ color: '#f1f5f9' }}
-          itemStyle={{ color: '#94a3b8' }}
+          contentStyle={{ background: '#121826', border: '1px solid #2e3850', borderRadius: 10, fontSize: 13 }}
+          labelStyle={{ color: '#f3f5f9', fontWeight: 700, marginBottom: 4 }}
+          itemStyle={{ color: '#9aa5ba' }}
+          cursor={{ fill: 'rgba(255,255,255,0.03)' }}
         />
-        <Bar dataKey="percentage" radius={[0, 4, 4, 0]}>
+        <Bar dataKey="percentage" radius={[0, 6, 6, 0]} maxBarSize={28}>
           {data.map((entry, i) => (
             <Cell
               key={i}
-              fill={entry.percentage >= 80 ? '#16a34a' : entry.percentage >= 60 ? '#d97706' : '#dc2626'}
+              fill={entry.percentage >= 80 ? SUCCESS : entry.percentage >= 60 ? WARNING : CRITICAL}
             />
           ))}
         </Bar>
@@ -36,52 +46,73 @@ export function DeptComplianceChart({ data, t, lang }) {
 }
 
 const STATUS_PIE_DATA_KEYS = [
-  { key: 'VALID',       color: '#16a34a' },
-  { key: 'EXPIRING_90', color: '#2563eb' },
-  { key: 'EXPIRING_60', color: '#d97706' },
-  { key: 'EXPIRING_30', color: '#ea580c' },
-  { key: 'EXPIRED',     color: '#dc2626' },
-  { key: 'IN_PROGRESS', color: '#7c3aed' },
-  { key: 'NOT_STARTED', color: '#6b7280' },
-  { key: 'MISSING',     color: '#991b1b' },
+  { key: 'VALID',       color: SUCCESS },
+  { key: 'EXPIRING_90', color: INFO },
+  { key: 'EXPIRING_60', color: WARNING },
+  { key: 'EXPIRING_30', color: WARNING_STRONG },
+  { key: 'EXPIRED',     color: CRITICAL },
+  { key: 'IN_PROGRESS', color: INFO_ALT },
+  { key: 'NOT_STARTED', color: NEUTRAL },
+  { key: 'MISSING',     color: CRITICAL_DEEP },
 ];
 
-const STATUS_LABELS_EN = {
-  VALID: 'Valid', EXPIRING_90: 'Exp 90d', EXPIRING_60: 'Exp 60d', EXPIRING_30: 'Exp 30d',
-  EXPIRED: 'Expired', IN_PROGRESS: 'In Progress', NOT_STARTED: 'Not Started', MISSING: 'Missing',
+const STATUS_LABEL_KEYS = {
+  VALID: 'statusValid', EXPIRING_90: 'statusExpiring90', EXPIRING_60: 'statusExpiring60',
+  EXPIRING_30: 'statusExpiring30', EXPIRED: 'statusExpired', IN_PROGRESS: 'statusInProgress',
+  NOT_STARTED: 'statusNotStarted', MISSING: 'statusMissing',
 };
 
 export function StatusBreakdownChart({ statusCounts, t, lang }) {
   if (!statusCounts) return null;
 
+  const total = STATUS_PIE_DATA_KEYS.reduce((sum, { key }) => sum + (statusCounts[key] || 0), 0);
+
   const data = STATUS_PIE_DATA_KEYS
-    .map(({ key, color }) => ({ name: STATUS_LABELS_EN[key], value: statusCounts[key] || 0, color }))
+    .map(({ key, color }) => ({
+      key,
+      name: t(STATUS_LABEL_KEYS[key]),
+      value: statusCounts[key] || 0,
+      color,
+      pct: total > 0 ? Math.round(((statusCounts[key] || 0) / total) * 1000) / 10 : 0,
+    }))
     .filter(d => d.value > 0);
 
   if (data.length === 0) return <div className="text-muted text-sm">{t('noResults')}</div>;
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={55}
-          outerRadius={85}
-          paddingAngle={2}
-          dataKey="value"
-          label={({ name, value }) => `${name}: ${value}`}
-          labelLine={{ stroke: '#334155' }}
-        >
-          {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-        </Pie>
-        <Tooltip
-          contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: 12 }}
-          formatter={(v, n) => [v, n]}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+    <div>
+      <ResponsiveContainer width="100%" height={240}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={62}
+            outerRadius={96}
+            paddingAngle={2}
+            dataKey="value"
+            stroke="none"
+          >
+            {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+          </Pie>
+          <Tooltip
+            contentStyle={{ background: '#121826', border: '1px solid #2e3850', borderRadius: 10, fontSize: 13 }}
+            labelStyle={{ color: '#f3f5f9' }}
+            formatter={(v, n, entry) => [`${v} (${entry.payload.pct}%)`, n]}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="donut-legend">
+        {data.map((d, i) => (
+          <div className="donut-legend-item" key={i}>
+            <span className="donut-legend-dot" style={{ background: d.color }} />
+            <span className="donut-legend-name">{d.name}</span>
+            <span className="donut-legend-count">{d.value}</span>
+            <span className="donut-legend-pct">{d.pct}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -89,12 +120,12 @@ export function CourseComplianceChart({ data, t, lang }) {
   if (!data || data.length === 0) return <div className="text-muted text-sm">{t('noResults')}</div>;
 
   return (
-    <div className="table-wrap" style={{ border: 'none' }}>
+    <div className="table-wrap" style={{ maxHeight: 'none' }}>
       <table>
         <thead>
           <tr>
             <th>{t('course')}</th>
-            <th style={{ textAlign: 'center' }}>Required</th>
+            <th style={{ textAlign: 'center' }}>{t('total')}</th>
             <th style={{ textAlign: 'center' }}>{t('compliant')}</th>
             <th style={{ textAlign: 'center' }}>{t('nonCompliant')}</th>
             <th style={{ textAlign: 'center' }}>{t('percentage')}</th>
@@ -105,12 +136,12 @@ export function CourseComplianceChart({ data, t, lang }) {
             <tr key={i}>
               <td title={c.course_name}>{c.course_code} — {c.course_name}</td>
               <td style={{ textAlign: 'center' }}>{c.employeesRequired}</td>
-              <td style={{ textAlign: 'center', color: '#16a34a', fontWeight: 600 }}>{c.compliant}</td>
-              <td style={{ textAlign: 'center', color: c.nonCompliant > 0 ? '#dc2626' : '#6b7280' }}>{c.nonCompliant}</td>
+              <td style={{ textAlign: 'center', color: SUCCESS, fontWeight: 700 }}>{c.compliant}</td>
+              <td style={{ textAlign: 'center', color: c.nonCompliant > 0 ? CRITICAL : 'var(--text-muted)' }}>{c.nonCompliant}</td>
               <td style={{ textAlign: 'center' }}>
                 <span style={{
-                  fontWeight: 700,
-                  color: c.percentage >= 80 ? '#16a34a' : c.percentage >= 60 ? '#d97706' : '#dc2626',
+                  fontWeight: 800,
+                  color: c.percentage >= 80 ? SUCCESS : c.percentage >= 60 ? WARNING : CRITICAL,
                 }}>
                   {c.percentage}%
                 </span>

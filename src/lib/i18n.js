@@ -43,6 +43,11 @@ const translations = {
     kpiInProgress: 'In Progress',
     kpiNotStarted: 'Not Started',
     kpiMissing: 'Missing',
+    kpiDescImmediateAction: 'Immediate action required',
+    kpiDescNoRecord: 'No training record on file',
+    kpiDescReqCompliantSuffix: 'requirements compliant',
+    kpiDescEmployeesSuffix: 'employees',
+    kpiSubNoMandatoryReqs: 'no mandatory reqs',
 
     // Status labels
     statusValid: 'Valid',
@@ -138,13 +143,21 @@ const translations = {
     unconfiguredEmployee: 'Employee has no configured requirements',
     row: 'Row',
 
+    // Compliance detail section
+    complianceDetailTitle: 'Compliance Detail',
+    showInactiveLabel: 'Show Inactive/Left employees',
+    complianceDetailHint: 'Global KPI cards reflect the full dataset. Table filters apply to this table only.',
+    unconfiguredSectionTitle: 'Requirements Not Configured',
+    unconfiguredSectionHint: 'These active employees have training records but no matching Department/Job_Title in the requirements matrix. They are excluded from compliance KPI denominators until requirements are configured.',
+    employeesSuffix: 'employee(s)',
+
     // Priority actions
     priorityActionsTitle: 'Priority Actions',
     noPriorityActions: 'No priority actions — all configured requirements are compliant.',
-    renewImmediately: 'Renew immediately',
-    scheduleRenewal: 'Schedule renewal',
-    startTraining: 'Start training',
-    completePending: 'Complete pending training',
+    renewImmediately: 'Renew Certificate',
+    scheduleRenewal: 'Schedule Renewal',
+    startTraining: 'Start Training',
+    completePending: 'Complete Training',
 
     // PDF
     pdfReportTitle: 'HSE Training Compliance Report',
@@ -167,6 +180,46 @@ const translations = {
     compliant: 'Compliant',
     nonCompliant: 'Non-Compliant',
     percentage: 'Compliance %',
+
+    // Executive summary
+    execSummaryTitle: 'Executive Summary',
+    execOverallCompliance: 'Overall Compliance',
+    execImmediateAction: 'Employees Requiring Immediate Action',
+    execMissingTraining: 'Missing Training',
+    execDuplicateRecords: 'Duplicate Records',
+    execTopRiskDept: 'Top Risk Department',
+    execNoRisk: 'None — fully compliant',
+
+    // Header / branding
+    lastRefresh: 'Last Refresh',
+    companyLogoAlt: 'Company logo',
+    projectLogoAlt: 'Project logo',
+    neverRefreshed: 'Not yet loaded',
+
+    // Filters — groups
+    filterGroupEmployee: 'Employee',
+    filterGroupClassification: 'Classification',
+    filterGroupStatus: 'Status & Priority',
+    filterGroupEmployment: 'Employment',
+    collapseFilters: 'Collapse filters',
+    expandFilters: 'Expand filters',
+
+    // Pagination aria
+    ariaPrevPage: 'Previous page',
+    ariaNextPage: 'Next page',
+
+    // Data quality cards
+    dqInvalidTitle: 'Invalid Data',
+    dqDuplicateTitle: 'Duplicate Records',
+    dqConfigTitle: 'Missing Configuration',
+    dqAllClearTitle: 'No Data Quality Issues',
+    dqAllClearBody: 'All imported records passed validation and every active employee has configured requirements.',
+
+    // Footer
+    footerVersion: 'Version',
+    footerBuild: 'Build',
+    footerEnvironment: 'Environment',
+    footerEnvironmentValue: 'Management Demonstration — Local Browser Session',
   },
 
   ar: {
@@ -210,6 +263,11 @@ const translations = {
     kpiInProgress: 'قيد التنفيذ',
     kpiNotStarted: 'لم يبدأ',
     kpiMissing: 'مفقود',
+    kpiDescImmediateAction: 'يتطلب إجراءً فورياً',
+    kpiDescNoRecord: 'لا يوجد سجل تدريب',
+    kpiDescReqCompliantSuffix: 'متطلبات متوافقة',
+    kpiDescEmployeesSuffix: 'موظف',
+    kpiSubNoMandatoryReqs: 'بدون متطلبات إلزامية',
 
     // Status labels
     statusValid: 'صالح',
@@ -305,13 +363,21 @@ const translations = {
     unconfiguredEmployee: 'لا توجد متطلبات مُهيأة للموظف',
     row: 'صف',
 
+    // Compliance detail section
+    complianceDetailTitle: 'تفاصيل الامتثال',
+    showInactiveLabel: 'إظهار الموظفين غير النشطين/المغادرين',
+    complianceDetailHint: 'تعكس بطاقات المؤشرات الرئيسية كامل البيانات. تُطبَّق عوامل التصفية على هذا الجدول فقط.',
+    unconfiguredSectionTitle: 'متطلبات غير مُهيأة',
+    unconfiguredSectionHint: 'هؤلاء الموظفون النشطون لديهم سجلات تدريب لكن لا يوجد قسم/مسمى وظيفي مطابق في مصفوفة المتطلبات. يُستبعدون من مقامات مؤشرات الامتثال إلى أن تتم تهيئة المتطلبات.',
+    employeesSuffix: 'موظف(ين)',
+
     // Priority actions
     priorityActionsTitle: 'الإجراءات ذات الأولوية',
     noPriorityActions: 'لا توجد إجراءات ذات أولوية — جميع المتطلبات المُهيأة متوافقة.',
-    renewImmediately: 'التجديد الفوري',
+    renewImmediately: 'تجديد الشهادة',
     scheduleRenewal: 'جدولة التجديد',
     startTraining: 'بدء التدريب',
-    completePending: 'إتمام التدريب المعلق',
+    completePending: 'إتمام التدريب',
 
     // PDF
     pdfReportTitle: 'تقرير امتثال تدريب السلامة والصحة والبيئة',
@@ -334,6 +400,46 @@ const translations = {
     compliant: 'متوافق',
     nonCompliant: 'غير متوافق',
     percentage: 'نسبة الامتثال %',
+
+    // Executive summary
+    execSummaryTitle: 'الملخص التنفيذي',
+    execOverallCompliance: 'الامتثال الإجمالي',
+    execImmediateAction: 'موظفون بحاجة لإجراء فوري',
+    execMissingTraining: 'تدريب مفقود',
+    execDuplicateRecords: 'سجلات مكررة',
+    execTopRiskDept: 'القسم الأعلى خطورة',
+    execNoRisk: 'لا يوجد — امتثال كامل',
+
+    // Header / branding
+    lastRefresh: 'آخر تحديث',
+    companyLogoAlt: 'شعار الشركة',
+    projectLogoAlt: 'شعار المشروع',
+    neverRefreshed: 'لم يتم التحميل بعد',
+
+    // Filters — groups
+    filterGroupEmployee: 'الموظف',
+    filterGroupClassification: 'التصنيف',
+    filterGroupStatus: 'الحالة والأولوية',
+    filterGroupEmployment: 'التوظيف',
+    collapseFilters: 'طي الفلاتر',
+    expandFilters: 'توسيع الفلاتر',
+
+    // Pagination aria
+    ariaPrevPage: 'الصفحة السابقة',
+    ariaNextPage: 'الصفحة التالية',
+
+    // Data quality cards
+    dqInvalidTitle: 'بيانات غير صالحة',
+    dqDuplicateTitle: 'سجلات مكررة',
+    dqConfigTitle: 'تهيئة مفقودة',
+    dqAllClearTitle: 'لا توجد مشكلات في جودة البيانات',
+    dqAllClearBody: 'اجتازت جميع السجلات المستوردة التحقق، ولدى كل موظف نشط متطلبات مُهيأة.',
+
+    // Footer
+    footerVersion: 'الإصدار',
+    footerBuild: 'البناء',
+    footerEnvironment: 'البيئة',
+    footerEnvironmentValue: 'عرض توضيحي للإدارة — جلسة متصفح محلية',
   },
 };
 

@@ -1,13 +1,11 @@
 import { useRef } from 'react';
+import { PlayCircle, UploadCloud, FileSpreadsheet, RotateCcw } from 'lucide-react';
 
 export default function ImportPanel({
   t,
   onLoadDemo,
   onTrainingImport,
   onRequirementsImport,
-  onExportPDF,
-  onExportCSV,
-  onExportPriorityCSV,
   onReset,
   hasData,
   hasRequirements,
@@ -33,32 +31,27 @@ export default function ImportPanel({
     <div>
       <div className="action-bar">
         <button className="btn btn-primary" onClick={onLoadDemo} disabled={isLoading}>
+          <PlayCircle size={15} />
           {t('loadDemoData')}
         </button>
 
         <label className="file-input-label">
+          <UploadCloud size={15} />
           {t('importTrainingData')}
           <span className="text-muted text-sm">({t('importTrainingHint')})</span>
           <input ref={trainingRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleTrainingFile} />
         </label>
 
         <label className="file-input-label">
+          <FileSpreadsheet size={15} />
           {t('importRequirements')}
           <span className="text-muted text-sm">({t('importRequirementsHint')})</span>
           <input ref={reqRef} type="file" accept=".csv" onChange={handleReqFile} />
         </label>
 
         <div className="ml-auto flex-row">
-          <button className="btn btn-secondary" onClick={onExportPDF} disabled={!hasData}>
-            {t('exportPDF')}
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={onExportCSV} disabled={!hasData}>
-            {t('exportCSV')}
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={onExportPriorityCSV} disabled={!hasData}>
-            {t('exportPriorityCSV')}
-          </button>
           <button className="btn btn-ghost btn-sm" onClick={onReset} disabled={!hasData && !hasRequirements}>
+            <RotateCcw size={13} />
             {t('resetData')}
           </button>
         </div>

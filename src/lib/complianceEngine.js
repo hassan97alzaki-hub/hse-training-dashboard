@@ -75,6 +75,15 @@ export function selectBestRecord(records, asOfDateStr) {
  * - Handles duplicates (keeps best, flags rest)
  * - Identifies employees with no configured requirements
  *
+ * Employees:
+ * - `employeeList` omitted (CSV/XLSX training import, demo): employees are
+ *   derived from the training records, first record per Employee_ID wins.
+ *   This is the original behaviour.
+ * - `employeeList` given (employee master, e.g. the three-sheet workbook):
+ *   employees come ONLY from the list, so an active employee with no
+ *   training record still gets MISSING items. Records are used only as
+ *   training evidence.
+ *
  * Returns:
  * {
  *   universe: ComplianceItem[],
@@ -84,12 +93,13 @@ export function selectBestRecord(records, asOfDateStr) {
  *   configWarnings: string[],
  * }
  */
-export function buildComplianceUniverse(allRecords, requirements, asOfDateStr) {
-  // ── Step 1: Collect unique active employees from records
-  const employeeMap = new Map(); // Employee_ID → employee info (latest record wins for name/dept/title)
+export function buildComplianceUniverse(allRecords, requirements, asOfDateStr, employeeList) {
+  // ── Step 1: Collect unique employees (from the master list, or from records)
+  const employeeMap = new Map(); // Employee_ID → employee info (first entry wins)
   const allEmployees = [];
+  const employeeSource = Array.isArray(employeeList) ? employeeList : allRecords;
 
-  for (const rec of allRecords) {
+  for (const rec of employeeSource) {
     const id = rec.Employee_ID;
     if (!id) continue;
     if (!employeeMap.has(id)) {

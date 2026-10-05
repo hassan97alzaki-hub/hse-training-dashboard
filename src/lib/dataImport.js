@@ -66,7 +66,7 @@ export async function importXLSX(file) {
 // TRAINING DATA VALIDATION
 // ============================================================
 
-function validateTrainingRow(rec, rowIndex) {
+export function validateTrainingRow(rec, rowIndex) {
   const errors = [];
   const rowNum = rowIndex + 2;
 
@@ -106,7 +106,7 @@ function validateTrainingRow(rec, rowIndex) {
   return errors;
 }
 
-function validateRequirementsRow(rec, rowIndex) {
+export function validateRequirementsRow(rec, rowIndex) {
   const errors = [];
   const rowNum = rowIndex + 2;
   if (!rec.Department) errors.push(`Row ${rowNum}: missing Department`);

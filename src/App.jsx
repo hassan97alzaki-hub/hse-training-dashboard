@@ -6,6 +6,10 @@ import { createI18n } from './lib/i18n.js';
 import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from './lib/complianceEngine.js';
 import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js';
 import { loadDemoDataFromPublic } from './lib/demoData.js';
+import {
+  readWorkbookFromFile, isMatrixWorkbook, readMatrixSheets,
+  convertMatrixWorkbook, compareSourceStatus, toImportResult,
+} from './lib/matrixWorkbook.js';
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
 
 import Header from './components/Header.jsx';
@@ -17,6 +21,7 @@ import ComplianceTable from './components/ComplianceTable.jsx';
 import { DeptComplianceChart, StatusBreakdownChart, CourseComplianceChart } from './components/Charts.jsx';
 import PriorityActions from './components/PriorityActions.jsx';
 import DataQualityPanel from './components/DataQualityPanel.jsx';
+import MatrixImportPreview from './components/MatrixImportPreview.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -45,11 +50,16 @@ export default function App() {
   const [lastRefresh, setLastRefresh] = useState(null);
   // As Of Date: fixed DEMO_AS_OF_DATE only while demo data is loaded; otherwise today (Asia/Riyadh).
   const [asOfDate, setAsOfDate] = useState(() => getRuntimeAsOfDate());
+  // Pending three-sheet workbook import, shown as a preview until approved.
+  const [matrixPreview, setMatrixPreview] = useState(null);
+  // Employee master list (three-sheet workbook only). null = derive employees
+  // from training records, the original behaviour.
+  const [employeeMaster, setEmployeeMaster] = useState(null);
 
   const complianceResult = useMemo(() => {
-    if (trainingRecords.length === 0) return null;
-    return buildComplianceUniverse(trainingRecords, requirements, asOfDate);
-  }, [trainingRecords, requirements, asOfDate]);
+    if (trainingRecords.length === 0 && !employeeMaster?.length) return null;
+    return buildComplianceUniverse(trainingRecords, requirements, asOfDate, employeeMaster ?? undefined);
+  }, [trainingRecords, requirements, asOfDate, employeeMaster]);
 
   const kpis = useMemo(() => {
     if (!complianceResult) return null;
@@ -86,6 +96,7 @@ export default function App() {
     try {
       const { trainingResult, reqResult } = await loadDemoDataFromPublic();
       if (trainingResult.success) {
+        setEmployeeMaster(null);
         setTrainingRecords(trainingResult.validRecords);
         setSourceFileName(trainingResult.sourceFileName);
         setLastImportResult(trainingResult);
@@ -108,10 +119,26 @@ export default function App() {
   async function handleTrainingImport(file) {
     setIsLoading(true);
     setImportBanner(null);
+    setMatrixPreview(null);
     try {
+      if (/\.xlsx?$/i.test(file.name)) {
+        const workbook = await readWorkbookFromFile(file);
+        if (isMatrixWorkbook(workbook)) {
+          const conversion = convertMatrixWorkbook(readMatrixSheets(workbook));
+          const previewAsOf = getRuntimeAsOfDate();
+          let comparison = null;
+          if (conversion.employees.length > 0) {
+            const cr = buildComplianceUniverse(conversion.trainingRecords, conversion.requirements, previewAsOf, conversion.employees);
+            comparison = compareSourceStatus(conversion.sourceStatuses, cr.universe);
+          }
+          setMatrixPreview({ conversion, comparison, asOfDate: previewAsOf, fileName: file.name });
+          return;
+        }
+      }
       const result = await importTrainingFile(file);
       setLastImportResult(result);
       if (result.success) {
+        setEmployeeMaster(null);
         setTrainingRecords(result.validRecords);
         setSourceFileName(result.sourceFileName);
         const lines = [
@@ -129,6 +156,24 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleApproveMatrix() {
+    const { conversion, asOfDate: previewAsOf, fileName } = matrixPreview;
+    const result = toImportResult(conversion, fileName);
+    setLastImportResult(result);
+    setEmployeeMaster(conversion.employees);
+    setTrainingRecords(result.validRecords);
+    setRequirements(conversion.requirements);
+    setSourceFileName(fileName);
+    setAsOfDate(previewAsOf);
+    setLastRefresh(new Date().toLocaleString());
+    const c = conversion.counts;
+    showBanner(conversion.warningCount > 0 ? 'warning' : 'success', t('importSuccess'), [
+      `${c.importedRecords} ${t('mxCountImported')} · ${c.skippedNoEvidence} ${t('mxCountSkipped')}`,
+      `${c.requirementRows} ${t('mxCountRequirements')}`,
+    ]);
+    setMatrixPreview(null);
   }
 
   async function handleRequirementsImport(file) {
@@ -179,11 +224,12 @@ export default function App() {
   function handleReset() {
     setTrainingRecords([]); setRequirements([]); setLastImportResult(null);
     setImportBanner({ type: 'success', title: t('dataReset'), lines: [] });
-    setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null);
+    setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null); setMatrixPreview(null);
+    setEmployeeMaster(null);
     setAsOfDate(getRuntimeAsOfDate());
   }
 
-  const hasData = trainingRecords.length > 0;
+  const hasData = trainingRecords.length > 0 || (employeeMaster?.length ?? 0) > 0;
   const hasRequirements = requirements.length > 0;
 
   return (
@@ -208,6 +254,14 @@ export default function App() {
           hasData={hasData} hasRequirements={hasRequirements}
           isLoading={isLoading} importBanner={importBanner}
         />
+
+        {matrixPreview && (
+          <MatrixImportPreview
+            preview={matrixPreview} t={t}
+            onApprove={handleApproveMatrix}
+            onCancel={() => setMatrixPreview(null)}
+          />
+        )}
 
         {!hasData && (
           <div className="empty-state">

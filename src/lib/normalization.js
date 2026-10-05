@@ -20,6 +20,19 @@ export function dateDiffDays(dateStr1, dateStr2) {
   return Math.round((d1.getTime() - d2.getTime()) / 86400000);
 }
 
+// Add calendar months to YYYY-MM-DD. The day is clamped to the last valid
+// day of the target month (31 Jan + 1 month = 28/29 Feb, not early March).
+export function addCalendarMonths(dateStr, months) {
+  const d = parseUTCDate(dateStr);
+  if (!d) return null;
+  const total = d.getUTCFullYear() * 12 + d.getUTCMonth() + months;
+  const year = Math.floor(total / 12);
+  const month = total - year * 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(d.getUTCDate(), lastDay);
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+}
+
 export function isValidDateStr(str) {
   if (!str || typeof str !== 'string') return false;
   const s = str.trim();

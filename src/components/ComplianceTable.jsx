@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
-import { STATUS } from '../lib/constants.js';
+import { PRIORITY_FROM_STATUS, filterComplianceItems } from '../lib/tableFilters.js';
 import { formatDateDisplay } from '../lib/normalization.js';
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from '../lib/constants.js';
 
@@ -8,18 +8,6 @@ function StatusBadge({ status }) {
   if (!status) return null;
   return <span className={`status-badge ${status}`}>{status.replace(/_/g, ' ')}</span>;
 }
-
-const PRIORITY_FROM_STATUS = {
-  [STATUS.EXPIRED]: 'Critical',
-  [STATUS.MISSING]: 'Critical',
-  [STATUS.NOT_STARTED]: 'High',
-  [STATUS.IN_PROGRESS]: 'Medium',
-  [STATUS.EXPIRING_30]: 'Medium',
-  [STATUS.EXPIRING_60]: 'Low',
-  [STATUS.EXPIRING_90]: 'Low',
-  [STATUS.VALID]: null,
-  [STATUS.NOT_REQUIRED]: null,
-};
 
 export default function ComplianceTable({
   universe,
@@ -41,22 +29,7 @@ export default function ComplianceTable({
   }, [universe, inactiveUniverse, showInactive]);
 
   // Apply filters
-  const filtered = useMemo(() => {
-    return fullUniverse.filter(item => {
-      if (filters.employeeId && !item.Employee_ID.toLowerCase().includes(filters.employeeId.toLowerCase())) return false;
-      if (filters.employeeName && !item.Employee_Name.toLowerCase().includes(filters.employeeName.toLowerCase())) return false;
-      if (filters.department && item.Department !== filters.department) return false;
-      if (filters.jobTitle && item.Job_Title !== filters.jobTitle) return false;
-      if (filters.course && item.Course_Code !== filters.course) return false;
-      if (filters.status && item.Status !== filters.status) return false;
-      if (filters.employmentStatus && item.Employment_Status !== filters.employmentStatus) return false;
-      if (filters.priority) {
-        const p = PRIORITY_FROM_STATUS[item.Status];
-        if (p !== filters.priority) return false;
-      }
-      return true;
-    });
-  }, [fullUniverse, filters]);
+  const filtered = useMemo(() => filterComplianceItems(fullUniverse, filters), [fullUniverse, filters]);
 
   // Reset to page 1 when filters or pageSize change
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { ClipboardList } from 'lucide-react';
 import { DEMO_AS_OF_DATE, DEFAULT_COMPANY, DEFAULT_PROJECT } from './lib/constants.js';
+import { getRuntimeAsOfDate } from './lib/clock.js';
 import { createI18n } from './lib/i18n.js';
 import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from './lib/complianceEngine.js';
 import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js';
@@ -42,11 +43,13 @@ export default function App() {
   const [showInactive, setShowInactive] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [lastRefresh, setLastRefresh] = useState(null);
+  // As Of Date: fixed DEMO_AS_OF_DATE only while demo data is loaded; otherwise today (Asia/Riyadh).
+  const [asOfDate, setAsOfDate] = useState(() => getRuntimeAsOfDate());
 
   const complianceResult = useMemo(() => {
     if (trainingRecords.length === 0) return null;
-    return buildComplianceUniverse(trainingRecords, requirements, DEMO_AS_OF_DATE);
-  }, [trainingRecords, requirements]);
+    return buildComplianceUniverse(trainingRecords, requirements, asOfDate);
+  }, [trainingRecords, requirements, asOfDate]);
 
   const kpis = useMemo(() => {
     if (!complianceResult) return null;
@@ -93,6 +96,7 @@ export default function App() {
         `Requirements: ${reqResult.importSummary.valid} rows loaded`,
       ];
       showBanner('success', t('demoLoaded'), lines);
+      if (trainingResult.success) setAsOfDate(DEMO_AS_OF_DATE);
       setLastRefresh(new Date().toLocaleString());
     } catch (e) {
       showBanner('error', t('importError'), [e.message]);
@@ -115,6 +119,7 @@ export default function App() {
           ...result.warnings,
         ];
         showBanner(result.importSummary.invalid > 0 ? 'warning' : 'success', t('importSuccess'), lines);
+        setAsOfDate(getRuntimeAsOfDate());
         setLastRefresh(new Date().toLocaleString());
       } else {
         showBanner('error', t('importError'), result.errors.slice(0, 6));
@@ -148,7 +153,7 @@ export default function App() {
     if (!kpis) return;
     exportManagementPDF({
       companyName, projectName,
-      asOfDate: DEMO_AS_OF_DATE,
+      asOfDate,
       sourceFileName,
       kpis, priorityActions,
       dataQuality: {
@@ -163,18 +168,19 @@ export default function App() {
 
   function handleExportCSV() {
     if (!complianceResult) return;
-    exportComplianceCSV(complianceResult.universe, kpis, { asOfDate: DEMO_AS_OF_DATE }, t);
+    exportComplianceCSV(complianceResult.universe, kpis, { asOfDate }, t);
   }
 
   function handleExportPriorityCSV() {
     if (priorityActions.length === 0) return;
-    exportPriorityActionsCSV(priorityActions, { asOfDate: DEMO_AS_OF_DATE }, t);
+    exportPriorityActionsCSV(priorityActions, { asOfDate }, t);
   }
 
   function handleReset() {
     setTrainingRecords([]); setRequirements([]); setLastImportResult(null);
     setImportBanner({ type: 'success', title: t('dataReset'), lines: [] });
     setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null);
+    setAsOfDate(getRuntimeAsOfDate());
   }
 
   const hasData = trainingRecords.length > 0;
@@ -184,7 +190,7 @@ export default function App() {
     <div className="app-shell" dir={i18n.dir}>
       <Header
         companyName={companyName} projectName={projectName}
-        asOfDate={DEMO_AS_OF_DATE} lang={lang} t={t}
+        asOfDate={asOfDate} lang={lang} t={t}
         onLangToggle={() => setLang(l => l === 'en' ? 'ar' : 'en')}
         onCompanyChange={setCompanyName} onProjectChange={setProjectName}
         lastRefresh={lastRefresh}
@@ -325,7 +331,7 @@ export default function App() {
         )}
       </main>
 
-      <Footer t={t} />
+      <Footer t={t} asOfDate={asOfDate} />
     </div>
   );
 }

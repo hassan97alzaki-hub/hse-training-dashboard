@@ -1,5 +1,9 @@
-// Authoritative As Of Date for demo and tests
+// Fixed As Of Date for the demo dataset and the test fixtures ONLY.
+// Real use takes today's date from lib/clock.js.
 export const DEMO_AS_OF_DATE = '2026-07-26';
+
+// Time zone that defines "today" for real use (Saudi Arabia, UTC+3, no DST).
+export const REPORTING_TIME_ZONE = 'Asia/Riyadh';
 
 // Status constants — single source of truth
 export const STATUS = {

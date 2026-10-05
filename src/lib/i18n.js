@@ -217,7 +217,7 @@ const translations = {
 
     // Footer
     footerVersion: 'Version',
-    footerBuild: 'Build',
+    footerReportDate: 'Report Date',
     footerEnvironment: 'Environment',
     footerEnvironmentValue: 'Management Demonstration — Local Browser Session',
   },
@@ -437,7 +437,7 @@ const translations = {
 
     // Footer
     footerVersion: 'الإصدار',
-    footerBuild: 'البناء',
+    footerReportDate: 'تاريخ التقرير',
     footerEnvironment: 'البيئة',
     footerEnvironmentValue: 'عرض توضيحي للإدارة — جلسة متصفح محلية',
   },

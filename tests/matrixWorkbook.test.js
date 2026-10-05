@@ -5,7 +5,7 @@ import { createElement } from 'react';
 import { render, screen } from '@testing-library/react';
 import { STATUS } from '../src/lib/constants.js';
 import {
-  isMatrixWorkbook, readWorkbook, readMatrixSheets, convertMatrixWorkbook,
+  isMatrixWorkbook, looksLikeMatrixWorkbook, readWorkbook, readMatrixSheets, convertMatrixWorkbook,
   compareSourceStatus, toImportResult, DERIVED_REQUIREMENT_NOTE,
 } from '../src/lib/matrixWorkbook.js';
 import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from '../src/lib/complianceEngine.js';
@@ -13,6 +13,8 @@ import { filterComplianceItems } from '../src/lib/tableFilters.js';
 import { createI18n } from '../src/lib/i18n.js';
 import { addCalendarMonths } from '../src/lib/normalization.js';
 import MatrixImportPreview from '../src/components/MatrixImportPreview.jsx';
+import ComplianceTable from '../src/components/ComplianceTable.jsx';
+import { fireEvent } from '@testing-library/react';
 
 const AS_OF = '2026-07-26';
 
@@ -175,8 +177,21 @@ describe('matrix workbook — blocking errors', () => {
     expect(res.ok).toBe(false);
     expect(issue(res, code)?.severity).toBe('error');
   };
-  it('missing sheet', () => blocked(convertMatrixWorkbook(readMatrixSheets(workbook({ omit: ['Courses'] }))), 'MISSING_SHEET'));
-  it('missing column', () => blocked(convert({ courses: COURSES.map(({ Departments: _omit, ...c }) => c) }), 'MISSING_COLUMN'));
+  it('missing sheet — names the sheet', () => {
+    const r = convertMatrixWorkbook(readMatrixSheets(workbook({ omit: ['Courses'] })));
+    blocked(r, 'MISSING_SHEET');
+    expect(issue(r, 'MISSING_SHEET').rows).toEqual(['Courses']);
+  });
+  it('a workbook with two of the three sheets is still treated as a matrix workbook', () => {
+    expect(looksLikeMatrixWorkbook(workbook({ omit: ['Courses'] }))).toBe(true);
+    expect(isMatrixWorkbook(workbook({ omit: ['Courses'] }))).toBe(false);
+    expect(looksLikeMatrixWorkbook(workbook({ omit: ['Courses', 'Employees'] }))).toBe(false);
+  });
+  it('missing column — names sheet and column', () => {
+    const r = convert({ courses: COURSES.map(({ Departments: _omit, ...c }) => c) });
+    blocked(r, 'MISSING_COLUMN');
+    expect(issue(r, 'MISSING_COLUMN').rows).toEqual(['Courses.Departments']);
+  });
   it('missing Badge', () => blocked(convert({ employees: [{ ...EMPLOYEES[0], Badge: '' }, ...EMPLOYEES.slice(1)] }), 'EMPLOYEE_KEY_MISSING'));
   it('duplicate Badge', () => blocked(convert({ employees: [...EMPLOYEES, { ...EMPLOYEES[0], Employee_ID: 9 }] }), 'EMPLOYEE_KEY_DUPLICATE'));
   it('duplicate Employee_ID', () => blocked(convert({ employees: [...EMPLOYEES, { ...EMPLOYEES[0], Badge: 'XX-00009' }] }), 'EMPLOYEE_ID_DUPLICATE'));
@@ -236,6 +251,24 @@ describe('matrix import preview component', () => {
     render(createElement(MatrixImportPreview, { preview: base(convert({ training: [{ ...TRAINING[0], Badge: 'XX-99999' }] })), t, onApprove: () => {}, onCancel: () => {} }));
     expect(screen.getByRole('button', { name: /Approve import/ })).toBeDisabled();
     expect(screen.getByText(/Import blocked/)).toBeInTheDocument();
+  });
+});
+
+describe('compliance table paging', () => {
+  const { t } = createI18n('en');
+  const items = Array.from({ length: 60 }, (_, i) => ({
+    Employee_ID: `XX-${String(i).padStart(5, '0')}`, Employee_Name: 'Test', Department: i < 30 ? 'Operations' : 'Logistics',
+    Job_Title: 'Operator', Course_Code: 'K01', Course_Name: 'Course One', Status: STATUS.MISSING, Employment_Status: 'Active',
+  }));
+  const props = (filters) => ({ universe: items, inactiveUniverse: [], filters, t, lang: 'en', showInactive: false });
+
+  it('returns to page 1 when the filters change', () => {
+    const { container, rerender } = render(createElement(ComplianceTable, props({})));
+    fireEvent.click(screen.getByRole('button', { name: t('ariaNextPage') }));
+    expect(container.querySelector('.pagination-controls .page-info').textContent).toBe('2 / 3');
+    rerender(createElement(ComplianceTable, props({ department: 'Logistics' })));
+    expect(container.querySelector('.pagination-controls .page-info').textContent).toBe('1 / 2');
+    expect(container.querySelector('.pagination-bar .page-info').textContent).toContain('1–25');
   });
 });
 

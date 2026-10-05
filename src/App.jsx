@@ -7,7 +7,7 @@ import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from './li
 import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js';
 import { loadDemoDataFromPublic } from './lib/demoData.js';
 import {
-  readWorkbookFromFile, isMatrixWorkbook, readMatrixSheets,
+  readWorkbookFromFile, looksLikeMatrixWorkbook, readMatrixSheets,
   convertMatrixWorkbook, compareSourceStatus, toImportResult,
 } from './lib/matrixWorkbook.js';
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
@@ -123,7 +123,7 @@ export default function App() {
     try {
       if (/\.xlsx?$/i.test(file.name)) {
         const workbook = await readWorkbookFromFile(file);
-        if (isMatrixWorkbook(workbook)) {
+        if (looksLikeMatrixWorkbook(workbook)) {
           const conversion = convertMatrixWorkbook(readMatrixSheets(workbook));
           const previewAsOf = getRuntimeAsOfDate();
           let comparison = null;
@@ -136,8 +136,8 @@ export default function App() {
         }
       }
       const result = await importTrainingFile(file);
-      setLastImportResult(result);
       if (result.success) {
+        setLastImportResult(result);
         setEmployeeMaster(null);
         setTrainingRecords(result.validRecords);
         setSourceFileName(result.sourceFileName);
@@ -170,7 +170,7 @@ export default function App() {
     setLastRefresh(new Date().toLocaleString());
     const c = conversion.counts;
     showBanner(conversion.warningCount > 0 ? 'warning' : 'success', t('importSuccess'), [
-      `${c.importedRecords} ${t('mxCountImported')} · ${c.skippedNoEvidence} ${t('mxCountSkipped')}`,
+      `${c.importedRecords} ${t('mxBannerImported')} · ${c.skippedNoEvidence} ${t('mxCountSkipped')}`,
       `${c.requirementRows} ${t('mxCountRequirements')}`,
     ]);
     setMatrixPreview(null);

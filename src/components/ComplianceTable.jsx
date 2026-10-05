@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
 import { PRIORITY_FROM_STATUS, filterComplianceItems } from '../lib/tableFilters.js';
 import { formatDateDisplay } from '../lib/normalization.js';
@@ -31,7 +31,9 @@ export default function ComplianceTable({
   // Apply filters
   const filtered = useMemo(() => filterComplianceItems(fullUniverse, filters), [fullUniverse, filters]);
 
-  // Reset to page 1 when filters or pageSize change
+  // Back to page 1 whenever the filtered set changes (new filter, new import).
+  useEffect(() => { setPage(1); }, [filtered]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
 

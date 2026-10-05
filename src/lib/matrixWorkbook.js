@@ -72,6 +72,14 @@ export function isMatrixWorkbook(workbook) {
   return Object.values(MATRIX_SHEETS).every(n => names.includes(n));
 }
 
+// True when at least two of the three sheets exist: the file is meant to be a
+// Training Matrix workbook, so a missing sheet is reported as such instead of
+// falling back to the single-sheet training import.
+export function looksLikeMatrixWorkbook(workbook) {
+  const names = workbook?.SheetNames || [];
+  return Object.values(MATRIX_SHEETS).filter(n => names.includes(n)).length >= 2;
+}
+
 export function readWorkbook(data) {
   return XLSX.read(data, { type: 'array', cellDates: false });
 }
@@ -111,6 +119,12 @@ function createIssueLog() {
       issue.count++;
       if (sheet && row && issue.rows.length < MAX_ROW_REFS) issue.rows.push(`${sheet}:${row}`);
     },
+    addName(code, severity, name) {
+      if (!map.has(code)) map.set(code, { code, severity, count: 0, rows: [] });
+      const issue = map.get(code);
+      issue.count++;
+      issue.rows.push(name);
+    },
     note(code, severity, count, extra) {
       map.set(code, { code, severity, count, rows: [], ...(extra || {}) });
     },
@@ -134,10 +148,10 @@ export function convertMatrixWorkbook(sheets) {
   // Structure
   let structureOk = true;
   for (const key of ['employees', 'courses', 'training']) {
-    if (!sheets[key]) { issues.add('MISSING_SHEET', SEVERITY.ERROR); structureOk = false; continue; }
+    if (!sheets[key]) { issues.addName('MISSING_SHEET', SEVERITY.ERROR, MATRIX_SHEETS[key]); structureOk = false; continue; }
     const headers = (sheets[`${key}Headers`] || []).map(str);
     for (const col of MATRIX_COLUMNS[key]) {
-      if (!headers.includes(col)) { issues.add('MISSING_COLUMN', SEVERITY.ERROR); structureOk = false; }
+      if (!headers.includes(col)) { issues.addName('MISSING_COLUMN', SEVERITY.ERROR, `${MATRIX_SHEETS[key]}.${col}`); structureOk = false; }
     }
   }
   if (!structureOk) return finish(issues, null);

@@ -65,7 +65,8 @@ export const PRESENCE = deepFreeze({
 /**
  * Sheet presence per package type.
  * `required` = MUST be present; `optional` = MAY be present;
- * `forbidden` = MUST NOT be present (SHEET_UNEXPECTED, warn, ignored in full).
+ * `forbidden` = MUST NOT be present (SHEET_UNEXPECTED, warn, ignored completely:
+ * no row is read and no approved list changes).
  *
  * Only a `full` package may create or update `Departments` or `Job_Titles`.
  */
@@ -123,13 +124,38 @@ export const EMPLOYEE_CODE_PATTERN = /^[A-Za-z0-9-]{3,20}$/;
 export const SOURCE_RECORD_ID_MAX_LENGTH = 64;
 export const DATE_TEXT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Fields normalised as reference codes: trimmed, then upper-cased. */
+/**
+ * Fields normalised as reference codes: trimmed, then upper-cased.
+ *
+ * `site_code` is normalised and pattern-checked like any reference code, but
+ * `HSE-DC-1.0` defines no `Sites` sheet and no approved site list, so it is
+ * never resolved against a reference list and can never produce `REF_UNKNOWN`
+ * or `REF_INACTIVE_CODE`. See `REFERENCE_LISTS` for the codes that do have a
+ * list.
+ */
 export const REFERENCE_CODE_FIELDS = deepFreeze([
   'organization_code',
   'source_system',
   'department_code',
   'job_title_code',
   'course_code',
+  'site_code',
+]);
+
+/**
+ * Reference code fields that have an approved list in `HSE-DC-1.0`, with the
+ * sheet that owns the list. Codes outside this map are format-checked only.
+ */
+export const REFERENCE_LISTS = deepFreeze({
+  department_code: 'Departments',
+  job_title_code: 'Job_Titles',
+  course_code: 'Courses',
+});
+
+/** Reference code fields that are format-checked only (no approved list). */
+export const FORMAT_ONLY_CODE_FIELDS = deepFreeze([
+  'organization_code',
+  'source_system',
   'site_code',
 ]);
 

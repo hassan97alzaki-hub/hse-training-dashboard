@@ -1,6 +1,33 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { STATUS_COLORS } from './constants.js';
+import {
+  REQUIREMENTS_PROVENANCE,
+  isTestRequirements,
+} from './contract/requirementsProvenance.js';
+
+// ============================================================
+// TEST-REQUIREMENTS MARKER (AT-13)
+// ============================================================
+
+/**
+ * One line that says an export was produced from test requirements rather than
+ * from an approved HSE-DC-1.0 requirements set. An export that leaves the
+ * browser must carry that statement with it.
+ */
+export const TEST_REQUIREMENTS_MARKER = {
+  [REQUIREMENTS_PROVENANCE.DERIVED]:
+    'TEST DATA — requirements derived from a department-level mapping of the three-sheet test workbook. Not approved production requirements; not a compliance result.',
+  [REQUIREMENTS_PROVENANCE.DEMO]:
+    'TEST DATA — demonstration dataset. Not approved production requirements; not a compliance result.',
+  [REQUIREMENTS_PROVENANCE.LEGACY]:
+    'TEST DATA — requirements loaded from a legacy CSV with no approval reference and no version date. Not approved production requirements; not a compliance result.',
+};
+
+/** The marker line for a provenance, or `''` for approved requirements. */
+export function testRequirementsMarker(provenance) {
+  return isTestRequirements(provenance) ? TEST_REQUIREMENTS_MARKER[provenance] : '';
+}
 
 // ============================================================
 // CSV UTILITIES
@@ -38,21 +65,31 @@ function downloadCSV(rows, filename) {
 // ============================================================
 
 export function exportComplianceCSV(universe, kpis, meta, t) {
+  // Codes are the matching keys and names are display only, so the export
+  // carries both: a code column next to every name column.
   const headers = [
-    t('employeeId'), t('employeeName'), t('department'), t('jobTitle'),
-    t('course'), 'Course Code', t('status'), t('expiryDate'), t('daysRemaining'),
+    t('employeeId'), t('employeeName'),
+    'Department Code', t('department'),
+    'Job Title Code', t('jobTitle'),
+    'Course Code', t('course'),
+    t('status'), t('expiryDate'), t('daysRemaining'),
     t('employmentStatus'), t('issueDate'), t('certificate'), t('provider'),
   ];
 
-  const rows = [buildCSVRow(headers)];
+  const rows = [];
+  const marker = testRequirementsMarker(meta.requirementsProvenance);
+  if (marker) rows.push(buildCSVRow([marker]));
+  rows.push(buildCSVRow(headers));
   for (const item of universe) {
     rows.push(buildCSVRow([
       item.Employee_ID,
       item.Employee_Name,
-      item.Department,
-      item.Job_Title,
-      item.Course_Name,
+      item.Department_Code ?? item.Department,
+      item.Department_Name ?? item.Department,
+      item.Job_Title_Code ?? item.Job_Title,
+      item.Job_Title_Name ?? item.Job_Title,
       item.Course_Code,
+      item.Course_Name,
       item.Status,
       item.Expiry_Date || '',
       item.daysRemaining ?? '',
@@ -73,18 +110,27 @@ export function exportComplianceCSV(universe, kpis, meta, t) {
 
 export function exportPriorityActionsCSV(actions, meta, t) {
   const headers = [
-    t('priority'), t('employeeId'), t('employeeName'), t('department'),
-    t('jobTitle'), t('course'), t('status'), t('expiryDate'), t('daysRemaining'), t('action'),
+    t('priority'), t('employeeId'), t('employeeName'),
+    'Department Code', t('department'),
+    'Job Title Code', t('jobTitle'),
+    'Course Code', t('course'),
+    t('status'), t('expiryDate'), t('daysRemaining'), t('action'),
   ];
 
-  const rows = [buildCSVRow(headers)];
+  const rows = [];
+  const marker = testRequirementsMarker(meta.requirementsProvenance);
+  if (marker) rows.push(buildCSVRow([marker]));
+  rows.push(buildCSVRow(headers));
   for (const a of actions) {
     rows.push(buildCSVRow([
       a.priority,
       a.Employee_ID,
       a.Employee_Name,
-      a.Department,
-      a.Job_Title,
+      a.Department_Code ?? a.Department,
+      a.Department_Name ?? a.Department,
+      a.Job_Title_Code ?? a.Job_Title,
+      a.Job_Title_Name ?? a.Job_Title,
+      a.Course_Code ?? '',
       a.Course_Name,
       a.Status,
       a.Expiry_Date || '',
@@ -113,6 +159,7 @@ export function exportManagementPDF(opts) {
     universe,
     lang,
     t,
+    requirementsProvenance,
   } = opts;
 
   if (lang === 'ar') {
@@ -207,6 +254,17 @@ export function exportManagementPDF(opts) {
   y += 8;
   kv('Data source', sourceFileName || 'Demo data');
   kv('Generated', new Date().toLocaleString('en-GB'));
+  const marker = testRequirementsMarker(requirementsProvenance);
+  if (marker) {
+    y += 2;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(200, 60, 20);
+    doc.text(doc.splitTextToSize(marker, pw - margin * 2), margin, y);
+    y += 10;
+    doc.setTextColor(...DARK);
+    doc.setFont('helvetica', 'normal');
+  }
   y += 4;
 
   // ── Executive Summary ─────────────────────────────────────

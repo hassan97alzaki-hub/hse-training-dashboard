@@ -354,25 +354,26 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
       companyName, projectName,
       asOfDate,
       sourceFileName,
-      kpis, priorityActions,
+      kpis: displayKpis, priorityActions: displayPriorityActions,
       dataQuality: {
         invalidRows: lastImportResult?.importSummary?.invalid || 0,
         duplicateGroups: complianceResult?.duplicates?.length || 0,
         configWarnings: complianceResult?.configWarnings?.length || 0,
       },
-      universe: complianceResult?.universe || [],
+      universe: displayUniverse,
+      requirementsProvenance,
       lang, t,
     });
   }
 
   function handleExportCSV() {
     if (!complianceResult) return;
-    exportComplianceCSV(complianceResult.universe, kpis, { asOfDate }, t);
+    exportComplianceCSV(displayUniverse, displayKpis, { asOfDate, requirementsProvenance }, t);
   }
 
   function handleExportPriorityCSV() {
     if (priorityActions.length === 0) return;
-    exportPriorityActionsCSV(priorityActions, { asOfDate }, t);
+    exportPriorityActionsCSV(displayPriorityActions, { asOfDate, requirementsProvenance }, t);
   }
 
   function handleReset() {

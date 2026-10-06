@@ -19,7 +19,8 @@
 ## Revision 4 clarification changes
 
 - All reference codes use `^[A-Z0-9_-]{2,20}$` after trim and upper-casing. `employee_code` and `source_record_id` preserve case and compare exactly pending H-01/I-01.
-- Only `full` packages may create or update department and job-title reference lists. Partial packages must use the approved lists.
+- Duplicate detection for reference codes runs after normalisation, so `ops` and `OPS` are one key and give `KEY_DUPLICATE`.
+- Only `full` packages may create or update department and job-title reference lists. Partial packages must use the approved lists; such a sheet is ignored in full and the approved lists stay unchanged.
 - `COMPLETED_WITHOUT_EXPIRY` blocks only when the current effective requirement is `Mandatory` and has `validity_months`; preparation rechecks this on every run.
 - A department-scoped job title used outside its department is blocking.
 
@@ -95,7 +96,7 @@ Required (R) and optional (O) sheets per package type; other sheets present → 
 | `Requirements` | R | — | R | — |
 | `Training_Records` | R | — | — | R |
 
-Reference rule: every code used in a package must exist either in an allowed sheet in the same package or in the already approved data. Only `full` may create or update `Departments` and `Job_Titles`; those sheets in a partial package are `SHEET_UNEXPECTED` and ignored. A `training` package may reference only employees already approved, and may carry `Courses` for new courses.
+Reference rule: every code used in a package must exist either in an allowed sheet in the same package or in the already approved data. Only `full` may create or update `Departments` and `Job_Titles`; those sheets in a partial package are `SHEET_UNEXPECTED` (warning) and ignored in full, so the approved lists stay unchanged. A `training` package may reference only employees already approved, and may carry `Courses` for new courses.
 
 Common rules: first row = header; header names exact (trimmed, case-sensitive); dates `YYYY-MM-DD` or Excel serial (slash dates rejected in production mode); text trimmed and inner whitespace collapsed; empty cell = no information (§4.3).
 
@@ -202,7 +203,7 @@ Severity: **block** = batch cannot be approved; **warn** = shown, approvable; **
 | `CONTRACT_VERSION`, `PACKAGE_TYPE` | block | missing or unsupported |
 | `SHEET_MISSING`, `COLUMN_MISSING` | block | per package type; names `Sheet` / `Sheet.Column` |
 | `FORBIDDEN_COLUMN` | block (default, decision P-04) | national ID, iqama, date of birth, nationality columns |
-| `KEY_MISSING`, `KEY_DUPLICATE`, `KEY_PATTERN` | block | per sheet; includes duplicate department, job-title and course codes (duplicate display names are allowed) |
+| `KEY_MISSING`, `KEY_DUPLICATE`, `KEY_PATTERN` | block | per sheet; duplicates are detected after trim and upper-casing, so `ops` and `OPS` collide; includes duplicate department, job-title and course codes (duplicate display names are allowed) |
 | `ORG_MISMATCH` | block | `organization_code` differs from the organization bound to the session (§4.7) |
 | `ORG_NOT_LOADED` | block | `employees`, `requirements` or `training` package while no organization is bound |
 | `REF_UNKNOWN` | block | unknown department, job title, course or employee code |
@@ -392,7 +393,8 @@ Eligibility count (displayed only, nothing sent): active employee, channel `Yes`
 | AT-23 | Organization binding: second organization's package blocked; partial package without bound organization blocked; reset clears binding; demo/test workbook clear binding |
 | AT-24 | `RECORD_IDENTITY_CHANGED`: same record id with another employee or course blocked; other field changes create a new version |
 | AT-25 | A department-scoped job title used with another department blocks approval |
-| AT-26 | Partial packages cannot create or update `Departments` / `Job_Titles`; such sheets are `SHEET_UNEXPECTED` and ignored |
+| AT-26 | Partial packages cannot create or update `Departments` / `Job_Titles`; such sheets are `SHEET_UNEXPECTED` (warn) and ignored in full — approved lists byte-identical before and after approval, no code added, renamed or deactivated |
+| AT-27 | Reference-code duplicates are detected after normalisation: `ops` and `OPS` in one sheet give `KEY_DUPLICATE`; a row written `ops` matches approved `OPS` instead of `REF_UNKNOWN` |
 | AT-18 (manual) | UI walkthrough: each package type, preview, details, approve, cancel, blocked file, Arabic/English |
 | AT-19 (manual, documented) | Performance on the reference machine (§8.3) |
 

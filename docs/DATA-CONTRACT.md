@@ -62,7 +62,7 @@ R = MUST be present; O = MAY be present; — = MUST NOT be present (`warn`, igno
 | `Requirements` | R | — | R | — |
 | `Training_Records` | R | — | — | R |
 
-Every code used in a batch MUST exist either in an allowed sheet in the same batch or in the approved data (`REF_UNKNOWN`). Only a `full` package may create or update `Departments` or `Job_Titles`; those sheets in a partial package produce `SHEET_UNEXPECTED` and are ignored.
+Every code used in a batch MUST exist either in an allowed sheet in the same batch or in the approved data (`REF_UNKNOWN`). Only a `full` package may create or update `Departments` or `Job_Titles`; those sheets in a partial package produce `SHEET_UNEXPECTED` (`warn`). The sheet is then ignored in full: no row of it is read, no code is created, renamed, activated or deactivated, and the approved lists stay exactly as they were. The rest of the package is still validated and may be approved.
 
 ## 2. Normalisation
 
@@ -79,6 +79,7 @@ Reference codes (`organization_code`, `source_system`, `department_code`, `job_t
 - MUST be upper-cased after trimming.
 - MUST match `^[A-Z0-9_-]{2,20}$`.
 - Are the only matching keys for reference data. Display names MUST NOT be used for matching.
+- Duplicate detection and all reference matching happen **after** trimming and upper-casing. Two rows with `ops` and `OPS` are therefore the same key and MUST produce `KEY_DUPLICATE`; a code written `ops` MUST match an approved `OPS`.
 
 Record identifiers:
 - `employee_code`: trimmed; MUST match the organization pattern (default `^[A-Za-z0-9-]{3,20}$`); compared **exactly** (case preserved).
@@ -231,12 +232,12 @@ Columns named (case-insensitive, any language variant agreed later) national ID,
 | `PACKAGE_TYPE` | block | `package_type` missing or unknown |
 | `CONTRACT_FIELD` | block | other `_Contract` field missing or invalid |
 | `SHEET_MISSING` | block | required sheet absent (names the sheet) |
-| `SHEET_UNEXPECTED` | warn | sheet not allowed for the package type, or unknown; ignored. Partial packages cannot modify `Departments` or `Job_Titles` |
+| `SHEET_UNEXPECTED` | warn | sheet not allowed for the package type, or unknown; ignored in full (§1.3). Partial packages cannot modify `Departments` or `Job_Titles`; the approved lists stay unchanged |
 | `COLUMN_MISSING` | block | required column absent (names `Sheet.Column`) |
 | `COLUMN_UNKNOWN` | warn | unknown column; ignored |
 | `FORBIDDEN_COLUMN` | block | §3.10 |
 | `KEY_MISSING` | block | key field empty |
-| `KEY_DUPLICATE` | block | key repeated in the batch (codes, `employee_code`, `source_record_id`, requirement key). Duplicate display names are not an issue |
+| `KEY_DUPLICATE` | block | key repeated in the batch after normalisation (§2.2): codes compared upper-cased, `employee_code` / `source_record_id` compared exactly, requirement key. Duplicate display names are not an issue |
 | `KEY_PATTERN` | block | code or identifier fails its pattern |
 | `REF_UNKNOWN` | block | referenced code not in the batch nor in approved data |
 | `REF_INACTIVE_CODE` | block | inactive department or job title on an employee or a new requirement |

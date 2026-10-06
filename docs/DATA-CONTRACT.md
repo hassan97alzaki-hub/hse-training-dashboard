@@ -62,7 +62,7 @@ R = MUST be present; O = MAY be present; — = MUST NOT be present (`warn`, igno
 | `Requirements` | R | — | R | — |
 | `Training_Records` | R | — | — | R |
 
-Every code used in a batch MUST exist either in an allowed sheet in the same batch or in the approved data (`REF_UNKNOWN`). Only a `full` package may create or update `Departments` or `Job_Titles`; those sheets in a partial package produce `SHEET_UNEXPECTED` (`warn`). The sheet is then ignored in full: no row of it is read, no code is created, renamed, activated or deactivated, and the approved lists stay exactly as they were. The rest of the package is still validated and may be approved.
+Every code used in a batch MUST exist either in an allowed sheet in the same batch or in the approved data (`REF_UNKNOWN`). Only a `full` package may create or update `Departments` or `Job_Titles`; those sheets in a partial package produce `SHEET_UNEXPECTED` (`warn`). The sheet is then ignored completely: no row of it is read, no code is created, renamed, activated or deactivated, and the approved lists stay exactly as they were. The rest of the package is still validated and may be approved.
 
 ## 2. Normalisation
 
@@ -122,7 +122,7 @@ Source and owner of both lists: decision H-03.
 | Field | Required | Rule |
 |---|---|---|
 | `employee_code` | MUST | Key, unique in the organization. Meaning (HR number, badge, other): decision H-01. MUST NOT be derived from a name |
-| `badge_number` | MAY | Informational; SHOULD be unique |
+| `badge_number` | MAY | Informational; SHOULD be unique. A repeated non-empty value produces `BADGE_DUPLICATE` (`warn`); the badge is never the employee key |
 | `full_name` | MUST | 2–120 characters; display only; MUST NOT be used for matching |
 | `full_name_ar` | MAY | Display only |
 | `department_code` | MUST | Known, active code |
@@ -232,7 +232,7 @@ Columns named (case-insensitive, any language variant agreed later) national ID,
 | `PACKAGE_TYPE` | block | `package_type` missing or unknown |
 | `CONTRACT_FIELD` | block | other `_Contract` field missing or invalid |
 | `SHEET_MISSING` | block | required sheet absent (names the sheet) |
-| `SHEET_UNEXPECTED` | warn | sheet not allowed for the package type, or unknown; ignored in full (§1.3). Partial packages cannot modify `Departments` or `Job_Titles`; the approved lists stay unchanged |
+| `SHEET_UNEXPECTED` | warn | sheet not allowed for the package type, or unknown; ignored completely (§1.3). Partial packages cannot modify `Departments` or `Job_Titles`; the approved lists stay unchanged |
 | `COLUMN_MISSING` | block | required column absent (names `Sheet.Column`) |
 | `COLUMN_UNKNOWN` | warn | unknown column; ignored |
 | `FORBIDDEN_COLUMN` | block | §3.10 |
@@ -263,6 +263,7 @@ Columns named (case-insensitive, any language variant agreed later) national ID,
 | `CERT_DUPLICATE` | warn (T-06) | same certificate number on two records |
 | `POSSIBLE_DUPLICATE_RECORD` | warn | §3.8 |
 | `DATES_ON_INCOMPLETE` | warn | dates on `In Progress` / `Not Started`; ignored |
+| `BADGE_DUPLICATE` | warn | same non-empty `badge_number` on two employees; informational only, the badge is not the employee key (§3.3) |
 | `EMPLOYEE_NOT_CONFIGURED` | warn | active employee with no effective requirement |
 | `SUGGESTED_VALIDITY_DIFFERS` | info | §3.4 |
 | `RECORD_FOR_INACTIVE` | info | record for a non-active employee; kept as history |

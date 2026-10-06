@@ -188,12 +188,37 @@ describe('the management PDF', () => {
     t,
   };
 
-  it('runs for both provenances without throwing', async () => {
+  /** jsPDF writes the file next to the working directory under jsdom. */
+  async function renderPdf(requirementsProvenance) {
+    const { readFileSync, existsSync, unlinkSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
     const { exportManagementPDF } = await import('../src/lib/exportService.js');
-    // jsdom does not carry out the download, so the rendered page cannot be
-    // read back here; the visible marker is checked by hand in the browser.
-    expect(() => exportManagementPDF({ ...base, requirementsProvenance: 'derived' })).not.toThrow();
-    expect(() => exportManagementPDF({ ...base, requirementsProvenance: 'approved' })).not.toThrow();
+    const file = resolve(process.cwd(), `HSE_Management_Report_${base.asOfDate}.pdf`);
+    if (existsSync(file)) unlinkSync(file);
+    exportManagementPDF({ ...base, requirementsProvenance });
+    const content = existsSync(file) ? readFileSync(file, 'latin1') : '';
+    if (existsSync(file)) unlinkSync(file);
+    return content;
+  }
+
+  it('writes the marker into the page for test requirements', async () => {
+    const content = await renderPdf('derived');
+    expect(content.length).toBeGreaterThan(0);
+    expect(content).toContain('TEST DATA');
+    expect(content).toContain('department-level mapping');
+  });
+
+  it('writes no marker for approved requirements', async () => {
+    const content = await renderPdf('approved');
+    expect(content.length).toBeGreaterThan(0);
+    expect(content).not.toContain('TEST DATA');
+  });
+
+  it('leaves no file behind', async () => {
+    const { existsSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    await renderPdf('demo');
+    expect(existsSync(resolve(process.cwd(), `HSE_Management_Report_${base.asOfDate}.pdf`))).toBe(false);
   });
 
   it('draws the marker text only when the requirements are test data', async () => {

@@ -493,7 +493,12 @@ export const ENTITIES = deepFreeze({
         type: FIELD_TYPES.TEXT,
         note: 'role, not a personal name',
       },
-      { name: 'approved_on', presence: PRESENCE.REQUIRED, type: FIELD_TYPES.DATE },
+      {
+        name: 'approved_on',
+        presence: PRESENCE.REQUIRED,
+        type: FIELD_TYPES.DATE,
+        notAfter: 'extract_date',
+      },
       {
         name: 'source',
         presence: PRESENCE.REQUIRED,

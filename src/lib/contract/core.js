@@ -277,13 +277,21 @@ export function validateField(field, rawValue, sheet, rowNumber, issues) {
 
 /**
  * Normalise one row of `sheet` against its field definitions.
- * `pattern` MAY give a per-field pattern check for identifier fields.
- * The input row is never changed.
+ * `patterns` MAY give a per-field pattern check for identifier fields, and
+ * `skip` names fields the caller validates itself. The input row is never
+ * changed.
  */
-export function normalizeRow(sheet, raw, rowNumber, issues, { patterns = {} } = {}) {
+export function normalizeRow(sheet, raw, rowNumber, issues, { patterns = {}, skip = [] } = {}) {
   const entity = ENTITIES[sheet];
   const normalised = { [ROW_NUMBER_KEY]: rowNumber };
   for (const field of entity.fields) {
+    // A skipped field is normalised as text only: its own rule is checked by
+    // the caller, which reports a more precise code than the generic one.
+    if (skip.includes(field.name)) {
+      const text = collapseText(raw?.[field.name]);
+      if (text !== '') normalised[field.name] = text;
+      continue;
+    }
     const value = validateField(field, raw?.[field.name], sheet, rowNumber, issues);
     if (value === undefined) continue;
     const pattern = patterns[field.name] ?? (field.pattern ? new RegExp(field.pattern) : undefined);

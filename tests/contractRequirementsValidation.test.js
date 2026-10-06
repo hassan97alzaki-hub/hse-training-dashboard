@@ -208,6 +208,39 @@ describe('Requirements: approval and derived rows', () => {
     }
   });
 
+  it('reports an unreadable approved_on once as REQ_NOT_APPROVED', () => {
+    for (const bad of ['15/12/2026', '2026-13-01', 'last December', 45809.5, true]) {
+      const result = validateRequirements([requirementRow({ approved_on: bad })], context());
+      expect(of(result, 'REQ_NOT_APPROVED'), String(bad)).toHaveLength(1);
+      expect(codes(result), String(bad)).not.toContain('DATE_INVALID');
+      expect(codes(result), String(bad)).not.toContain('REQUIRED_EMPTY');
+      expect(result.ok, String(bad)).toBe(false);
+    }
+  });
+
+  it('stores approved_on as YYYY-MM-DD, also from an Excel serial', () => {
+    const result = validateRequirements([requirementRow({ approved_on: 45809 })], context());
+    expect(result.ok).toBe(true);
+    expect(result.rows[0].approved_on).toBe('2025-06-01');
+  });
+
+  it('keeps DATE_FUTURE for an approved_on after extract_date', () => {
+    const result = validateRequirements(
+      [requirementRow({ approved_on: '2027-01-11' })],
+      context(),
+    );
+    expect(of(result, 'DATE_FUTURE')).toHaveLength(1);
+    expect(of(result, 'DATE_FUTURE')[0]).toMatchObject({ field: 'approved_on' });
+    expect(codes(result)).not.toContain('REQ_NOT_APPROVED');
+  });
+
+  it('requires approval_reference and approved_by_role to survive trimming', () => {
+    for (const field of ['approval_reference', 'approved_by_role']) {
+      const result = validateRequirements([requirementRow({ [field]: '   ' })], context());
+      expect(of(result, 'REQ_NOT_APPROVED'), field).toHaveLength(1);
+    }
+  });
+
   it('counts the rows that are not approved', () => {
     const result = validateRequirements(
       [requirementRow({ source: 'draft' }), requirementRow({ course_code: 'FA-01' })],
@@ -386,6 +419,22 @@ describe('Requirements: versions against the approved data', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('blocks the same version date when any approval detail differs', () => {
+    for (const change of [
+      { approval_reference: 'TRN-DEC-0002' },
+      { approved_by_role: 'HSE Manager' },
+      { approved_on: '2026-12-16' },
+    ]) {
+      const result = validateRequirements(
+        [requirementRow(change)],
+        context({ approvedRequirements: [requirementRow()] }),
+      );
+      expect(codes(result), JSON.stringify(change)).toContain('REQ_VERSION_EXISTS');
+      expect(codes(result), JSON.stringify(change)).not.toContain('REQ_UNCHANGED');
+      expect(result.ok, JSON.stringify(change)).toBe(false);
+    }
+  });
+
   it('blocks the same version date with an extra row', () => {
     const result = validateRequirements(
       [requirementRow(), requirementRow({ course_code: 'FA-01' })],
@@ -491,13 +540,22 @@ describe('Keys, signatures, privacy and columns', () => {
 
   it('separates content by every versioned field', () => {
     const base = requirementRow();
-    expect(requirementSignature(base)).toBe(requirementSignature({ ...base, approved_on: 'x' }));
+    expect(requirementSignature(base)).toBe(requirementSignature({ ...base }));
+    // Canonical JSON, so a separator inside a value cannot shift a boundary.
+    expect(requirementSignature({ ...base, approval_reference: 'A|B', approved_by_role: 'C' })).not.toBe(
+      requirementSignature({ ...base, approval_reference: 'A', approved_by_role: 'B|C' }),
+    );
+    expect(() => JSON.parse(requirementSignature(base))).not.toThrow();
     for (const change of [
       { requirement_type: 'Recommended' },
       { validity_months: 12 },
       { effective_from: '2026-01-01' },
       { effective_to: '2027-12-31' },
       { course_code: 'FA-01' },
+      { approval_reference: 'TRN-DEC-0002' },
+      { approved_by_role: 'HSE Manager' },
+      { approved_on: '2026-12-16' },
+      { source: 'draft' },
     ]) {
       expect(requirementSignature({ ...base, ...change })).not.toBe(requirementSignature(base));
     }

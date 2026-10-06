@@ -23,6 +23,7 @@ import {
   columnsOf,
   collapseText,
   issue,
+  parseContractDate,
   validateColumns,
   normalizeRow,
   checkDateLimits,
@@ -66,11 +67,13 @@ export function requirementTriple(row) {
 }
 
 /**
- * Content signature of one requirement row, without its row number: the fields
- * that decide whether two versions carry the same content (§5).
+ * Content signature of one requirement row, without its row number: everything
+ * that decides whether two versions carry the same content (§5), including the
+ * approval metadata. A canonical JSON array, so a separator inside a value can
+ * never shift a field boundary.
  */
 export function requirementSignature(row) {
-  return [
+  return JSON.stringify([
     requirementTriple(row),
     collapseText(row?.requirement_type),
     row?.validity_months === undefined || row?.validity_months === null
@@ -78,7 +81,11 @@ export function requirementSignature(row) {
       : String(row.validity_months),
     row?.effective_from ?? '',
     row?.effective_to ?? '',
-  ].join('\u0000');
+    collapseText(row?.approval_reference),
+    collapseText(row?.approved_by_role),
+    row?.approved_on ?? '',
+    collapseText(row?.source).toLowerCase(),
+  ]);
 }
 
 /**
@@ -169,9 +176,17 @@ export function validateRequirements(inputRows, context = {}) {
     const rowIssues = [];
     const row = normalizeRow(SHEET, raw, rowNumber, rowIssues, { skip: APPROVAL_FIELDS });
 
-    // One code for the whole approval state of the row: a missing approval
-    // field, a `source` other than `approved`, or a derived marker (§3.5, §4).
-    const approvalMissing = APPROVAL_FIELDS.some((field) => !row[field]);
+    // One code for the whole approval state of the row: a missing or invalid
+    // approval field, a `source` other than `approved`, or a derived marker
+    // (§3.5, §4). `approved_on` follows the date rules of §2.3 and is stored as
+    // `YYYY-MM-DD`; an unreadable date is an approval defect, not a date
+    // defect, so it is reported once as REQ_NOT_APPROVED.
+    const approvedOn = parseContractDate(raw?.approved_on);
+    if (approvedOn) row.approved_on = approvedOn;
+    else delete row.approved_on;
+
+    const approvalMissing =
+      !row.approval_reference || !row.approved_by_role || !row.approved_on;
     const sourceWrong = collapseText(row.source).toLowerCase() !== APPROVED_SOURCE;
     if (approvalMissing || sourceWrong || hasDerivedMarker(raw)) {
       notApproved += 1;

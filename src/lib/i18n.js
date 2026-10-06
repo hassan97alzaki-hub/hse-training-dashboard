@@ -345,6 +345,14 @@ const translations = {
     ppApprovedChanged: 'changed',
     ppApprovedUnchanged: 'unchanged',
     ppOrgBound: 'Organization bound',
+
+    // Test-requirements banner (AT-13)
+    trqTitle: 'Test requirements loaded — not approved production requirements',
+    trqDerived: 'These requirements were derived from the department-level mapping of the three-sheet test workbook. They are not job-title-specific and no training owner has approved them.',
+    trqDemo: 'These requirements belong to the demonstration dataset. They describe no real organization and no training owner has approved them.',
+    trqLegacy: 'These requirements were loaded from a legacy CSV, not from an approved HSE-DC-1.0 requirements package, so their version date and approval reference are unknown.',
+    trqConsequence: 'Treat every number on this page as a technical demonstration. Do not present it as a compliance result and do not base a decision on it.',
+    trqAction: 'To obtain an approved result, import an HSE-DC-1.0 package whose Requirements sheet carries an approval reference, an approving role and a version date.',
   },
 
   ar: {
@@ -690,6 +698,14 @@ const translations = {
     ppApprovedChanged: 'متغيّر',
     ppApprovedUnchanged: 'بلا تغيير',
     ppOrgBound: 'المؤسسة المرتبطة',
+
+    // شريط متطلبات الاختبار (AT-13)
+    trqTitle: 'متطلبات اختبار محمّلة — ليست متطلبات إنتاج معتمدة',
+    trqDerived: 'هذه المتطلبات مشتقة من ربط على مستوى القسم في ملف الاختبار ذي الأوراق الثلاث. ليست خاصة بالمسمى الوظيفي ولم يعتمدها مسؤول التدريب.',
+    trqDemo: 'هذه المتطلبات من مجموعة البيانات التجريبية. لا تصف مؤسسة حقيقية ولم يعتمدها مسؤول التدريب.',
+    trqLegacy: 'حُمّلت هذه المتطلبات من ملف CSV قديم لا من حزمة متطلبات HSE-DC-1.0 معتمدة، فتاريخ نسختها ومرجع اعتمادها غير معروفين.',
+    trqConsequence: 'اعتبر كل رقم في هذه الصفحة عرضاً تقنياً. لا تقدّمه كنتيجة امتثال ولا تبنِ عليه قراراً.',
+    trqAction: 'للحصول على نتيجة معتمدة، استورد حزمة HSE-DC-1.0 تحمل ورقة Requirements بمرجع اعتماد ودور معتمد وتاريخ نسخة.',
   },
 };
 

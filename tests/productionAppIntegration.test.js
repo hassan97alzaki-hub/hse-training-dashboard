@@ -3,6 +3,8 @@ import { createElement } from 'react';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import * as XLSX from 'xlsx';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import App from '../src/App.jsx';
 import { defaultBatchId, BATCH_ID_PATTERN } from '../src/lib/localBatch.js';
@@ -53,25 +55,35 @@ function productionBytes({ employeeCount = 6, packageType = 'full' } = {}) {
 
 /** The legacy three-sheet Training Matrix workbook. */
 function matrixBytes() {
+  // A valid three-sheet Training Matrix workbook: the legacy test path.
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(
     workbook,
     XLSX.utils.json_to_sheet([
-      { Badge: 'LG-0001', Name: 'Legacy One', Department: 'Operations', Position: 'Operator', Status: 'Active' },
+      {
+        Employee_ID: 'LGE-0001', Badge: 'LG-0001', Name: 'Legacy One', Department: 'Operations',
+        Role: 'Operator', Join_Date: '2024-01-01', Status: 'Active',
+      },
     ]),
     'Employees',
   );
   XLSX.utils.book_append_sheet(
     workbook,
-    XLSX.utils.json_to_sheet([{ Course_Code: 'K01', Course_Name: 'Legacy Course', Departments: 'Operations', Validity_Months: 24 }]),
+    XLSX.utils.json_to_sheet([
+      { Course_ID: 'K01', Course_Name: 'Legacy Course', Validity_Months: 24, Departments: 'Operations' },
+    ]),
     'Courses',
   );
   XLSX.utils.book_append_sheet(
     workbook,
     XLSX.utils.json_to_sheet([
-      { Badge: 'LG-0001', Course_Code: 'K01', Issue_Date: '2025-01-01', Expiry_Date: '2027-01-01', Status: 'Valid' },
+      {
+        Employee_ID: 'LGE-0001', Badge: 'LG-0001', Name: 'Legacy One', Department: 'Operations',
+        Course_ID: 'K01', Course_Name: 'Legacy Course', Completion_Date: '2025-01-01',
+        Expiry_Date: '2027-01-01', Status: 'Valid', Certificate_Number: 'LG-CERT-0001',
+      },
     ]),
-    'Training',
+    'Training_Records',
   );
   return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 }
@@ -120,19 +132,15 @@ async function expectNoOrganizationBound() {
 }
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn(async (url) => {
-    const path = String(url);
-    if (path.includes('training')) {
-      return new Response(
-        'Employee_ID,Employee_Name,Department,Job_Title,Employment_Status,Course_Code,Course_Name,Completion_Status,Issue_Date,Expiry_Date\nDM-0001,Demo One,Operations,Operator,Active,K01,Demo Course,Completed,2025-01-01,2028-01-01\n',
-        { status: 200 },
-      );
-    }
-    return new Response(
-      'Department,Job_Title,Course_Code,Course_Name,Mandatory,Validity_Months\nOperations,Operator,K01,Demo Course,Yes,24\n',
+  // The demo loader fetches the real sample files of `public/data`; they are
+  // read from disk so the stub stays faithful to the shipped demo data.
+  const demoFile = (name) => readFileSync(resolve(process.cwd(), 'public/data', name), 'utf8');
+  globalThis.fetch = vi.fn(async (url) =>
+    new Response(
+      demoFile(String(url).includes('requirements') ? 'sample-requirements.csv' : 'sample-training-data.csv'),
       { status: 200 },
-    );
-  });
+    ),
+  );
 });
 
 afterEach(() => {
@@ -201,9 +209,7 @@ describe('every legacy path clears the production binding', () => {
   it('legacy training CSV', async () => {
     await afterLegacy(async () => {
       const csv = new File(
-        [
-          'Employee_ID,Employee_Name,Department,Job_Title,Employment_Status,Course_Code,Course_Name,Completion_Status,Issue_Date,Expiry_Date\nLG-0001,Legacy One,Operations,Operator,Active,K01,Legacy Course,Completed,2025-01-01,2028-01-01\n',
-        ],
+        [readFileSync(resolve(process.cwd(), 'public/data/sample-training-data.csv'), 'utf8')],
         'legacy-training.csv',
         { type: 'text/csv' },
       );
@@ -215,14 +221,16 @@ describe('every legacy path clears the production binding', () => {
   it('legacy requirements CSV', async () => {
     await afterLegacy(async () => {
       const csv = new File(
-        ['Department,Job_Title,Course_Code,Course_Name,Mandatory,Validity_Months\nOperations,Operator,K01,Legacy Course,Yes,24\n'],
+        [readFileSync(resolve(process.cwd(), 'public/data/sample-requirements.csv'), 'utf8')],
         'legacy-requirements.csv',
         { type: 'text/csv' },
       );
       selectFile(requirementsInput(), csv);
-      await screen.findByText(/Requirements loaded/i, {}, { timeout: 5000 });
+      // The banner of the test-requirements provenance is the deterministic
+      // signal that the legacy requirements path finished.
+      await screen.findByTestId('test-requirements-banner', {}, { timeout: 8000 });
     });
-  });
+  }, 15000);
 
   it('legacy Training Matrix workbook', async () => {
     await afterLegacy(async () => {

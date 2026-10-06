@@ -12,6 +12,9 @@ import {
 } from './lib/matrixWorkbook.js';
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
 import { defaultBatchId, defaultApprovedAt } from './lib/localBatch.js';
+import {
+  REQUIREMENTS_PROVENANCE, resolveRequirementsProvenance,
+} from './lib/contract/requirementsProvenance.js';
 import { createApprovedState, clearOrganizationBinding } from './lib/contract/staging.js';
 import {
   readProductionWorkbook, isProductionPackage, validateProductionPackage,
@@ -30,6 +33,7 @@ import PriorityActions from './components/PriorityActions.jsx';
 import DataQualityPanel from './components/DataQualityPanel.jsx';
 import MatrixImportPreview from './components/MatrixImportPreview.jsx';
 import ProductionPackagePreview from './components/ProductionPackagePreview.jsx';
+import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -70,6 +74,16 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
   const [isApplying, setIsApplying] = useState(false);
   // Code → display name lookups of the approved production data.
   const [displayLookups, setDisplayLookups] = useState(null);
+  // Where the loaded requirements come from. Only an approved HSE-DC-1.0
+  // Requirements sheet is production data (AT-13).
+  const [requirementsSource, setRequirementsSource] = useState(REQUIREMENTS_PROVENANCE.NONE);
+
+  // A derived row wins over the declared source, so test data can never be
+  // shown as approved.
+  const requirementsProvenance = useMemo(
+    () => resolveRequirementsProvenance(requirements, requirementsSource),
+    [requirements, requirementsSource],
+  );
 
   const complianceResult = useMemo(() => {
     if (trainingRecords.length === 0 && !employeeMaster?.length) return null;
@@ -167,7 +181,10 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
         setSourceFileName(trainingResult.sourceFileName);
         setLastImportResult(trainingResult);
       }
-      if (reqResult.success) setRequirements(reqResult.validRecords);
+      if (reqResult.success) {
+        setRequirements(reqResult.validRecords);
+        setRequirementsSource(REQUIREMENTS_PROVENANCE.DEMO);
+      }
       const lines = [
         `Training: ${trainingResult.importSummary.valid} valid, ${trainingResult.importSummary.invalid} invalid, ${trainingResult.importSummary.duplicates} duplicate groups`,
         `Requirements: ${reqResult.importSummary.valid} rows loaded`,
@@ -252,6 +269,7 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
     setEmployeeMaster(conversion.employees);
     setTrainingRecords(result.validRecords);
     setRequirements(conversion.requirements);
+    setRequirementsSource(REQUIREMENTS_PROVENANCE.DERIVED);
     setSourceFileName(fileName);
     setAsOfDate(previewAsOf);
     setLastRefresh(new Date().toLocaleString());
@@ -287,6 +305,7 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
       setEmployeeMaster(result.view.prepared.employees);
       setTrainingRecords(result.view.prepared.records);
       setRequirements(result.view.prepared.requirements);
+      setRequirementsSource(REQUIREMENTS_PROVENANCE.APPROVED);
       setSourceFileName(productionPreview.fileName);
       setAsOfDate(productionPreview.asOfDate);
       setLastImportResult(null);
@@ -317,6 +336,7 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
       const result = await importRequirementsFile(file);
       if (result.success) {
         setRequirements(result.validRecords);
+        setRequirementsSource(REQUIREMENTS_PROVENANCE.LEGACY);
         showBanner('success', `Requirements loaded — ${result.importSummary.valid} rows`, result.warnings);
       } else {
         showBanner('error', t('importError'), result.errors.slice(0, 6));
@@ -357,6 +377,7 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
 
   function handleReset() {
     setTrainingRecords([]); setRequirements([]); setLastImportResult(null);
+    setRequirementsSource(REQUIREMENTS_PROVENANCE.NONE);
     setImportBanner({ type: 'success', title: t('dataReset'), lines: [] });
     setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null); setMatrixPreview(null);
     setEmployeeMaster(null);
@@ -424,6 +445,8 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
 
         {hasData && (
           <>
+            <TestRequirementsBanner provenance={requirementsProvenance} t={t} />
+
             <ExecutiveSummary
               kpis={displayKpis}
               priorityActions={priorityActions}

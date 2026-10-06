@@ -1,10 +1,11 @@
 /**
  * Validation of the reference lists of `HSE-DC-1.0`: `Departments`,
- * `Job_Titles` and `Courses`, plus the reference-code helpers that the later
- * entity validators (employees, requirements, training records) reuse.
+ * `Job_Titles` and `Courses`, plus the reference-code helpers that the entity
+ * validators (employees, requirements, training records) reuse.
  *
  * Source of truth for every rule: docs/DATA-CONTRACT.md §1.3, §2, §3.1–§3.4,
- * §3.10 and §4, read through src/lib/contract/schema.js.
+ * §3.10 and §4, read through src/lib/contract/schema.js. The shared
+ * primitives live in src/lib/contract/core.js.
  *
  * Scope limits of this module:
  * - Input is plain JavaScript rows that a caller already read from somewhere.
@@ -17,131 +18,24 @@
  */
 
 import {
-  PRESENCE,
-  FIELD_TYPES,
   SEVERITY,
   ENTITIES,
   ENUMS,
-  REFERENCE_CODE_PATTERN,
   REFERENCE_CODE_FIELDS,
   FORBIDDEN_COLUMN_TOPICS,
   normalizeReferenceCode,
-  severityOf,
 } from './schema.js';
+import {
+  HEADER_ROWS,
+  ROW_NUMBER_KEY,
+  columnsOf,
+  issue,
+  validateColumns,
+  normalizeRow,
+  finishResult,
+} from './core.js';
 
-/** Spreadsheet row number of data row `index`: header is row 1. */
-export const HEADER_ROWS = 1;
-
-/** Row number key added to a normalised row. Not a contract field. */
-export const ROW_NUMBER_KEY = '_row';
-
-function columnToken(name) {
-  return String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-/**
- * Spellings of the forbidden topics beyond the topic name itself. Every topic
- * of `FORBIDDEN_COLUMN_TOPICS` is always detected; these are extra aliases.
- * Language variants are added once agreed (§3.10, decision P-04).
- */
-const FORBIDDEN_COLUMN_ALIASES = Object.freeze([
-  'nationalidnumber',
-  'iqamanumber',
-  'iqamaid',
-  'birthdate',
-  'dob',
-]);
-
-/**
- * Column names that MUST NOT appear in any sheet. A column matches when its
- * name, reduced to lower-case letters and digits, equals one of these tokens.
- */
-const FORBIDDEN_COLUMN_TOKENS = Object.freeze([
-  ...FORBIDDEN_COLUMN_TOPICS.map(columnToken),
-  ...FORBIDDEN_COLUMN_ALIASES,
-]);
-
-/* ------------------------------------------------------------------ *
- * Small pure helpers
- * ------------------------------------------------------------------ */
-
-function collapseText(value) {
-  if (value === null || value === undefined) return '';
-  return String(value).trim().replace(/\s+/g, ' ');
-}
-
-function isForbiddenColumn(name) {
-  return FORBIDDEN_COLUMN_TOKENS.includes(columnToken(name));
-}
-
-function issue(code, sheet, row, field) {
-  const entry = { code, severity: severityOf(code) ?? SEVERITY.BLOCK, sheet };
-  if (row !== undefined && row !== null) entry.row = row;
-  if (field) entry.field = field;
-  return entry;
-}
-
-/** Union of the column names seen in the rows, in first-seen order. */
-function columnsOf(rows, declared) {
-  if (Array.isArray(declared)) return [...declared];
-  const seen = [];
-  for (const row of rows) {
-    if (!row || typeof row !== 'object') continue;
-    for (const key of Object.keys(row)) {
-      if (!seen.includes(key)) seen.push(key);
-    }
-  }
-  return seen;
-}
-
-/** Yes/No to boolean; returns undefined when the value is not in the list. */
-function parseYesNo(value) {
-  const text = collapseText(value).toLowerCase();
-  if (text === 'yes') return true;
-  if (text === 'no') return false;
-  return undefined;
-}
-
-/**
- * Integer of a cell: a JavaScript integer, or decimal digits only.
- * Exponent and hexadecimal forms (`1e2`, `0x10`), a decimal point, a sign and
- * a boolean are not numbers of this contract and return undefined.
- */
-function parseInteger(rawValue, text) {
-  if (typeof rawValue === 'number') return Number.isInteger(rawValue) ? rawValue : undefined;
-  if (typeof rawValue === 'boolean') return undefined;
-  return /^[0-9]+$/.test(text) ? Number(text) : undefined;
-}
-
-/* ------------------------------------------------------------------ *
- * Column-level checks (§1.1, §3.10, §4)
- * ------------------------------------------------------------------ */
-
-/**
- * Check the header of one sheet against its field definitions.
- * Returns issues only; no value is included.
- */
-export function validateColumns(sheet, columns) {
-  const entity = ENTITIES[sheet];
-  if (!entity) return [];
-  const issues = [];
-  const known = entity.fields.map((field) => field.name);
-  const present = new Set(columns);
-
-  for (const field of entity.fields) {
-    if (field.presence === PRESENCE.REQUIRED && !present.has(field.name)) {
-      issues.push(issue('COLUMN_MISSING', sheet, undefined, field.name));
-    }
-  }
-  for (const column of columns) {
-    if (isForbiddenColumn(column)) {
-      issues.push(issue('FORBIDDEN_COLUMN', sheet, undefined, column));
-    } else if (!known.includes(column)) {
-      issues.push(issue('COLUMN_UNKNOWN', sheet, undefined, column));
-    }
-  }
-  return issues;
-}
+export { HEADER_ROWS, ROW_NUMBER_KEY, validateColumns };
 
 /* ------------------------------------------------------------------ *
  * Reference-code helpers reused by later validators
@@ -196,62 +90,6 @@ export function checkJobTitleScope(jobTitle, departmentCode, { sheet, row, field
   return issue('JOB_TITLE_SCOPE', sheet, row, field ?? 'job_title_code');
 }
 
-/* ------------------------------------------------------------------ *
- * Generic row validation driven by the field definitions
- * ------------------------------------------------------------------ */
-
-function validateField(field, rawValue, sheet, rowNumber, issues) {
-  const isCode = field.type === FIELD_TYPES.CODE;
-  const value = isCode ? normalizeReferenceCode(rawValue) : collapseText(rawValue);
-
-  if (value === '') {
-    if (field.presence === PRESENCE.REQUIRED) {
-      issues.push(issue(field.key ? 'KEY_MISSING' : 'REQUIRED_EMPTY', sheet, rowNumber, field.name));
-    }
-    return undefined;
-  }
-
-  if (isCode) {
-    if (!REFERENCE_CODE_PATTERN.test(value)) {
-      issues.push(issue('KEY_PATTERN', sheet, rowNumber, field.name));
-      return undefined;
-    }
-    return value;
-  }
-
-  if (field.type === FIELD_TYPES.ENUM) {
-    const match = field.values.find((allowed) => allowed.toLowerCase() === value.toLowerCase());
-    if (!match) {
-      issues.push(issue('VALUE_INVALID', sheet, rowNumber, field.name));
-      return undefined;
-    }
-    return match;
-  }
-
-  if (field.type === FIELD_TYPES.INTEGER) {
-    const number = parseInteger(rawValue, value);
-    const invalid =
-      number === undefined ||
-      (field.min !== undefined && number < field.min) ||
-      (field.max !== undefined && number > field.max);
-    if (invalid) {
-      issues.push(issue('VALUE_INVALID', sheet, rowNumber, field.name));
-      return undefined;
-    }
-    return number;
-  }
-
-  if (field.minLength !== undefined && value.length < field.minLength) {
-    issues.push(issue('VALUE_INVALID', sheet, rowNumber, field.name));
-    return undefined;
-  }
-  if (field.maxLength !== undefined && value.length > field.maxLength) {
-    issues.push(issue('VALUE_INVALID', sheet, rowNumber, field.name));
-    return undefined;
-  }
-  return value;
-}
-
 /**
  * Normalise and check the rows of one reference sheet.
  * Rows with a blocking issue are not returned in `rows`; they are counted.
@@ -278,14 +116,7 @@ function validateReferenceSheet(sheet, inputRows, { columns } = {}) {
   rows.forEach((raw, index) => {
     const rowNumber = index + 1 + HEADER_ROWS;
     const rowIssues = [];
-    const normalised = { [ROW_NUMBER_KEY]: rowNumber };
-
-    for (const field of entity.fields) {
-      const value = validateField(field, raw?.[field.name], sheet, rowNumber, rowIssues);
-      if (value === undefined) continue;
-      normalised[field.name] =
-        field.name === 'active' ? parseYesNo(value) : value;
-    }
+    const normalised = normalizeRow(sheet, raw, rowNumber, rowIssues);
 
     // Duplicate detection runs on the normalised key (§2.2): `ops` and `OPS`
     // are the same department code.
@@ -325,31 +156,18 @@ function validateReferenceSheet(sheet, inputRows, { columns } = {}) {
   };
 }
 
-function finish(result) {
-  const { issues } = result;
-  const blocking = issues.filter((entry) => entry.severity === SEVERITY.BLOCK).length;
-  const warnings = issues.filter((entry) => entry.severity === SEVERITY.WARN).length;
-  const info = issues.filter((entry) => entry.severity === SEVERITY.INFO).length;
-  return Object.freeze({
-    ...result,
-    ok: blocking === 0,
-    issues: Object.freeze(issues),
-    counts: Object.freeze({ ...result.counts, blocking, warnings, info }),
-  });
-}
-
 /* ------------------------------------------------------------------ *
  * Public sheet validators
  * ------------------------------------------------------------------ */
 
 /** Validate `Departments` rows (§3.1). */
 export function validateDepartments(rows, options = {}) {
-  return finish(validateReferenceSheet('Departments', rows, options));
+  return finishResult(validateReferenceSheet('Departments', rows, options));
 }
 
 /** Validate `Courses` rows (§3.4). */
 export function validateCourses(rows, options = {}) {
-  return finish(validateReferenceSheet('Courses', rows, options));
+  return finishResult(validateReferenceSheet('Courses', rows, options));
 }
 
 /**
@@ -386,7 +204,7 @@ export function validateJobTitles(rows, options = {}) {
     accepted.push(row);
   }
 
-  return finish({
+  return finishResult({
     sheet: 'Job_Titles',
     rows: Object.freeze(accepted),
     issues,

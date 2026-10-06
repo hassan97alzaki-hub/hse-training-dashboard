@@ -46,7 +46,13 @@ export const STAGED_STATUS = Object.freeze({
 });
 
 /** Fields that never take part in a comparison or in the stored row. */
-const INTERNAL_FIELDS = Object.freeze(['_row', '_version', '_batchId', '_approvedAt']);
+const INTERNAL_FIELDS = Object.freeze([
+  '_row',
+  '_version',
+  '_batchId',
+  '_approvedAt',
+  '_fingerprint',
+]);
 
 /* ------------------------------------------------------------------ *
  * State
@@ -74,23 +80,81 @@ export function createApprovedState(seed = {}) {
 }
 
 /**
- * Drop the organization binding and everything approved under it. Used by a
- * full reset and when a demo or test workbook is loaded, so that demo data can
- * never be mistaken for approved production data (§6).
+ * Drop the organization binding and everything held under it, including the
+ * batch list and the change log. Used by a full reset and when a demo or test
+ * workbook is loaded (§6). Nothing of one organization may survive into the
+ * next, so the state returned is completely empty.
  */
-export function clearOrganizationBinding(state) {
-  return createApprovedState({
-    batches: state?.batches ?? [],
-    changeLog: state?.changeLog ?? [],
-  });
+export function clearOrganizationBinding() {
+  return createApprovedState();
 }
 
-/** Bind the state to an organization; only a `full` package may do this (§6). */
+/**
+ * Bind the state to an organization. Only a `full` package may do this, and a
+ * state that is already bound cannot be moved to another organization while it
+ * keeps its data: that is `ORG_MISMATCH` and the state stays as it was. Use
+ * `clearOrganizationBinding` first (§6).
+ */
 export function bindOrganization(state, organizationCode) {
   const code = collapseText(organizationCode).toUpperCase();
-  if (!code) return { ok: false, state, issues: [issue('CONTRACT_FIELD', '_Contract', undefined, 'organization_code')] };
+  if (!code) {
+    return {
+      ok: false,
+      state,
+      issues: [issue('CONTRACT_FIELD', '_Contract', undefined, 'organization_code')],
+    };
+  }
+  const bound = state?.organizationCode ?? '';
+  if (bound && bound !== code) {
+    return {
+      ok: false,
+      state,
+      issues: [issue('ORG_MISMATCH', '_Contract', undefined, 'organization_code')],
+    };
+  }
+  if (bound === code) return { ok: true, state, issues: [] };
   return { ok: true, state: createApprovedState({ ...state, organizationCode: code }), issues: [] };
 }
+
+/* ------------------------------------------------------------------ *
+ * Batch metadata
+ * ------------------------------------------------------------------ */
+
+/**
+ * Normalise an approval time. Any ISO 8601 instant with a time zone is
+ * accepted and stored as UTC through `toISOString()`, so two spellings of the
+ * same instant compare equal. Returns `''` when the value is not an instant.
+ */
+export function normalizeApprovalTime(value) {
+  const text = collapseText(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString();
+}
+
+/** Milliseconds of a normalised approval time, or null. */
+function approvalInstant(value) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+/** `true` when `candidate` is strictly earlier than `approved`. */
+function isOlderThan(candidate, approved) {
+  const a = approvalInstant(candidate);
+  const b = approvalInstant(approved);
+  if (a === null || b === null) return false;
+  return a < b;
+}
+
+/** The batch fields every approved batch MUST carry (§7). */
+const REQUIRED_BATCH_FIELDS = Object.freeze({
+  batchId: 'batch_id',
+  preparedByRole: 'prepared_by_role',
+  approvedByRole: 'approved_by_role',
+  approvedAt: 'approved_at',
+});
 
 /**
  * Organization binding rules of §6:
@@ -144,6 +208,22 @@ function keyOfEntity(sheet, row) {
   return STAGED_ENTITIES[sheet].key.map((field) => row?.[field] ?? '').join('\u0000');
 }
 
+/**
+ * Canonical content signature of a training record: every contract field of
+ * `Training_Records` (§3.6) as a JSON array, so any difference — status, dates,
+ * certificate number, provider or remarks — makes a new version. The
+ * fingerprint of §3.8 is never used for this: it covers a subset of the fields
+ * and exists only to detect possible duplicates.
+ */
+export function recordSignature(row) {
+  return JSON.stringify(
+    ENTITIES.Training_Records.fields.map((field) => {
+      const value = row?.[field.name];
+      return value === undefined || value === null ? '' : String(value);
+    }),
+  );
+}
+
 function recordKey(row) {
   if (!row?.source_record_id) return '';
   return `${collapseText(row.source_system).toUpperCase()}\u0000${row.source_record_id}`;
@@ -187,20 +267,21 @@ function classifyRow(sheet, row, approvedRow, clear, batchApprovedAt, issues) {
   const merged = { ...withoutInternals(approvedRow) };
   const changedFields = [];
 
+  for (const [field, value] of Object.entries(withoutInternals(row))) {
+    if (merged[field] === value) continue;
+    merged[field] = value;
+    changedFields.push(field);
+  }
+
+  // An explicit clear wins over the value of the same cell in the batch; a
+  // required field can never be cleared (§7.3).
   for (const field of clear) {
     if (required.includes(field)) {
       issues.push(issue('REQUIRED_EMPTY', sheet, row?._row, field));
       continue;
     }
-    if (merged[field] !== undefined) {
-      delete merged[field];
-      changedFields.push(field);
-    }
-  }
-
-  for (const [field, value] of Object.entries(withoutInternals(row))) {
-    if (merged[field] === value) continue;
-    merged[field] = value;
+    if (merged[field] === undefined) continue;
+    delete merged[field];
     if (!changedFields.includes(field)) changedFields.push(field);
   }
 
@@ -209,10 +290,10 @@ function classifyRow(sheet, row, approvedRow, clear, batchApprovedAt, issues) {
   }
 
   // An older batch never overwrites a value that a newer batch approved (§7).
-  // `approvedAt` is the approval time the caller passes; ISO 8601 strings sort
-  // chronologically, so a plain comparison is enough and no clock is read.
-  const approvedAt = approvedRow._approvedAt;
-  if (approvedAt && batchApprovedAt && batchApprovedAt < approvedAt) {
+  // An older batch never overwrites a value a later batch approved. The whole
+  // batch is then refused (`BATCH_OLDER`, §7).
+  if (isOlderThan(batchApprovedAt, approvedRow._approvedAt)) {
+    issues.push(issue('BATCH_OLDER', sheet, row?._row, changedFields[0]));
     return { status: STAGED_STATUS.CONFLICT, changedFields, merged: withoutInternals(approvedRow) };
   }
   return { status: STAGED_STATUS.CHANGED, changedFields, merged };
@@ -339,7 +420,7 @@ async function stageRecords(state, rows, batchApprovedAt) {
     }
 
     const fingerprint = await fingerprintRecord(row);
-    if ((current._fingerprint ?? (await fingerprintRecord(current))) === fingerprint) {
+    if (recordSignature(current) === recordSignature(row)) {
       counts.unchanged += 1;
       issues.push(issue('RECORD_UNCHANGED', 'Training_Records', row._row, 'source_record_id'));
       entries.push(
@@ -352,8 +433,9 @@ async function stageRecords(state, rows, batchApprovedAt) {
       );
       continue;
     }
-    if (current._approvedAt && batchApprovedAt && batchApprovedAt < current._approvedAt) {
+    if (isOlderThan(batchApprovedAt, current._approvedAt)) {
       counts.conflict += 1;
+      issues.push(issue('BATCH_OLDER', 'Training_Records', row._row, 'source_record_id'));
       entries.push(
         Object.freeze({
           sheet: 'Training_Records',
@@ -389,14 +471,25 @@ async function stageRecords(state, rows, batchApprovedAt) {
  * requirements, records, rowsToClose, clear }`.
  *
  * `clear` is the explicit clear list: `{ Employees: { '<key>': ['field'] } }`.
- * A blank cell never clears anything (§7.3).
+ * A blank cell never clears anything, and an explicit clear wins over a value
+ * the same batch carries for that field (§7.3).
+ *
+ * `validationIssues` MAY carry the issues of the sheet validators; a blocking
+ * one refuses the batch.
  *
  * Returns a plan. Nothing is applied and no input is changed.
  */
 export async function stageBatch(state, batch = {}) {
-  const issues = [...checkOrganizationBinding(state, batch)];
-  const approvedAt = collapseText(batch.approvedAt);
+  // Issues the sheet validators already produced travel with the batch, so a
+  // blocking validation issue refuses the batch here too.
+  const issues = [...(batch.validationIssues ?? []), ...checkOrganizationBinding(state, batch)];
+  const approvedAt = normalizeApprovalTime(batch.approvedAt);
   const sheets = {};
+
+  for (const [field, contractName] of Object.entries(REQUIRED_BATCH_FIELDS)) {
+    const value = field === 'approvedAt' ? approvedAt : collapseText(batch[field]);
+    if (!value) issues.push(issue('CONTRACT_FIELD', '_Contract', undefined, contractName));
+  }
 
   // A production batch MUST NOT sit on derived test requirements (§5.5).
   const hasRequirements = (batch.requirements ?? []).length > 0;

@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { SEVERITY } from '../src/lib/contract/schema.js';
 import {
   createApprovedState,
+  normalizeApprovalTime,
+  recordSignature,
   clearOrganizationBinding,
   bindOrganization,
   checkOrganizationBinding,
@@ -18,6 +20,7 @@ const ORG = 'TST-ORG';
 const SYSTEM = 'TEST-LMS';
 const T1 = '2027-01-05T08:00:00Z';
 const T2 = '2027-02-05T08:00:00Z';
+const T1_UTC = '2027-01-05T08:00:00.000Z';
 
 const employee = (code, overrides = {}) => ({
   _row: 2,
@@ -113,7 +116,7 @@ describe('organization binding (§6)', () => {
     expect(bindOrganization(createApprovedState(), '  ').ok).toBe(false);
   });
 
-  it('clears the binding and the approved data, keeping the audit trail', () => {
+  it('clears the binding, the data, the batches and the change log', () => {
     const state = createApprovedState({
       organizationCode: ORG,
       employees: [employee('TST-0001')],
@@ -122,14 +125,52 @@ describe('organization binding (§6)', () => {
       requirementsSource: 'derived',
     });
     const cleared = clearOrganizationBinding(state);
+    expect(cleared).toEqual(createApprovedState());
     expect(cleared.organizationCode).toBe('');
     expect(cleared.employees).toHaveLength(0);
     expect(cleared.requirementsSource).toBe('none');
-    expect(cleared.batches).toHaveLength(1);
-    expect(cleared.changeLog).toHaveLength(1);
+    // Nothing of one organization may travel into the next.
+    expect(cleared.batches).toHaveLength(0);
+    expect(cleared.changeLog).toHaveLength(0);
     // The original state is untouched.
     expect(state.employees).toHaveLength(1);
     expect(state.organizationCode).toBe(ORG);
+  });
+
+  it('refuses to move a bound state to another organization', () => {
+    const bound = bindOrganization(createApprovedState({ employees: [employee('TST-0001')] }), ORG);
+    const moved = bindOrganization(bound.state, 'OTHER-ORG');
+    expect(moved.ok).toBe(false);
+    expect(moved.issues.map((entry) => entry.code)).toEqual(['ORG_MISMATCH']);
+    expect(moved.state).toBe(bound.state);
+    expect(moved.state.organizationCode).toBe(ORG);
+  });
+
+  it('accepts the same organization again without touching the state', () => {
+    const bound = bindOrganization(createApprovedState(), ORG);
+    const again = bindOrganization(bound.state, 'tst-org');
+    expect(again.ok).toBe(true);
+    expect(again.state).toBe(bound.state);
+  });
+
+  it('carries nothing from the previous organization after a reset', async () => {
+    const first = await stageAndApply(
+      createApprovedState(),
+      batch({ employees: [employee('TST-0001')], records: [record('TR-1')] }),
+    );
+    expect(first.state.batches).toHaveLength(1);
+
+    const reset = clearOrganizationBinding(first.state);
+    const second = await stageAndApply(
+      reset,
+      batch({ batchId: 'B-9', approvedAt: T2, organizationCode: 'OTHER-ORG', employees: [employee('TST-0009')] }),
+    );
+    expect(second.ok).toBe(true);
+    expect(second.state.organizationCode).toBe('OTHER-ORG');
+    expect(second.state.employees.map((row) => row.employee_code)).toEqual(['TST-0009']);
+    expect(second.state.records).toHaveLength(0);
+    expect(second.state.batches.map((row) => row.batchId)).toEqual(['B-9']);
+    expect(second.state.changeLog.every((entry) => entry.batchId === 'B-9')).toBe(true);
   });
 
   it('binds on applying the first full package', async () => {
@@ -184,7 +225,7 @@ describe('classification: new, changed, unchanged, conflict', () => {
     expect(first.state.employees[0].department_code).toBe('OPS');
   });
 
-  it('does not let an older batch overwrite a newer value', async () => {
+  it('refuses the whole batch when it is older than an approved value', async () => {
     const newer = await stageAndApply(
       createApprovedState(),
       batch({ approvedAt: T2, employees: [employee('TST-0001', { department_code: 'MNT' })] }),
@@ -197,8 +238,15 @@ describe('classification: new, changed, unchanged, conflict', () => {
         employees: [employee('TST-0001', { department_code: 'OPS' })],
       }),
     );
+    expect(of(older.plan, 'BATCH_OLDER')[0]).toMatchObject({
+      sheet: 'Employees',
+      field: 'department_code',
+      severity: SEVERITY.BLOCK,
+    });
+    expect(older.plan.ok).toBe(false);
+    expect(older.applied).toBe(false);
+    expect(older.state).toBe(newer.state);
     expect(older.plan.sheets.Employees.entries[0].status).toBe(STAGED_STATUS.CONFLICT);
-    expect(older.state.employees[0].department_code).toBe('MNT');
     expect(older.plan.counts.conflicts).toBe(1);
   });
 });
@@ -248,6 +296,26 @@ describe('absence, blanks and explicit clearing', () => {
     expect(second.plan.sheets.Employees.entries[0].status).toBe(STAGED_STATUS.CHANGED);
     expect('badge_number' in second.state.employees[0]).toBe(false);
     expect(first.state.employees[0].badge_number).toBe('B-1');
+  });
+
+  it('lets an explicit clear win over a value in the same batch', async () => {
+    const first = await stageAndApply(
+      createApprovedState(),
+      batch({ employees: [employee('TST-0001', { badge_number: 'B-1' })] }),
+    );
+    const second = await stageAndApply(
+      first.state,
+      batch({
+        batchId: 'B-2',
+        approvedAt: T2,
+        // The row carries a new badge and the clear list names the same field.
+        employees: [employee('TST-0001', { badge_number: 'B-2' })],
+        clear: { Employees: { 'TST-0001': ['badge_number'] } },
+      }),
+    );
+    expect(second.ok).toBe(true);
+    expect(second.plan.sheets.Employees.entries[0].status).toBe(STAGED_STATUS.CHANGED);
+    expect('badge_number' in second.state.employees[0]).toBe(false);
   });
 
   it('refuses to clear a required field', async () => {
@@ -340,7 +408,7 @@ describe('training record identity and versions (§3.7)', () => {
     expect(second.state.records).toHaveLength(2);
   });
 
-  it('does not let an older batch replace a newer record version', async () => {
+  it('refuses an older batch that would replace a newer record version', async () => {
     const newer = await stageAndApply(
       createApprovedState(),
       batch({ approvedAt: T2, records: [record('TR-1', { expiry_date: '2029-01-15' })] }),
@@ -349,7 +417,13 @@ describe('training record identity and versions (§3.7)', () => {
       newer.state,
       batch({ batchId: 'B-0', approvedAt: T1, records: [record('TR-1')] }),
     );
-    expect(older.plan.sheets.Training_Records.entries[0].status).toBe(STAGED_STATUS.CONFLICT);
+    expect(of(older.plan, 'BATCH_OLDER')[0]).toMatchObject({
+      sheet: 'Training_Records',
+      field: 'source_record_id',
+      severity: SEVERITY.BLOCK,
+    });
+    expect(older.applied).toBe(false);
+    expect(older.state).toBe(newer.state);
     expect(older.state.records).toHaveLength(1);
     expect(older.state.records[0].expiry_date).toBe('2029-01-15');
   });
@@ -578,7 +652,7 @@ describe('atomicity, purity and metadata', () => {
       sourceSystem: SYSTEM,
       preparedByRole: 'Training Coordinator',
       approvedByRole: 'Training Manager',
-      approvedAt: T1,
+      approvedAt: T1_UTC,
     });
     // Four-eyes is recorded as two roles and never enforced here.
     const sameRole = await stageAndApply(
@@ -635,5 +709,235 @@ describe('atomicity, purity and metadata', () => {
     expect(result.ok).toBe(true);
     expect(result.state.batches).toHaveLength(1);
     expect(result.state.employees).toHaveLength(0);
+  });
+});
+
+describe('approval time', () => {
+  it('normalises any time zone to the same UTC instant', () => {
+    expect(normalizeApprovalTime('2027-01-05T08:00:00Z')).toBe(T1_UTC);
+    expect(normalizeApprovalTime('2027-01-05T11:00:00+03:00')).toBe(T1_UTC);
+    expect(normalizeApprovalTime('2027-01-05T03:00:00-05:00')).toBe(T1_UTC);
+    expect(normalizeApprovalTime('')).toBe('');
+    expect(normalizeApprovalTime('last Tuesday')).toBe('');
+  });
+
+  it('treats two time zones of one instant as the same approval time', async () => {
+    const riyadh = await stageAndApply(
+      createApprovedState(),
+      batch({ approvedAt: '2027-01-05T11:00:00+03:00', employees: [employee('TST-0001')] }),
+    );
+    expect(riyadh.state.batches[0].approvedAt).toBe(T1_UTC);
+
+    // The same instant spelled in another zone is not older, so the change
+    // applies instead of being refused.
+    const utc = await stageAndApply(
+      riyadh.state,
+      batch({
+        batchId: 'B-2',
+        approvedAt: '2027-01-05T08:00:00Z',
+        employees: [employee('TST-0001', { department_code: 'MNT' })],
+      }),
+    );
+    expect(codes(utc.plan)).not.toContain('BATCH_OLDER');
+    expect(utc.ok).toBe(true);
+    expect(utc.state.employees[0].department_code).toBe('MNT');
+  });
+
+  it('compares instants, not raw strings', async () => {
+    const first = await stageAndApply(
+      createApprovedState(),
+      batch({ approvedAt: '2027-01-05T08:00:00Z', employees: [employee('TST-0001')] }),
+    );
+    // Lexically "2027-01-05T06:00:00-05:00" sorts before the approved value,
+    // but as an instant it is three hours later.
+    const later = await stageAndApply(
+      first.state,
+      batch({
+        batchId: 'B-2',
+        approvedAt: '2027-01-05T06:00:00-05:00',
+        employees: [employee('TST-0001', { department_code: 'MNT' })],
+      }),
+    );
+    expect(codes(later.plan)).not.toContain('BATCH_OLDER');
+    expect(later.ok).toBe(true);
+  });
+
+  it('requires an approval time and every batch metadata field', async () => {
+    for (const [field, contractName] of [
+      ['batchId', 'batch_id'],
+      ['preparedByRole', 'prepared_by_role'],
+      ['approvedByRole', 'approved_by_role'],
+      ['approvedAt', 'approved_at'],
+    ]) {
+      const plan = await stageBatch(
+        createApprovedState(),
+        batch({ [field]: '', employees: [employee('TST-0001')] }),
+      );
+      expect(plan.ok, field).toBe(false);
+      expect(of(plan, 'CONTRACT_FIELD').map((entry) => entry.field), field).toContain(contractName);
+      const state = createApprovedState();
+      expect(applyBatch(state, plan).state, field).toBe(state);
+    }
+  });
+
+  it('reports an unreadable approval time as CONTRACT_FIELD', async () => {
+    const plan = await stageBatch(
+      createApprovedState(),
+      batch({ approvedAt: 'yesterday', employees: [employee('TST-0001')] }),
+    );
+    expect(of(plan, 'CONTRACT_FIELD')[0]).toMatchObject({ field: 'approved_at' });
+    expect(plan.ok).toBe(false);
+  });
+});
+
+describe('issues coming from the validators', () => {
+  it('refuses the batch when a validator reported a block', async () => {
+    const state = createApprovedState({ organizationCode: ORG });
+    const plan = await stageBatch(
+      state,
+      batch({
+        employees: [employee('TST-0001')],
+        validationIssues: [
+          { code: 'KEY_DUPLICATE', severity: SEVERITY.BLOCK, sheet: 'Employees', row: 3 },
+        ],
+      }),
+    );
+    expect(plan.ok).toBe(false);
+    expect(codes(plan)).toContain('KEY_DUPLICATE');
+    const applied = applyBatch(state, plan);
+    expect(applied.applied).toBe(false);
+    expect(applied.state).toBe(state);
+    expect(state.employees).toHaveLength(0);
+    expect(state.batches).toHaveLength(0);
+  });
+
+  it('keeps a validator warning without refusing the batch', async () => {
+    const result = await stageAndApply(
+      createApprovedState(),
+      batch({
+        employees: [employee('TST-0001')],
+        validationIssues: [
+          { code: 'CERT_MISSING', severity: SEVERITY.WARN, sheet: 'Training_Records', row: 2 },
+        ],
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(codes(result.plan)).toContain('CERT_MISSING');
+    expect(result.state.employees).toHaveLength(1);
+  });
+});
+
+describe('record content signature', () => {
+  it('covers every contract field of Training_Records', () => {
+    const base = record('TR-1');
+    expect(recordSignature(base)).toBe(recordSignature({ ...base, _row: 99, _version: 7 }));
+    for (const change of [
+      { completion_status: 'In Progress' },
+      { completion_date: '2026-02-15' },
+      { expiry_date: '2028-02-15' },
+      { certificate_number: 'C-OTHER' },
+      { training_provider: 'Other Provider' },
+      { remarks: 'Corrected' },
+      { employee_code: 'TST-0002' },
+      { course_code: 'FA-01' },
+    ]) {
+      expect(recordSignature({ ...base, ...change }), JSON.stringify(change)).not.toBe(
+        recordSignature(base),
+      );
+    }
+  });
+
+  it('creates a new version for a field the fingerprint does not cover', async () => {
+    const first = await stageAndApply(createApprovedState(), batch({ records: [record('TR-1')] }));
+    for (const change of [{ training_provider: 'Other Provider' }, { remarks: 'Corrected' }]) {
+      const next = await stageAndApply(
+        first.state,
+        batch({ batchId: 'B-2', approvedAt: T2, records: [record('TR-1', change)] }),
+      );
+      expect(next.plan.sheets.Training_Records.entries[0], JSON.stringify(change)).toMatchObject({
+        status: STAGED_STATUS.CHANGED,
+        version: 2,
+      });
+      expect(next.state.records, JSON.stringify(change)).toHaveLength(2);
+    }
+  });
+});
+
+describe('internal fields', () => {
+  it('keeps an internal field of the batch out of the stored row', async () => {
+    const result = await stageAndApply(
+      createApprovedState(),
+      batch({
+        employees: [employee('TST-0001', { _version: 9, _batchId: 'FAKE', _approvedAt: T2 })],
+        records: [record('TR-1', { _fingerprint: 'fp1:0000', _version: 9 })],
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.state.employees[0]._batchId).toBe('B-1');
+    expect(result.state.employees[0]._approvedAt).toBe(T1_UTC);
+    expect(result.state.records[0]._version).toBe(1);
+    expect(result.state.records[0]._fingerprint).toMatch(/^fp1:[0-9a-f]{64}$/);
+  });
+
+  it('does not let an internal field make a row look changed', async () => {
+    const first = await stageAndApply(
+      createApprovedState(),
+      batch({ employees: [employee('TST-0001')] }),
+    );
+    const second = await stageAndApply(
+      first.state,
+      batch({
+        batchId: 'B-2',
+        approvedAt: T2,
+        employees: [employee('TST-0001', { _row: 7, _batchId: 'FAKE', _fingerprint: 'x' })],
+      }),
+    );
+    expect(second.plan.sheets.Employees.entries[0].status).toBe(STAGED_STATUS.UNCHANGED);
+    expect(second.state.employees).toEqual(first.state.employees);
+  });
+});
+
+describe('atomicity of a mixed batch', () => {
+  it('applies no row when one row is older than the approved value', async () => {
+    const newer = await stageAndApply(
+      createApprovedState(),
+      batch({ approvedAt: T2, employees: [employee('TST-0001', { department_code: 'MNT' })] }),
+    );
+    const plan = await stageBatch(
+      newer.state,
+      batch({
+        batchId: 'B-0',
+        approvedAt: T1,
+        employees: [
+          employee('TST-0002'),
+          employee('TST-0001', { department_code: 'OPS' }),
+        ],
+        records: [record('TR-1')],
+      }),
+    );
+    expect(plan.ok).toBe(false);
+    expect(codes(plan)).toContain('BATCH_OLDER');
+    // The valid rows of the same batch were staged, and none is applied.
+    expect(plan.sheets.Employees.entries[0].status).toBe(STAGED_STATUS.NEW);
+
+    const applied = applyBatch(newer.state, plan);
+    expect(applied.applied).toBe(false);
+    expect(applied.state).toBe(newer.state);
+    expect(applied.state.employees).toHaveLength(1);
+    expect(applied.state.records).toHaveLength(0);
+    expect(applied.state.batches.map((row) => row.batchId)).toEqual(['B-1']);
+    expect(applied.state.changeLog.every((entry) => entry.batchId === 'B-1')).toBe(true);
+  });
+
+  it('records no blocked batch in batches or in the change log', async () => {
+    const state = createApprovedState({ organizationCode: ORG });
+    const plan = await stageBatch(
+      state,
+      batch({ packageType: 'employees', organizationCode: 'OTHER-ORG', employees: [employee('TST-0001')] }),
+    );
+    expect(codes(plan)).toContain('ORG_MISMATCH');
+    const applied = applyBatch(state, plan);
+    expect(applied.state.batches).toHaveLength(0);
+    expect(applied.state.changeLog).toHaveLength(0);
   });
 });

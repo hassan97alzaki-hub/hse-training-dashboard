@@ -250,6 +250,7 @@ Columns named (case-insensitive, any language variant agreed later) national ID,
 | `REQUIRED_EMPTY` | block | required field empty |
 | `VALUE_INVALID` | block | enumeration or number out of range |
 | `CONFLICT_IN_FILE` | block | same key with different values in the batch |
+| `BATCH_OLDER` | block | the batch would change a value whose approved version was approved later; the newer value wins and the whole batch is refused (§7) |
 | `REQ_NOT_APPROVED` | block | requirement without approval fields, `source ≠ approved`, or carrying a derived/test marker |
 | `REQ_OVERLAP` | block | overlapping effective ranges for one requirement key |
 | `REQ_EFFECTIVE_MISMATCH` | block | row `effective_from` ≠ `_Contract.requirements_effective_from` |

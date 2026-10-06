@@ -212,6 +212,7 @@ Severity: **block** = batch cannot be approved; **warn** = shown, approvable; **
 | `DATE_INVALID`, `DATE_FUTURE`, `DATE_ORDER` | block | format; completion after extract date; expiry ≤ completion |
 | `REQUIRED_EMPTY` | block | |
 | `CONFLICT_IN_FILE` | block | same key, different values, same file |
+| `BATCH_OLDER` | block | the batch is older than the approved value it would change; the newer value wins and the batch is refused |
 | `REQ_NOT_APPROVED` | block | requirement without approval fields, `source ≠ approved`, or `Derived` |
 | `REQ_OVERLAP` | block | two rows for the same requirement key with overlapping effective ranges |
 | `REQ_EFFECTIVE_MISMATCH` | block | a row's `effective_from` ≠ `_Contract.requirements_effective_from` |

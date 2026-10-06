@@ -13,6 +13,7 @@ import {
   toEngineRecord,
   toEngineRequirement,
   toEngineEmployee,
+  createLookup,
   EnginePreparationError,
 } from '../src/lib/contract/enginePreparation.js';
 
@@ -212,14 +213,115 @@ describe('codes are the only matching keys', () => {
     expect(toEngineRecord(record('TR-9'), new Map()).Course_Name).toBe('H2S-01');
   });
 
-  it('exposes frozen lookups by code for the interface layer', () => {
+  it('exposes read-only lookups by code for the interface layer', () => {
     const prepared = prepareEngineInput(state(), AS_OF);
     expect(prepared.lookups.departments.get('OPS').name_en).toBe('Department OPS');
     expect(prepared.lookups.jobTitles.get('OPR').name_en).toBe('Title OPR');
     expect(prepared.lookups.courses.get('H2S-01').name_en).toBe('Course H2S-01');
     expect(Object.isFrozen(prepared.lookups)).toBe(true);
-    expect(Object.isFrozen(prepared.lookups.courses.get('H2S-01'))).toBe(true);
     expect(prepared.counts).toMatchObject({ departments: 2, jobTitles: 2, courses: 2 });
+  });
+
+  it('keeps every reading function of a lookup working', () => {
+    const lookup = prepareEngineInput(state(), AS_OF).lookups.courses;
+    expect(lookup.has('H2S-01')).toBe(true);
+    expect(lookup.has('NOPE')).toBe(false);
+    expect(lookup.get('NOPE')).toBeUndefined();
+    expect(lookup.size).toBe(2);
+    expect(lookup.codes()).toEqual(['H2S-01', 'FA-01']);
+    expect(lookup.rows().map((row) => row.name_en)).toEqual(['Course H2S-01', 'Course FA-01']);
+    expect(lookup.entries()[0]).toEqual(['H2S-01', { course_code: 'H2S-01', name_en: 'Course H2S-01' }]);
+    const seen = [];
+    lookup.forEach((row, code) => seen.push(`${code}:${row.name_en}`));
+    expect(seen).toEqual(['H2S-01:Course H2S-01', 'FA-01:Course FA-01']);
+    expect(createLookup(undefined, 'course_code').size).toBe(0);
+  });
+
+  it('offers no public way to add, delete or replace a code', () => {
+    const lookup = prepareEngineInput(state(), AS_OF).lookups.courses;
+    for (const method of ['set', 'delete', 'clear']) {
+      expect(lookup[method], method).toBeUndefined();
+    }
+    expect(Object.isFrozen(lookup)).toBe(true);
+    expect(Object.keys(lookup).sort()).toEqual([
+      'codes',
+      'entries',
+      'forEach',
+      'get',
+      'has',
+      'rows',
+      'size',
+    ]);
+  });
+
+  it('fails any mutation attempt without changing the lookup', () => {
+    const approved = state();
+    const prepared = prepareEngineInput(approved, AS_OF);
+    const lookup = prepared.lookups.courses;
+
+    // Replacing the reading functions or adding one is refused.
+    expect(() => {
+      'use strict';
+      lookup.set = () => {};
+    }).toThrow(TypeError);
+    expect(() => {
+      'use strict';
+      lookup.get = () => ({ name_en: 'Injected' });
+    }).toThrow(TypeError);
+    expect(() => {
+      'use strict';
+      delete lookup.get;
+    }).toThrow(TypeError);
+    expect(() => {
+      'use strict';
+      prepared.lookups.courses = new Map();
+    }).toThrow(TypeError);
+
+    expect(lookup.size).toBe(2);
+    expect(lookup.has('INJECTED')).toBe(false);
+    expect(lookup.get('H2S-01').name_en).toBe('Course H2S-01');
+  });
+
+  it('does not let a returned row be changed', () => {
+    const prepared = prepareEngineInput(state(), AS_OF);
+    const row = prepared.lookups.courses.get('H2S-01');
+    expect(Object.isFrozen(row)).toBe(true);
+    expect(() => {
+      'use strict';
+      row.name_en = 'Injected';
+    }).toThrow(TypeError);
+    expect(prepared.lookups.courses.get('H2S-01').name_en).toBe('Course H2S-01');
+
+    // The arrays a lookup returns are frozen too, so a consumer cannot grow them.
+    expect(() => {
+      'use strict';
+      prepared.lookups.courses.codes().push('INJECTED');
+    }).toThrow(TypeError);
+    expect(() => {
+      'use strict';
+      prepared.lookups.courses.rows()[0].name_en = 'Injected';
+    }).toThrow(TypeError);
+  });
+
+  it('keeps Course_Name stable after a mutation attempt and on a later run', () => {
+    const approved = state();
+    const snapshot = JSON.parse(JSON.stringify(approved));
+    const prepared = prepareEngineInput(approved, AS_OF);
+
+    try {
+      prepared.lookups.courses.get('H2S-01').name_en = 'Injected';
+    } catch {
+      // A frozen row throws in strict mode; either way nothing changes.
+    }
+    expect(prepared.requirements[0].Course_Name).toBe('Course H2S-01');
+    expect(prepared.records[0].Course_Name).toBe('Course H2S-01');
+
+    // A later run of the same approved state is unaffected.
+    const again = prepareEngineInput(approved, AS_OF);
+    expect(again.requirements[0].Course_Name).toBe('Course H2S-01');
+    expect(again.records[0].Course_Name).toBe('Course H2S-01');
+    expect(JSON.parse(JSON.stringify(approved))).toEqual(snapshot);
+    expect(approved.courses[0].name_en).toBe('Course H2S-01');
   });
 });
 
@@ -284,12 +386,18 @@ describe('record versions (§3.7)', () => {
     expect(selectCurrentVersions([late, early]).get('TEST-LMS\u0000TR-1').remarks).toBe('late');
   });
 
-  it('is deterministic when version and approval time are equal', () => {
+  it('breaks a full tie by the position in the append-only state', () => {
     const first = record('TR-1', { remarks: 'first' });
     const second = record('TR-1', { remarks: 'second' });
-    // Documented rule: the later entry of an append-only state wins.
-    expect(selectCurrentVersions([first, second]).get('TEST-LMS\u0000TR-1').remarks).toBe('second');
-    expect(selectCurrentVersions([first, second]).get('TEST-LMS\u0000TR-1').remarks).toBe('second');
+    const pick = (rows) => selectCurrentVersions(rows).get('TEST-LMS\u0000TR-1').remarks;
+
+    // The rule is the order of the state, not the content: the later entry of
+    // the array wins, so a reversed array selects the other row on purpose.
+    expect(pick([first, second])).toBe('second');
+    expect(pick([second, first])).toBe('first');
+    // The same array always gives the same answer.
+    expect(pick([first, second])).toBe('second');
+    expect(pick([second, first])).toBe('first');
   });
 
   it('prefers a row with an approval time over one without', () => {
@@ -328,24 +436,50 @@ describe('record versions (§3.7)', () => {
     expect(prepared.counts.logicalRecords).toBe(2);
   });
 
-  it('drops the whole logical record when the current version is voided', () => {
-    for (const marker of ['deleted_at', 'voided_at', 'void_reference']) {
+  it('drops the whole logical record when deleted_at is on the current version', () => {
+    const prepared = prepareEngineInput(
+      state({
+        records: [
+          record('TR-1', { _version: 1, expiry_date: '2028-01-15' }),
+          record('TR-1', { _version: 2, deleted_at: '2027-01-08' }),
+        ],
+      }),
+      AS_OF,
+    );
+    expect(prepared.records).toHaveLength(0);
+    expect(prepared.counts.excludedVoided).toBe(1);
+    // No fallback to the earlier version.
+    expect(prepared.records.some((row) => row.Expiry_Date === '2028-01-15')).toBe(false);
+    // With a mandatory requirement the engine then reports MISSING.
+    expect(itemsOf(universeOf(prepared), 'TST-0001')[0].Status).toBe(STATUS.MISSING);
+  });
+
+  it('treats deleted_at as the only removal marker', () => {
+    // Fields that the contract, schema.js and staging do not define must not
+    // change a compliance result.
+    for (const field of ['voided_at', 'void_reference', 'is_void', 'voided']) {
       const prepared = prepareEngineInput(
-        state({
-          records: [
-            record('TR-1', { _version: 1, expiry_date: '2028-01-15' }),
-            record('TR-1', { _version: 2, [marker]: '2027-01-08' }),
-          ],
-        }),
+        state({ records: [record('TR-1', { [field]: '2027-01-08' })] }),
         AS_OF,
       );
-      expect(prepared.records, marker).toHaveLength(0);
-      expect(prepared.counts.excludedVoided, marker).toBe(1);
-      // No fallback to the earlier version.
-      expect(prepared.records.some((row) => row.Expiry_Date === '2028-01-15'), marker).toBe(false);
-      // With a mandatory requirement the engine then reports MISSING.
-      expect(itemsOf(universeOf(prepared), 'TST-0001')[0].Status, marker).toBe(STATUS.MISSING);
+      expect(prepared.records, field).toHaveLength(1);
+      expect(prepared.counts.excludedVoided, field).toBe(0);
+      expect(itemsOf(universeOf(prepared), 'TST-0001')[0].Status, field).toBe(STATUS.VALID);
     }
+  });
+
+  it('keeps an older version alive when only it carries deleted_at', () => {
+    const prepared = prepareEngineInput(
+      state({
+        records: [
+          record('TR-1', { _version: 1, deleted_at: '2026-06-01' }),
+          record('TR-1', { _version: 2, expiry_date: '2029-06-30' }),
+        ],
+      }),
+      AS_OF,
+    );
+    expect(prepared.records).toHaveLength(1);
+    expect(prepared.records[0].Expiry_Date).toBe('2029-06-30');
   });
 
   it('ignores a row without a source_record_id', () => {

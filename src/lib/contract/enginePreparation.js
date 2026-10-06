@@ -19,8 +19,12 @@
 
 import { isValidDateStr, dateDiffDays } from '../normalization.js';
 
-/** Markers of a voided or deleted record version, when the state carries one. */
-const VOID_MARKERS = Object.freeze(['deleted_at', 'voided_at', 'void_reference']);
+/**
+ * The only marker of a removed record version. The production design of the
+ * architecture uses `deleted_at` and nothing else, so no other spelling is
+ * recognised and no void system is invented for Local Mode (§3.7).
+ */
+const VOID_FIELD = 'deleted_at';
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -39,7 +43,7 @@ function requirementKeyOf(departmentCode, jobTitleCode, courseCode) {
 }
 
 function isVoided(row) {
-  return VOID_MARKERS.some((marker) => Boolean(row?.[marker]));
+  return Boolean(row?.[VOID_FIELD]);
 }
 
 /** A validity that the contract accepts as a real period (§3.5). */
@@ -49,13 +53,33 @@ function hasValidity(requirement) {
   return Number.isInteger(Number(months)) && Number(months) > 0;
 }
 
-function frozenIndex(rows, codeField) {
+/**
+ * A read-only lookup by code.
+ *
+ * `Object.freeze` on a `Map` does not stop `set`, `delete` or `clear`, so the
+ * Map stays private inside this closure and only reading functions are exposed.
+ * The rows are frozen as well, so a consumer can neither add a code nor change
+ * the name of one.
+ */
+export function createLookup(rows, codeField) {
   const index = new Map();
   for (const row of rows ?? []) {
     const code = row?.[codeField];
     if (code && !index.has(code)) index.set(code, Object.freeze({ ...row }));
   }
-  return Object.freeze(index);
+  return Object.freeze({
+    get: (code) => index.get(code),
+    has: (code) => index.has(code),
+    codes: () => Object.freeze([...index.keys()]),
+    rows: () => Object.freeze([...index.values()]),
+    entries: () => Object.freeze([...index.entries()].map((entry) => Object.freeze(entry))),
+    forEach: (callback) => {
+      for (const [code, row] of index) callback(row, code);
+    },
+    get size() {
+      return index.size;
+    },
+  });
 }
 
 /* ------------------------------------------------------------------ *
@@ -79,7 +103,8 @@ export function isRequirementEffective(row, asOfDate) {
  * passed through exactly as approved and is never recalculated.
  */
 export function toEngineRequirement(row, courses) {
-  const course = courses instanceof Map ? courses.get(row.course_code) : undefined;
+  // Any read-only lookup or plain Map with a `get` is accepted.
+  const course = typeof courses?.get === 'function' ? courses.get(row.course_code) : undefined;
   return Object.freeze({
     Department: row.department_code,
     Job_Title: row.job_title_code,
@@ -103,8 +128,11 @@ export function toEngineRequirement(row, courses) {
  * Order, deterministic and documented:
  *   1. the highest `_version`;
  *   2. on a tie or a missing `_version`, the latest valid `_approvedAt`;
- *   3. on a tie there too, the version that appears later in the state, because
- *      the state is append-only, so the later entry is the newer one.
+ *   3. on a tie there too, the version that appears **later in the array**,
+ *      because the approved state is append-only, so a later entry is the newer
+ *      one. This tie-break depends on the order of the state, not on the
+ *      content: the same array always gives the same answer, and a reversed
+ *      array deliberately gives the other row.
  *
  * Two different `source_record_id`s are never merged, even when employee,
  * course and fingerprint are identical: a renewal is a separate record and the
@@ -138,14 +166,15 @@ function isNewerVersion(candidate, held) {
   }
   if (candidateAt !== null && heldAt === null) return true;
   if (candidateAt === null && heldAt !== null) return false;
-  // Same version and same approval time: the later entry of an append-only
-  // state wins, so the result stays the same for the same input.
+  // Same version and same approval time: the later entry of the array wins,
+  // because the approved state is append-only. The result is stable for one
+  // array; reversing the array selects the other row on purpose.
   return true;
 }
 
 /** Translate one record version into the engine shape. */
 export function toEngineRecord(row, courses) {
-  const course = courses instanceof Map ? courses.get(row.course_code) : undefined;
+  const course = typeof courses?.get === 'function' ? courses.get(row.course_code) : undefined;
   const completed = row.completion_status === 'Completed';
   return Object.freeze({
     Employee_ID: row.employee_code,
@@ -216,9 +245,9 @@ export function prepareEngineInput(approvedState, asOfDate) {
   const state = approvedState ?? {};
 
   const lookups = Object.freeze({
-    departments: frozenIndex(state.departments, 'department_code'),
-    jobTitles: frozenIndex(state.jobTitles, 'job_title_code'),
-    courses: frozenIndex(state.courses, 'course_code'),
+    departments: createLookup(state.departments, 'department_code'),
+    jobTitles: createLookup(state.jobTitles, 'job_title_code'),
+    courses: createLookup(state.courses, 'course_code'),
   });
 
   const effective = (state.requirements ?? []).filter((row) =>

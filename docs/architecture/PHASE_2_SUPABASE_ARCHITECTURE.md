@@ -32,6 +32,27 @@ Decisions recorded on 2026-10-06 by the project owner are marked **Decided** in 
 
 ---
 
+## Revision 3 — alignment with `HSE-DC-1.0` and `HSE-CONTACT-1.0` (2026-10-06)
+
+Phase 2A defined the data contracts and built them in code (`src/lib/contract/`,
+`docs/DATA-CONTRACT.md`, `docs/CONTACT-CONTRACT.md`). The schema below is
+aligned with them, so a Phase 2B migration can be derived from `schema.js`
+instead of being reinvented. Still documentation only; no database exists.
+
+| # | Revision 2 schema | Contract rule | Change |
+|---|---|---|---|
+| 1 | `department` and `job_title` as free text on `employees` and `requirements_matrix` | Codes are the only matching keys; display names may repeat and must never match (`HSE-DC-1.0` §2.2, §3.1, §3.2) | New reference tables `departments` and `job_titles` with a code, English and Arabic names and an `active` flag; both parents are referenced by composite foreign key. A job title may be scoped to one department (`JOB_TITLE_SCOPE`) |
+| 2 | Records keyed by a generated id, with a content fingerprint as the uniqueness rule | A record's key is `(organization, source_system, source_record_id)`, its identity is immutable, and the fingerprint detects possible duplicates only (`HSE-DC-1.0` §3.7, §3.8) | `training_records` carries `source_system`, `source_record_id` and `version`; the unique index moves to the record key plus version; a trigger refuses a change of `employee_id` or `course_id`; the fingerprint becomes an advisory `fp1:` column with a non-unique index |
+| 3 | One active requirement row per role and course | A requirements version is a dated set with an approval reference, an approving role and an approval date; only `approved` rows may be loaded (`HSE-DC-1.0` §3.5, §5) | `requirements_matrix` gains `requirements_effective_from`, `approval_reference`, `approved_by_role`, `approved_on` and `source`, with `source = 'approved'` enforced |
+| 4 | `employee_contacts` with opt-in booleans and `consent_recorded_at` | Contact data follows its own contract with a neutral authorization basis, its evidence and a contact status (`HSE-CONTACT-1.0` §3) | Columns become `email_allowed`, `whatsapp_allowed`, `communication_authorization_basis`, `authorization_reference`, `authorization_recorded_at`, `contact_status`, `preferred_language` and `verified_at`; while decision P-01 is pending only `not_defined` is accepted, so no contact is eligible for an alert |
+| 5 | `import_batches` as an import log | A batch is approved by a role at a recorded instant, and an older batch never overwrites a newer value (`HSE-DC-1.0` §7) | `import_batches` gains `package_type`, `prepared_by_role`, `approved_by_role` and `approved_at`; `approved_at` is the ordering key already used by `employees.last_batch_approved_at` |
+
+The engine is unchanged by all of this: the preparation layer
+(`src/lib/contract/enginePreparation.js`) still hands it `Department`,
+`Job_Title` and `Course_Code` as codes.
+
+---
+
 ## Stage 0 — Safety report
 
 | Item | Result |
@@ -63,10 +84,16 @@ Four constraints shape every decision below:
 organizations
   └── organization_members (user ↔ org, role)
   └── organization_invitations
-  └── employees
+  └── departments                       (reference list, HSE-DC-1.0 §3.1)
+  └── job_titles ──── departments       (optional scope, HSE-DC-1.0 §3.2)
+  └── employees ──┬── departments
+                   └── job_titles
         └── training_records ──┬── courses
                                 └── certificates (storage pointer)
-  └── requirements_matrix ──── courses
+        └── employee_contacts            (HSE-CONTACT-1.0)
+  └── requirements_matrix ──┬── departments
+                             ├── job_titles
+                             └── courses
   └── courses
   └── import_batches ──── import_row_errors
   └── audit_log
@@ -135,12 +162,55 @@ create table organization_invitations (
 );
 
 -- ─── Reference data ─────────────────────────────────────────────────
+-- ─── Reference lists (HSE-DC-1.0 §3.1, §3.2) ───────────────────────
+-- Codes are the only matching keys. Display names may repeat and are never
+-- used for matching; both names are kept so the interface can show either
+-- language (`projectForDisplay` in src/lib/contract/productionPackage.js).
+-- Codes are stored upper-cased: trim then upper-case, pattern ^[A-Z0-9_-]{2,20}$.
+create table departments (
+  id                uuid primary key default gen_random_uuid(),
+  organization_id   uuid not null references organizations(id) on delete restrict,
+  department_code   text not null check (department_code ~ '^[A-Z0-9_-]{2,20}$'),
+  name_en           text not null,
+  name_ar           text not null,
+  active            boolean not null default true,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  unique (organization_id, department_code),
+  unique (organization_id, id)
+);
+-- A code is never reused for a different department; renaming changes the
+-- names, never the code.
+
+create table job_titles (
+  id                uuid primary key default gen_random_uuid(),
+  organization_id   uuid not null references organizations(id) on delete restrict,
+  job_title_code    text not null check (job_title_code ~ '^[A-Z0-9_-]{2,20}$'),
+  name_en           text not null,
+  name_ar           text not null,
+  -- null = usable in any department. When set, using the title with another
+  -- department is blocked at import (JOB_TITLE_SCOPE) and by chk_job_title_scope
+  -- on employees and requirements_matrix.
+  department_id     uuid,
+  active            boolean not null default true,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  unique (organization_id, job_title_code),
+  unique (organization_id, id),
+  foreign key (organization_id, department_id) references departments(organization_id, id) on delete restrict
+);
+
 create table courses (
   id                uuid primary key default gen_random_uuid(),
   organization_id   uuid not null references organizations(id) on delete restrict,
-  course_code       text not null,
-  course_name       text not null,
+  course_code       text not null check (course_code ~ '^[A-Z0-9_-]{2,20}$'),
+  course_name       text not null,              -- HSE-DC-1.0: name_en
+  course_name_ar    text,                       -- HSE-DC-1.0: name_ar
   category          text,
+  regulatory_reference text,
+  -- Help only. The official validity is requirements_matrix.validity_months;
+  -- a difference is reported as SUGGESTED_VALIDITY_DIFFERS (info).
+  suggested_validity_months integer check (suggested_validity_months between 1 and 120),
   created_at        timestamptz not null default now(),
   deleted_at        timestamptz,
   unique (organization_id, course_code),
@@ -149,24 +219,26 @@ create table courses (
 -- Note: validity is NOT a course attribute. It lives on requirements_matrix
 -- because the requirements CSV carries Validity_Months per (dept, job, course).
 
--- Department / Job_Title are kept as free TEXT, not normalized FK tables.
--- Rationale: the unchanged compliance engine matches requirements to employees
--- by an EXACT STRING match on (Department, Job_Title). Normalizing them into
--- lookup tables would require the app to resolve IDs back to the same strings
--- before calling the untouched engine — extra surface area for zero business
--- value in Phase 2. Autocomplete/typo-prevention on these fields is a good
--- Phase 3 candidate once the engine's matching key is revisited (which is a
--- LOGIC change, explicitly out of scope here).
+-- Revision 3: Department and Job_Title are reference tables, not free text.
+-- The engine still matches on the CODE string: the preparation layer passes
+-- `Department = department_code` and `Job_Title = job_title_code`, so the
+-- engine is untouched while the database holds one approved list per
+-- organization (HSE-DC-1.0 §2.2, H-03).
 
 create table employees (
   id                 uuid primary key default gen_random_uuid(),
   organization_id    uuid not null references organizations(id) on delete restrict,
-  employee_code      text not null,               -- CSV: Employee_ID
-  full_name          text not null,                -- CSV: Employee_Name
-  department         text not null,
-  job_title          text not null,
+  -- Trimmed, case preserved, compared exactly. Final meaning: decision H-01.
+  employee_code      text not null,               -- HSE-DC-1.0 §3.3
+  badge_number       text,                        -- informational, never the key
+  full_name          text not null,               -- display only, never matched
+  full_name_ar       text,
+  department_id      uuid not null,
+  job_title_id       uuid not null,
+  site_code          text check (site_code is null or site_code ~ '^[A-Z0-9_-]{2,20}$'),
   employment_status  text not null default 'Active'
                        check (employment_status in ('Active','Inactive','Left')),
+  status_effective_date date,                     -- required when status <> 'Active'
   hire_date          date,
   last_batch_id      uuid,                         -- approved batch that last changed this row
   last_batch_approved_at timestamptz,              -- ordering key for "latest approved batch wins"
@@ -174,9 +246,14 @@ create table employees (
   updated_at         timestamptz not null default now(),
   deleted_at         timestamptz,
   unique (organization_id, employee_code),
-  unique (organization_id, id)
+  unique (organization_id, id),
+  constraint chk_status_date check (employment_status = 'Active' or status_effective_date is not null),
+  foreign key (organization_id, department_id) references departments(organization_id, id) on delete restrict,
+  foreign key (organization_id, job_title_id)  references job_titles(organization_id, id)  on delete restrict
 );
-create index idx_employees_org_dept_job on employees(organization_id, department, job_title)
+-- A department-scoped job title may not be used with another department.
+-- Enforced by a trigger, because a check constraint cannot read another table.
+create index idx_employees_org_dept_job on employees(organization_id, department_id, job_title_id)
   where deleted_at is null;
 create index idx_employees_org_status on employees(organization_id, employment_status)
   where deleted_at is null;
@@ -189,37 +266,75 @@ create table employee_contacts (
   employee_id        uuid not null,
   email              citext,
   phone_e164         text check (phone_e164 is null or phone_e164 ~ '^\+[1-9][0-9]{7,14}$'),
-  email_opt_in       boolean not null default false,
-  whatsapp_opt_in    boolean not null default false,
-  consent_recorded_at timestamptz,
+  preferred_language text check (preferred_language in ('ar','en')),
+  -- HSE-CONTACT-1.0 §3: a channel flag is a statement about the channel, not a
+  -- legal basis. The basis is separate and carries its own evidence.
+  email_allowed      text not null default 'Unknown' check (email_allowed in ('Yes','No','Unknown')),
+  whatsapp_allowed   text not null default 'Unknown' check (whatsapp_allowed in ('Yes','No','Unknown')),
+  -- Decision P-01 is pending, so `not_defined` is the only accepted value and
+  -- no contact is eligible for an alert. Widening this list is a decision, not
+  -- a migration detail.
+  communication_authorization_basis text not null default 'not_defined'
+                       check (communication_authorization_basis in ('not_defined')),
+  authorization_reference   text,
+  authorization_recorded_at date,
+  contact_status     text not null default 'unverified'
+                       check (contact_status in ('unverified','verified','invalid','withdrawn')),
+  verified_at        date,
   updated_at         timestamptz not null default now(),
+  -- Evidence is required as soon as a basis other than `not_defined` exists.
+  constraint chk_basis_evidence check (
+    communication_authorization_basis = 'not_defined'
+    or (authorization_reference is not null and authorization_recorded_at is not null)
+  ),
   unique (organization_id, employee_id),
   foreign key (organization_id, employee_id) references employees(organization_id, id) on delete restrict
 );
 
 -- Matching rule used by the unchanged engine: EXACT, case-sensitive string
--- equality on (department, job_title). A role with no rows = "not configured".
+-- equality on the CODES the preparation layer passes as (Department, Job_Title).
+-- A role with no rows = "not configured".
 -- A role whose rows are all mandatory = false = NOT_REQUIRED items only.
 create table requirements_matrix (
   id                uuid primary key default gen_random_uuid(),
   organization_id   uuid not null references organizations(id) on delete restrict,
-  department        text not null,
-  job_title         text not null,
+  department_id     uuid not null,
+  job_title_id      uuid not null,
   course_id         uuid not null,
-  mandatory         boolean not null,                -- CSV: Mandatory
-  validity_months   integer not null default 0,      -- CSV: Validity_Months (informational; engine does not derive expiry from it)
+  -- HSE-DC-1.0 §3.5: Mandatory / Recommended. The engine reads `mandatory`.
+  requirement_type  text not null check (requirement_type in ('Mandatory','Recommended')),
+  mandatory         boolean not null generated always as (requirement_type = 'Mandatory') stored,
+  -- The official validity. Empty = the course does not expire for this role.
+  -- The engine never derives an expiry from it (decision T-02).
+  validity_months   integer check (validity_months between 1 and 120),
+  -- Version date of the whole requirements set this row belongs to; every row
+  -- of one approved package carries the same value (§5 of the contract).
+  requirements_effective_from date not null,
   effective_from    date not null,
   effective_to      date,                              -- null = currently active
+  -- Approval metadata. A row without it is never loaded (REQ_NOT_APPROVED),
+  -- and a derived test row is refused outright (REQ_ON_DERIVED).
+  approval_reference text not null,
+  approved_by_role   text not null,                    -- a role, never a person
+  approved_on        date not null,
+  source            text not null default 'approved' check (source = 'approved'),
   created_by        uuid references auth.users(id),
   created_at        timestamptz not null default now(),
   constraint chk_effective_range check (effective_to is null or effective_to >= effective_from),
-  foreign key (organization_id, course_id) references courses(organization_id, id) on delete restrict
+  constraint chk_version_date check (effective_from = requirements_effective_from),
+  foreign key (organization_id, department_id) references departments(organization_id, id) on delete restrict,
+  foreign key (organization_id, job_title_id)  references job_titles(organization_id, id)  on delete restrict,
+  foreign key (organization_id, course_id)     references courses(organization_id, id)     on delete restrict
 );
--- Only one ACTIVE requirement per (dept, job_title, course) at a time.
+-- Only one ACTIVE requirement per (department, job title, course) at a time.
 create unique index uq_requirements_active
-  on requirements_matrix(organization_id, department, job_title, course_id)
+  on requirements_matrix(organization_id, department_id, job_title_id, course_id)
   where effective_to is null;
-create index idx_requirements_org_dept_job on requirements_matrix(organization_id, department, job_title);
+create index idx_requirements_org_dept_job on requirements_matrix(organization_id, department_id, job_title_id);
+-- The requirement key of the contract is
+-- (department_code, job_title_code, course_code, effective_from); the index
+-- above is its surrogate form. Two rows of one key with overlapping ranges are
+-- REQ_OVERLAP at import and are refused before they reach the database.
 -- NOTE: effective_from/effective_to is NEW capability; the engine has no
 -- requirement history. v1 (Decided 2026-10-06): reads pass the engine ONLY the
 -- rows effective at asOfDate (effective_from <= asOf and (effective_to is null
@@ -234,16 +349,28 @@ create table training_records (
   organization_id    uuid not null references organizations(id) on delete restrict,
   employee_id        uuid not null,
   course_id          uuid not null,
+  -- Record key of the contract: (organization, source_system, source_record_id).
+  -- The identity is immutable: a key keeps its employee and its course for
+  -- ever (RECORD_IDENTITY_CHANGED). Availability of a stable id: decision I-01.
+  source_system      text not null check (source_system ~ '^[A-Z0-9_-]{2,20}$'),
+  source_record_id   text not null check (length(source_record_id) between 1 and 64),
+  -- Append-only versions of one key. A correction adds a version and keeps the
+  -- previous one; the reader takes the highest version (HSE-DC-1.0 §3.7).
+  version            integer not null default 1 check (version >= 1),
   completion_status  text not null default 'Not Started'
                         check (completion_status in ('Completed','In Progress','Not Started')),
-  training_required  boolean,                  -- CSV: Training_Required (validated on import; not used by the engine)
+  training_required  boolean,                  -- legacy CSV column; not part of HSE-DC-1.0
   issue_date         date,
   expiry_date        date,                     -- null on a Completed row = one-time training (engine: VALID)
   certificate_number text,
   training_provider  text,
   remarks            text,
   renews_record_id   uuid,                     -- optional, informational link to the record this one renews
+  -- Detection only (HSE-DC-1.0 §3.8): `fp1:` plus the SHA-256 of the canonical
+  -- JSON array. Never a key, never a merge rule.
+  fingerprint        text check (fingerprint is null or fingerprint ~ '^fp1:[0-9a-f]{64}$'),
   import_batch_id    uuid references import_batches(id),
+  approved_at        timestamptz,              -- approval instant of the batch, ordering key
   source             text not null default 'import' check (source in ('import','manual')),
   created_by         uuid references auth.users(id),
   created_at         timestamptz not null default now(),
@@ -259,12 +386,42 @@ create index idx_training_org_emp_course on training_records(organization_id, em
   where deleted_at is null;
 create index idx_training_expiry on training_records(organization_id, expiry_date)
   where deleted_at is null;
--- Import idempotency: the same certificate imported twice is one row.
-create unique index uq_training_fingerprint on training_records(
-  organization_id, employee_id, course_id, completion_status,
-  coalesce(issue_date, date '0001-01-01'), coalesce(expiry_date, date '0001-01-01'),
-  coalesce(certificate_number, ''))
+-- Revision 3: idempotency is the record key plus its version, not a content
+-- hash. Re-importing the same content is a no-op because the content signature
+-- of the key is unchanged (RECORD_UNCHANGED); a correction adds version + 1.
+create unique index uq_training_record_version
+  on training_records(organization_id, source_system, source_record_id, version);
+create index idx_training_record_key
+  on training_records(organization_id, source_system, source_record_id)
   where deleted_at is null;
+-- The fingerprint only finds records that look alike under two different ids
+-- (POSSIBLE_DUPLICATE_RECORD, a warning). It is deliberately NOT unique:
+-- a renewal may legitimately repeat the content of an earlier record.
+create index idx_training_fingerprint on training_records(organization_id, fingerprint)
+  where deleted_at is null and fingerprint is not null;
+
+-- The immutable identity of a record key, enforced in the database as well as
+-- at import, because an edited export is the likeliest way to move a record
+-- to the wrong employee.
+create or replace function private.reject_record_identity_change()
+returns trigger language plpgsql as $$
+begin
+  if exists (
+    select 1 from training_records t
+    where t.organization_id = new.organization_id
+      and t.source_system = new.source_system
+      and t.source_record_id = new.source_record_id
+      and (t.employee_id <> new.employee_id or t.course_id <> new.course_id)
+  ) then
+    raise exception 'RECORD_IDENTITY_CHANGED: % / % already belongs to another employee or course',
+      new.source_system, new.source_record_id;
+  end if;
+  return new;
+end $$;
+
+create trigger trg_record_identity
+  before insert or update on training_records
+  for each row execute function private.reject_record_identity_change();
 
 create table certificates (
   id                 uuid primary key default gen_random_uuid(),
@@ -308,8 +465,17 @@ create index idx_notification_pending on notification_log(organization_id, statu
 create table import_batches (
   id                uuid primary key default gen_random_uuid(),
   organization_id   uuid not null references organizations(id) on delete restrict,
-  file_type         text not null check (file_type in ('training_csv_xlsx','requirements_csv')),
+  file_type         text not null check (file_type in ('hse_dc_1_0','training_csv_xlsx','requirements_csv')),
+  -- HSE-DC-1.0 §1.3. Null for a legacy file.
+  package_type      text check (package_type in ('full','employees','requirements','training')),
+  contract_version  text,                       -- 'HSE-DC-1.0' for a contract package
+  source_system     text,                       -- _Contract.source_system
+  extract_date      date,
   file_name         text not null,
+  -- Roles, never personal names. Four-eyes is recorded; in local mode it is
+  -- not enforced technically (decision T-09).
+  prepared_by_role  text,
+  approved_by_role  text,
   imported_by       uuid not null references auth.users(id),
   imported_at       timestamptz not null default now(),
   row_count         integer not null default 0,
@@ -319,6 +485,8 @@ create table import_batches (
   status            text not null default 'staged'
                       check (status in ('staged','approved','rejected','failed')),
   approved_by       uuid references auth.users(id),
+  -- Ordering key of §7: a batch approved earlier never overwrites a value an
+  -- later batch approved. Stored as an instant in UTC.
   approved_at       timestamptz,
   notes             text
 );
@@ -338,7 +506,7 @@ create table import_employee_staging (
   organization_id   uuid not null references organizations(id) on delete restrict,
   import_batch_id   uuid not null references import_batches(id) on delete restrict,
   employee_code     text not null,
-  proposed          jsonb not null,      -- {full_name, department, job_title, employment_status, ...}; blank fields omitted
+  proposed          jsonb not null,      -- {full_name, department_code, job_title_code, employment_status, ...}; blank fields omitted
   explicit_clears   text[] not null default '{}',  -- fields the approver chose to clear
   change_kind       text not null check (change_kind in ('new','changed','unchanged','conflict')),
   conflict_detail   jsonb,               -- e.g. two different job titles for one code in the same file
@@ -405,7 +573,7 @@ create index idx_audit_entity on audit_log(entity_type, entity_id);
 
 - **Certificate renewal preserves history by appending, not by flagging.** A renewal is a new `training_records` row. Old rows are never touched. Which row counts toward compliance is decided at read time by the **unchanged** engine (`selectBestRecord`: latest valid expiry; if all expired, latest expiry; if no expiry, latest issue). This is why Revision 1's `is_current` flag was removed: a flag set at write time follows arrival order, while the engine's rule follows dates, and the two disagree whenever an older certificate is imported after a newer one. `renews_record_id` may be filled by the UI when a user explicitly records "this renews that"; it is informational and never read by compliance logic.
 
-- **Requirements are versioned by date range, not overwritten.** `effective_from`/`effective_to` plus the partial unique index keep one *active* row per `(department, job_title, course)`. A change closes the old row and inserts a new one, so no requirement row is lost.
+- **Requirements are versioned by date range, not overwritten.** `effective_from`/`effective_to` plus the partial unique index keep one *active* row per `(department, job title, course)`. A change closes the old row and inserts a new one, so no requirement row is lost.
   **Decided (2026-10-06):** version 1 evaluates compliance only against the requirements **effective at `asOfDate`**. Full historical reporting ("compliance as of a past date, using the requirements in force then, and the employee's title then") is **deferred**. The product must not claim it, and no report may offer a past As Of Date with historical requirements, until a historical reader is built and has its own tests. Storing the date ranges now only keeps that option open.
 
 - **Employee changes (title, department, status) are logged, not versioned for compliance.** Compliance uses the current master values, like the engine. Every field change is written to `employee_change_log` (batch, old value, new value, time, actor; §5.1). A historical-assignment model for past-date compliance is part of the deferred historical reporting above.
@@ -444,7 +612,7 @@ create index idx_audit_entity on audit_log(entity_type, entity_id);
 
 **Design notes:**
 - `auditor` is intentionally read-only and cross-cutting (audit log + voided records) — modeled for eventual client compliance audits (Aramco/SATORP-style vendor audits) without granting write access.
-- There is no `viewer`-vs-`training_manager` split on *which employees* they see — Phase 2 scopes visibility at the organization level, not sub-department ACLs. If a client needs "Training Manager only sees their own department," that's an additional RLS predicate on `employees.department` tied to a new `organization_members.scoped_department` column — flagged here as a known Phase 3 extension, not built now to avoid speculative complexity.
+- There is no `viewer`-vs-`training_manager` split on *which employees* they see — Phase 2 scopes visibility at the organization level, not sub-department ACLs. If a client needs "Training Manager only sees their own department," that's an additional RLS predicate on `employees.department_id` tied to a new `organization_members.scoped_department_id` column — flagged here as a known Phase 3 extension, not built now to avoid speculative complexity.
 - Role is enforced twice: once in RLS `WITH CHECK` clauses (§3), and once in the UI (disable/hide buttons) purely for UX — the RLS layer is the actual security boundary; the UI layer just avoids showing users controls that would fail.
 
 ---
@@ -609,7 +777,7 @@ The demo button remains wired to `LocalAdapter` unconditionally, even when the u
 2. **Stage, preview, approve.** An import creates a batch with `status = 'staged'`. For every employee code the app computes `new`, `changed`, `unchanged` or `conflict` against the master and shows the field-level differences. Nothing reaches `employees` until a user with import permission approves the batch. A batch can be rejected; rejected batches change nothing.
 3. **Conflicts block approval.** If one file contains different values for the same code (e.g. two job titles), the code is a `conflict`. The approver must pick the value or exclude the employee. The app never silently takes the first or last row.
 4. **Latest approved batch wins** — ordered by `approved_at`, not by row order and not by file date. On approval, a field is updated only if this batch's `approved_at` is later than `employees.last_batch_approved_at`. Approving an older staged batch after a newer one therefore cannot overwrite newer values; the preview shows those fields as "superseded by a later approved batch".
-5. **Blank never erases.** An empty cell means "no information", not "delete". A value is cleared only when the approver ticks an explicit "clear this field" choice in the preview (`explicit_clears`). Required fields (`full_name`, `department`, `job_title`, `employment_status`) cannot be cleared at all.
+5. **Blank never erases.** An empty cell means "no information", not "delete". A value is cleared only when the approver ticks an explicit "clear this field" choice in the preview (`explicit_clears`). Required fields (`full_name`, `department_id`, `job_title_id`, `employment_status`) cannot be cleared at all.
 6. **Change log.** Each changed field writes one `employee_change_log` row: batch id, field, old value, new value, `changed_at`, `changed_by` (the approver). Manual edits write the same row with `import_batch_id` null.
 7. **Training rows** of the batch are inserted on approval as well, so compliance never mixes approved training facts with unapproved employee data.
 8. **Local Mode is unchanged.** These rules apply to Cloud Mode only. Local Mode keeps the current engine behaviour (first row per Employee_ID).

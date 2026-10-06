@@ -123,10 +123,10 @@ Entry template:
 | Field | Value |
 |---|---|
 | Owner | Training Manager / HSE Manager |
-| Question | When the applicable requirement has `validity_months`, may a `Completed` record without `expiry_date` be accepted as one-time training? |
+| Question | When the current applicable requirement is `Mandatory` and has `validity_months`, may a `Completed` record without `expiry_date` be accepted as one-time training? |
 | Options | A: keep blocking; B: accept (engine would count it `VALID` permanently) |
 | Recommendation | A |
-| Phase 2A default | Blocked (`COMPLETED_WITHOUT_EXPIRY`); the record never reaches the engine. Relaxing requires an approved decision |
+| Phase 2A default | Blocked (`COMPLETED_WITHOUT_EXPIRY`); preparation rechecks on every run and the record never satisfies that mandatory requirement. `Recommended` or absent requirements do not block storing evidence. Relaxing requires an approved decision |
 | Status | Pending |
 | Decision | — |
 | Approval date | — |
@@ -173,7 +173,7 @@ Entry template:
 | Question | Which identifier is the permanent `employee_code`: HR employee number, badge number, or another identifier? |
 | Options | A: HR employee number; B: badge number; C: other |
 | Recommendation | A, because badges can be reissued; badge kept as `badge_number` |
-| Phase 2A default | Neutral name `employee_code`. Existing paths: legacy CSV `Employee_ID`, test workbook `Badge`. Names are never used for matching |
+| Phase 2A default | Neutral name `employee_code`. Existing paths: legacy CSV `Employee_ID`, test workbook `Badge`. Trimmed, case preserved, compared exactly; names are never used for matching |
 | Status | Pending |
 | Decision | — |
 | Approval date | — |
@@ -203,7 +203,7 @@ Entry template:
 | Question | What is the approved source and owner of `department_code` and `job_title_code` lists, and how are codes added, renamed or deactivated? May partial packages change these lists? |
 | Options | A: HR system extract, changed only through `full` packages; B: maintained by the training owner; C: other |
 | Recommendation | A |
-| Phase 2A default | Lists carried in `full` packages; `employees` and `requirements` packages MAY add codes |
+| Phase 2A default | Lists may be created or updated only in `full` packages. Partial packages must use approved codes and cannot modify the lists |
 | Status | Pending |
 | Decision | — |
 | Approval date | — |
@@ -310,7 +310,7 @@ Entry template:
 | Question | Does each source system provide a stable `source_record_id` per training record? If not, who assigns one, and how is it kept stable across extracts? |
 | Options | A: source system id; B: id assigned by the data owner in a controlled register; C: other |
 | Recommendation | A where available |
-| Phase 2A default | `source_record_id` is mandatory; batches without it are blocked. No fallback to fingerprints |
+| Phase 2A default | `source_record_id` is mandatory; trimmed, case preserved and compared exactly. Batches without it are blocked; no fallback to fingerprints |
 | Status | Pending |
 | Decision | — |
 | Approval date | — |

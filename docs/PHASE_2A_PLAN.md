@@ -1,7 +1,7 @@
 # Phase 2A — Production Data Contract and Import Governance
 
-**Status:** plan, approved in principle (revision 3). Nothing in this document is implemented.
-**Baseline:** tag `v1.1-workbook-import` (`0fee907`), branch `phase-2-supabase`, HEAD `66d7ac7`.
+**Status:** plan, approved in principle (revision 4). Nothing in this document is implemented.
+**Baseline:** code tag `v1.1-workbook-import` (`0fee907`), branch `phase-2-supabase`; plan commit `abcd721`, initial contract docs `9e4d2c4`.
 **Boundaries:** no Supabase, no real employee data, no email or WhatsApp sending, no secrets or `.env` files, local mode only.
 
 ## Revision 3 changes
@@ -9,12 +9,19 @@
 | # | Change | Sections |
 |---|---|---|
 | 1 | Engine input uses codes directly: `Department = department_code`, `Job_Title = job_title_code`. Name tables are display only; display names may repeat. Duplicate codes block, duplicate names do not. | §1.3, §2, §4.6 |
-| 2 | `COMPLETED_WITHOUT_EXPIRY` is **blocking by default** when the requirement has `validity_months` (the engine would count it `VALID` forever). Relaxing it needs explicit approval (T-07). Such a record never reaches the engine. | §1.6, §2, §4.6 |
+| 2 | `COMPLETED_WITHOUT_EXPIRY` is **blocking by default** when the current requirement is `Mandatory` and has `validity_months` (the engine would count it `VALID` forever). Relaxing it needs explicit approval (T-07). Preparation rechecks this on every run. | §1.6, §2, §4.6 |
 | 3 | `In Progress` / `Not Started` records with a valid `source_record_id` are accepted without dates or certificate and stay non-compliant. Date rules apply to `Completed` only. | §1.6 |
 | 4 | `_Contract.requirements_effective_from` for `full` and `requirements` packages; every requirement row must match it; complete set per listed department; preview lists rows to be closed; older versions blocked. | §1.1, §2, §3 |
 | 5 | Local mode binds the session to the `organization_code` of the first approved `full` package; later packages must match; full reset clears the binding; partial package without a loaded organization blocked. | §4.7 |
 | 6 | Training record identity is fixed: an existing `(source_system, source_record_id)` cannot change `employee_code` or `course_code` (`RECORD_IDENTITY_CHANGED`). Corrections of other fields become a new version; moving a record = void + new record. | §2, §4.2 |
 | 7 | Fingerprint built from a canonical JSON array with the version tag inside, then SHA-256 — no delimiter joining. | §1.7 |
+
+## Revision 4 clarification changes
+
+- All reference codes use `^[A-Z0-9_-]{2,20}$` after trim and upper-casing. `employee_code` and `source_record_id` preserve case and compare exactly pending H-01/I-01.
+- Only `full` packages may create or update department and job-title reference lists. Partial packages must use the approved lists.
+- `COMPLETED_WITHOUT_EXPIRY` blocks only when the current effective requirement is `Mandatory` and has `validity_months`; preparation rechecks this on every run.
+- A department-scoped job title used outside its department is blocking.
 
 ## Revision 2 changes
 
@@ -57,7 +64,7 @@ Verified starting point (code at `66d7ac7`):
 | "Test requirements" marker mandatory | On screen and on CSV/PDF exports whenever derived requirements are loaded |
 | Four-eyes approval | Preparer and approver roles recorded in local mode; technically enforced only after authentication (Phase 2B) |
 | Absence from a file | Never deletes, deactivates or changes any record |
-| Completed record without expiry where validity applies | Blocked (T-07 may relax only by explicit approval) |
+| Completed record without expiry where a current `Mandatory` requirement has validity | Blocked (T-07 may relax only by explicit approval) |
 
 ## 1. Contract `HSE-DC-1.0`
 
@@ -81,14 +88,14 @@ Required (R) and optional (O) sheets per package type; other sheets present → 
 
 | Sheet | `full` | `employees` | `requirements` | `training` |
 |---|---|---|---|---|
-| `Departments` | R | O | O | — |
-| `Job_Titles` | R | O | O | — |
+| `Departments` | R | — | — | — |
+| `Job_Titles` | R | — | — | — |
 | `Employees` | R | R | — | — |
 | `Courses` | R | — | O | O |
 | `Requirements` | R | — | R | — |
 | `Training_Records` | R | — | — | R |
 
-Reference rule: every code used in a package must exist either in the same package or in the already approved data. Example: a `training` package may reference only courses and employees already approved, unless it carries a `Courses` sheet with new courses.
+Reference rule: every code used in a package must exist either in an allowed sheet in the same package or in the already approved data. Only `full` may create or update `Departments` and `Job_Titles`; those sheets in a partial package are `SHEET_UNEXPECTED` and ignored. A `training` package may reference only employees already approved, and may carry `Courses` for new courses.
 
 Common rules: first row = header; header names exact (trimmed, case-sensitive); dates `YYYY-MM-DD` or Excel serial (slash dates rejected in production mode); text trimmed and inner whitespace collapsed; empty cell = no information (§4.3).
 
@@ -116,12 +123,12 @@ Mapping of current sources to `employee_code` (documented, not a decision):
 
 | Sheet | Field | Req. | Rule |
 |---|---|---|---|
-| `Departments` | `department_code` | yes | Key, `^[A-Z0-9_]{2,20}$`, never reused for a different department |
+| `Departments` | `department_code` | yes | Key, `^[A-Z0-9_-]{2,20}$`, never reused for a different department |
 | | `name_en`, `name_ar` | yes | Display only; may repeat |
 | | `active` | yes | `Yes` / `No`; inactive codes cannot be used by new employees or requirements |
 | `Job_Titles` | `job_title_code` | yes | Key, same pattern |
 | | `name_en`, `name_ar` | yes | Display only; may repeat (the same title name can exist in several departments under different codes) |
-| | `department_code` | no | Empty = title used across departments (decision H-03) |
+| | `department_code` | no | Empty = title used across departments; when set, use with another department blocks as `JOB_TITLE_SCOPE` (decision H-03) |
 | | `active` | yes | as above |
 
 Codes are the only matching keys: a duplicate **code** blocks; a duplicate **display name** does not. The approved source and owner of these lists is decision H-03 (HR). Until decided, lists are maintained in the `full` package by the data owner.
@@ -130,7 +137,7 @@ Codes are the only matching keys: a duplicate **code** blocks; a duplicate **dis
 
 | Field | Req. | Rule |
 |---|---|---|
-| `course_code` | **yes** | Key, `^[A-Z0-9-]{2,20}$` |
+| `course_code` | **yes** | Key, `^[A-Z0-9_-]{2,20}$` |
 | `name_en` | **yes** | Display |
 | `name_ar` | no | Display |
 | `category` | no | Text |
@@ -150,7 +157,7 @@ See §3. Key `(department_code, job_title_code, course_code, effective_from)`. `
 | `course_code` | **yes** | Approved or in package |
 | `completion_status` | **yes** | `Completed` / `In Progress` / `Not Started` |
 | `completion_date` | conditional | `Completed` only: required, ≤ extract date. Ignored (warning) on other statuses |
-| `expiry_date` | conditional | `Completed` only: **required** when the effective requirement has `validity_months` (missing → `COMPLETED_WITHOUT_EXPIRY`, blocking); must be after `completion_date`. **Taken as given, never recalculated** |
+| `expiry_date` | conditional | `Completed` only: **required** when the current effective requirement is `Mandatory` and has `validity_months` (missing → `COMPLETED_WITHOUT_EXPIRY`, blocking); must be after `completion_date`. **Taken as given, never recalculated** |
 | `certificate_number` | no | Not a key. Missing or duplicate → warning (§2) unless T-06 promotes it |
 | `training_provider` | no | Text |
 | `remarks` | no | ≤ 500 chars |
@@ -158,7 +165,7 @@ See §3. Key `(department_code, job_title_code, course_code, effective_from)`. `
 `Training_Required` is not part of `HSE-DC-1.0` (the engine never used it; approved requirements decide). The legacy import keeps accepting it.
 
 Record acceptance by status:
-- `Completed`: `completion_date` required; `expiry_date` required when the effective requirement has `validity_months`; certificate number optional (warning).
+- `Completed`: `completion_date` required; `expiry_date` required when the current effective requirement is `Mandatory` and has `validity_months`; certificate number optional (warning). A `Recommended` or absent requirement does not block storing the evidence.
 - `In Progress` and `Not Started`: accepted with a valid `source_record_id` and no dates or certificate. The engine keeps them non-compliant (`IN_PROGRESS`, `NOT_STARTED`). Dates present on these rows are ignored with a warning.
 - A requirement with **no record at all** appears as `MISSING`.
 
@@ -200,6 +207,7 @@ Severity: **block** = batch cannot be approved; **warn** = shown, approvable; **
 | `ORG_NOT_LOADED` | block | `employees`, `requirements` or `training` package while no organization is bound |
 | `REF_UNKNOWN` | block | unknown department, job title, course or employee code |
 | `REF_INACTIVE_CODE` | block | new employee or requirement uses an inactive department/job-title code |
+| `JOB_TITLE_SCOPE` | block | a department-scoped job title is used with another department |
 | `DATE_INVALID`, `DATE_FUTURE`, `DATE_ORDER` | block | format; completion after extract date; expiry ≤ completion |
 | `REQUIRED_EMPTY` | block | |
 | `CONFLICT_IN_FILE` | block | same key, different values, same file |
@@ -209,7 +217,7 @@ Severity: **block** = batch cannot be approved; **warn** = shown, approvable; **
 | `REQ_VERSION_OLDER` | block | `requirements_effective_from` earlier than the approved version of any department in the batch |
 | `REQ_VERSION_EXISTS` | block | same version date as the approved one with different content (identical content = no-op) |
 | `RECORD_IDENTITY_CHANGED` | block | existing `(source_system, source_record_id)` arrives with a different `employee_code` or `course_code` |
-| `COMPLETED_WITHOUT_EXPIRY` | block (default) | `Completed` record without `expiry_date` while the effective requirement has `validity_months`. The engine would count it `VALID` permanently. Relaxing to a warning needs explicit approval of T-07 |
+| `COMPLETED_WITHOUT_EXPIRY` | block (default) | `Completed` record without `expiry_date` while the current effective requirement is `Mandatory` and has `validity_months`. Preparation rechecks every run so a stored record cannot later become permanently `VALID`. Relaxing needs explicit approval of T-07 |
 | `EXPIRY_VALIDITY_MISMATCH` | warn | expiry ≠ completion + official `validity_months` (calendar months, day clamped); shows the difference in days per row and as a distribution. Promotion to block needs decision T-03 with a threshold |
 | `CERT_MISSING` | warn | completed without certificate number (T-06 may promote) |
 | `CERT_DUPLICATE` | warn | same certificate number on two records (T-06 may promote) |
@@ -302,7 +310,7 @@ A pure function `prepareEngineInput(approvedData, asOfDate)`; the engine itself 
 2. **Codes go straight into the engine:** `Department = department_code`, `Job_Title = job_title_code` for employees and requirements alike. The engine's exact string match is then a code match; display names never take part in matching.
 3. **Display:** tables, charts, filters, exports and the preview look up names (Arabic/English) by code. Missing name → the code is shown, with a warning in the preview.
 4. **Employees:** pass the approved employee list (engine's optional fourth argument), so employees with no records still get `MISSING` items.
-5. **Records:** pass non-voided records only. A `Completed` record without `expiry_date` whose requirement has `validity_months` is rejected at validation; the preparation layer also asserts it never reaches the engine (defence in depth).
+5. **Records:** pass non-voided records only. Before every engine run, exclude a `Completed` record without `expiry_date` when the current effective requirement is `Mandatory` and has `validity_months`; the engine therefore produces `MISSING`. A `Recommended` or absent requirement does not block storing the evidence. This is a current-state check and does not claim which rule applied historically on the completion date.
 6. No historical reporting: only the current `asOfDate` is supported.
 
 ### 4.7 Organization binding in local mode
@@ -378,11 +386,13 @@ Eligibility count (displayed only, nothing sent): active employee, channel `Yes`
 | AT-15 | Contact contract: basis `not_defined` → 0 eligible; no network request (asserted) |
 | AT-16 | Scale: 500-employee synthetic package — automated check of sizes and results (item count, KPIs) |
 | AT-17 | Existing 225 tests pass; legacy CSV and test-workbook imports unchanged |
-| AT-20 | `COMPLETED_WITHOUT_EXPIRY` blocks approval when the requirement has `validity_months`; accepted when the requirement has none; such a record never reaches the engine (asserted on `prepareEngineInput` output) |
+| AT-20 | `COMPLETED_WITHOUT_EXPIRY` blocks when a current `Mandatory` requirement has `validity_months`; `Recommended`, no requirement, or no validity does not block storage; if the mandatory requirement becomes applicable later, preparation excludes the record and the engine produces `MISSING` |
 | AT-21 | `In Progress` and `Not Started` with valid `source_record_id` and no dates/certificate are accepted; engine statuses `IN_PROGRESS` / `NOT_STARTED`; dates on them ignored with warning |
 | AT-22 | Requirements version: row `effective_from` ≠ contract value blocked; preview lists rows to be closed; older version blocked; same version with different content blocked; identical re-import no-op |
 | AT-23 | Organization binding: second organization's package blocked; partial package without bound organization blocked; reset clears binding; demo/test workbook clear binding |
 | AT-24 | `RECORD_IDENTITY_CHANGED`: same record id with another employee or course blocked; other field changes create a new version |
+| AT-25 | A department-scoped job title used with another department blocks approval |
+| AT-26 | Partial packages cannot create or update `Departments` / `Job_Titles`; such sheets are `SHEET_UNEXPECTED` and ignored |
 | AT-18 (manual) | UI walkthrough: each package type, preview, details, approve, cancel, blocked file, Arabic/English |
 | AT-19 (manual, documented) | Performance on the reference machine (§8.3) |
 
@@ -423,7 +433,7 @@ Approved by (role):            Date:            Reference:
 | T-04 | Does `In Progress` count as compliant? | No |
 | T-05 | Grace period for new joiners (engine change) | None |
 | T-06 | Certificate number: mandatory? unique? | Warning for missing and duplicate |
-| T-07 | Completed record without expiry where validity applies: keep blocking, or accept as one-time | **Blocked**; relaxing needs explicit approval |
+| T-07 | Completed record without expiry where a current `Mandatory` requirement has validity: keep blocking, or accept as one-time | **Blocked**; relaxing needs explicit approval |
 | T-08 | Allow `*ALL*` job-title rows in a later version | Not allowed |
 | T-09 | Which roles may approve an import batch (four-eyes) | Recorded only in local mode |
 
@@ -431,9 +441,9 @@ Approved by (role):            Date:            Reference:
 
 | ID | Question | Phase 2A default |
 |---|---|---|
-| H-01 | What does `employee_code` represent (HR employee number, badge, other) — also needs Training/HSE agreement | Neutral; current mapping `Employee_ID` (CSV) / `Badge` (test workbook) |
+| H-01 | What does `employee_code` represent (HR employee number, badge, other) — also needs Training/HSE agreement | Neutral; current mapping `Employee_ID` (CSV) / `Badge` (test workbook); trim, preserve case, compare exactly |
 | H-02 | Employment status values and their meaning; effective-date rule | `Active` / `Inactive` / `Left` |
-| H-03 | Approved source and owner of department and job-title code lists; change process | Lists carried in `full` packages |
+| H-03 | Approved source and owner of department and job-title code lists; change process | Lists may be created or updated only by `full` packages |
 
 ### 9.3 Privacy / Legal / IT
 
@@ -445,7 +455,7 @@ Approved by (role):            Date:            Reference:
 | P-04 | Data-minimisation policy: confirm blocking of national ID, iqama, date of birth, nationality columns | Blocked |
 | P-05 | Must a contact be `verified` to be eligible? | Yes (`verified` only) |
 | P-06 | Where contact files may be stored and transferred | Local machine only |
-| I-01 | Does each source system provide a stable record id (`source_record_id`)? If not, who assigns one | Required field; packages without it are rejected |
+| I-01 | Does each source system provide a stable record id (`source_record_id`)? If not, who assigns one | Required field; trim, preserve case, compare exactly; packages without it are rejected |
 
 ### 9.4 Engineering (decided, documented)
 
@@ -461,6 +471,8 @@ Approved by (role):            Date:            Reference:
 | E-08 | Training record identity immutable; corrections as versions (§4.2) |
 | E-09 | Fingerprint = SHA-256 of canonical JSON array with `fp1` inside (§1.7) |
 | E-10 | Requirements version = `requirements_effective_from`; complete set per department; older versions blocked (§3) |
+| E-11 | Reference codes share `^[A-Z0-9_-]{2,20}$`; employee/source record identifiers preserve case and compare exactly |
+| E-12 | Partial packages cannot modify department or job-title reference lists |
 
 ## 10. Implementation commits
 
@@ -468,7 +480,7 @@ Approved by (role):            Date:            Reference:
 |---|---|---|---|
 | 1 | `docs: data contracts HSE-DC-1.0, HSE-CONTACT-1.0 and decision log` | `docs/DATA-CONTRACT.md`, `docs/CONTACT-CONTRACT.md`, `docs/DECISIONS.md` (forms §9) | — |
 | 2 | `feat(contract): package types and field definitions` | `src/lib/contract/schema.js` (pure data) | AT-02 (schema part) |
-| 3 | `feat(contract): reference lists and code validation` | departments, job titles, courses; duplicate codes block, duplicate names allowed | AT-05 |
+| 3 | `feat(contract): reference lists and code validation` | departments, job titles, courses; unified code pattern; scoped titles; partial-package restrictions; duplicate codes block, duplicate names allowed | AT-05, AT-25, AT-26 |
 | 4 | `feat(contract): employee and training record validators` | `source_record_id`, canonical fingerprint, status-specific date rules, `COMPLETED_WITHOUT_EXPIRY`, certificate warnings | AT-04, AT-10, AT-20, AT-21 |
 | 5 | `feat(contract): approved requirements and effective selection` | contract version date, complete set per department, closure list, older/existing version checks, overlap, derived rejection | AT-11, AT-12, AT-13 (importer part), AT-22 |
 | 6 | `feat(contract): staging, diff, batch ordering and organization binding` | blank rule, explicit clear, no-op, record versions, `RECORD_IDENTITY_CHANGED`, org binding | AT-06 – AT-09, AT-23, AT-24 |

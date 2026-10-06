@@ -55,14 +55,14 @@ R = MUST be present; O = MAY be present; — = MUST NOT be present (`warn`, igno
 | Sheet | `full` | `employees` | `requirements` | `training` |
 |---|---|---|---|---|
 | `_Contract` | R | R | R | R |
-| `Departments` | R | O | O | — |
-| `Job_Titles` | R | O | O | — |
+| `Departments` | R | — | — | — |
+| `Job_Titles` | R | — | — | — |
 | `Employees` | R | R | — | — |
 | `Courses` | R | — | O | O |
 | `Requirements` | R | — | R | — |
 | `Training_Records` | R | — | — | R |
 
-Every code used in a batch MUST exist either in the same batch or in the approved data (`REF_UNKNOWN`).
+Every code used in a batch MUST exist either in an allowed sheet in the same batch or in the approved data (`REF_UNKNOWN`). Only a `full` package may create or update `Departments` or `Job_Titles`; those sheets in a partial package produce `SHEET_UNEXPECTED` and are ignored.
 
 ## 2. Normalisation
 
@@ -111,7 +111,7 @@ Values such as `Yes`/`No`, statuses and types are matched case-insensitively and
 |---|---|---|
 | `job_title_code` | MUST | Key, unique in the organization |
 | `name_en`, `name_ar` | MUST | Display only; MAY repeat (the same title name can exist in several departments under different codes) |
-| `department_code` | MAY | Empty = usable in any department. If set, it MUST be a known department code; an employee or requirement combining this title with another department produces `JOB_TITLE_SCOPE` (`warn`) |
+| `department_code` | MAY | Empty = usable in any department. If set, it MUST be a known department code; an employee or requirement combining this title with another department produces `JOB_TITLE_SCOPE` (`block`) |
 | `active` | MUST | As for departments |
 
 Source and owner of both lists: decision H-03.
@@ -173,15 +173,15 @@ Engine mapping: `Mandatory` → engine `Mandatory = true`; `Recommended` → `Ma
 | `course_code` | MUST | Known course |
 | `completion_status` | MUST | `Completed` / `In Progress` / `Not Started` |
 | `completion_date` | MUST when `Completed` | Date, not after `extract_date`. On other statuses it is ignored (`DATES_ON_INCOMPLETE`) |
-| `expiry_date` | MUST when `Completed` and the applicable requirement has `validity_months` | Date after `completion_date`. Taken as given; MUST NOT be recalculated. On other statuses it is ignored |
+| `expiry_date` | MUST when `Completed` and the applicable requirement is `Mandatory` with `validity_months` | Date after `completion_date`. Taken as given; MUST NOT be recalculated. On other statuses it is ignored |
 | `certificate_number` | SHOULD when `Completed` | Not a key. Missing → `CERT_MISSING`; duplicate → `CERT_DUPLICATE` (both `warn`, decision T-06 may promote) |
 | `training_provider` | MAY | Text |
 | `remarks` | MAY | ≤ 500 characters |
 
-**Applicable requirement** for a record: the requirement for the employee's `(department_code, job_title_code)` and the record's `course_code` that is effective at the As Of Date (§5.4). If there is none, `COMPLETED_WITHOUT_EXPIRY` does not apply and the record is accepted as evidence without a compliance item.
+**Applicable requirement** for a record: the requirement for the employee's `(department_code, job_title_code)` and the record's `course_code` that is effective at the As Of Date (§5.4). `COMPLETED_WITHOUT_EXPIRY` applies only when that requirement is `Mandatory` and has `validity_months`. A `Recommended` or absent requirement does not block storage of the evidence. This is a current-state validation and does not claim which rule applied historically on the completion date.
 
 Status rules:
-- `Completed` without `expiry_date` while the applicable requirement has `validity_months` → `COMPLETED_WITHOUT_EXPIRY` (`block`, *default, decision T-07*). Reason: the current engine counts a completed record without expiry as `VALID` permanently.
+- `Completed` without `expiry_date` while the applicable requirement is `Mandatory` and has `validity_months` → `COMPLETED_WITHOUT_EXPIRY` (`block`, *default, decision T-07*). The preparation layer MUST repeat this check before every engine run; if the requirement becomes applicable after import, the record is excluded and the engine produces `MISSING` rather than permanent `VALID`.
 - `In Progress` and `Not Started` with a valid `source_record_id` MUST be accepted without dates or certificate number. The engine reports them `IN_PROGRESS` / `NOT_STARTED` (non-compliant, *default, decision T-04*).
 - A requirement with no record at all is reported `MISSING` by the engine; no row is needed for that.
 
@@ -231,7 +231,7 @@ Columns named (case-insensitive, any language variant agreed later) national ID,
 | `PACKAGE_TYPE` | block | `package_type` missing or unknown |
 | `CONTRACT_FIELD` | block | other `_Contract` field missing or invalid |
 | `SHEET_MISSING` | block | required sheet absent (names the sheet) |
-| `SHEET_UNEXPECTED` | warn | sheet not allowed for the package type, or unknown; ignored |
+| `SHEET_UNEXPECTED` | warn | sheet not allowed for the package type, or unknown; ignored. Partial packages cannot modify `Departments` or `Job_Titles` |
 | `COLUMN_MISSING` | block | required column absent (names `Sheet.Column`) |
 | `COLUMN_UNKNOWN` | warn | unknown column; ignored |
 | `FORBIDDEN_COLUMN` | block | §3.10 |
@@ -240,7 +240,7 @@ Columns named (case-insensitive, any language variant agreed later) national ID,
 | `KEY_PATTERN` | block | code or identifier fails its pattern |
 | `REF_UNKNOWN` | block | referenced code not in the batch nor in approved data |
 | `REF_INACTIVE_CODE` | block | inactive department or job title on an employee or a new requirement |
-| `JOB_TITLE_SCOPE` | warn | job title restricted to another department |
+| `JOB_TITLE_SCOPE` | block | job title restricted to another department |
 | `ORG_MISMATCH` | block | `organization_code` ≠ bound organization (§6) |
 | `ORG_NOT_LOADED` | block | non-`full` package while no organization is bound |
 | `DATE_INVALID` | block | §2.3 |
@@ -256,7 +256,7 @@ Columns named (case-insensitive, any language variant agreed later) national ID,
 | `REQ_VERSION_EXISTS` | block | same version date as the approved one, different content |
 | `REQ_ON_DERIVED` | block | production batch would sit on derived test requirements without replacing them (§5.5) |
 | `RECORD_IDENTITY_CHANGED` | block | §3.7 |
-| `COMPLETED_WITHOUT_EXPIRY` | block (default, T-07) | §3.6 |
+| `COMPLETED_WITHOUT_EXPIRY` | block (default, T-07) | current effective requirement is `Mandatory` with `validity_months`; see §3.6 |
 | `EXPIRY_VALIDITY_MISMATCH` | warn (T-03 may promote) | `expiry_date` ≠ `completion_date` + `validity_months` calendar months (day clamped to the last day of the month); the difference in days is shown per row and as a distribution |
 | `CERT_MISSING` | warn (T-06) | completed record without certificate number |
 | `CERT_DUPLICATE` | warn (T-06) | same certificate number on two records |
@@ -381,7 +381,7 @@ The preparation layer MUST be the only producer of engine input for this contrac
 Additional rules:
 - The approved employee list MUST be passed as the engine's employee list.
 - Only non-voided record versions (latest version per key) are passed.
-- A `Completed` record without `expiry_date` whose applicable requirement has `validity_months` MUST NOT be passed (checked again here even though validation blocks it).
+- Before every run, a `Completed` record without `expiry_date` whose current applicable requirement is `Mandatory` with `validity_months` MUST NOT be passed. The engine therefore produces `MISSING`; this also protects records stored before the requirement became applicable. `Recommended` or absent requirements do not block storing the evidence.
 - Screens, filters and exports MUST show names looked up by code; a missing name shows the code and a preview warning.
 
 ## 9. Examples (fictional)

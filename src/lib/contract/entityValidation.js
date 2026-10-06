@@ -11,6 +11,11 @@
  *   or CSV reading, no staging, no diff, no UI and no engine call.
  * - `RECORD_IDENTITY_CHANGED` (§3.7) compares a batch with approved records and
  *   is not implemented here.
+ * - The duplicate checks of `badge_number`, of the certificate number and of
+ *   the record fingerprint currently look inside one batch only. Comparing a
+ *   batch against the already approved data is added in Commit 6.
+ *   `approvedEmployees` is the one exception: it is read to tell an unchanged
+ *   historical reference from a new move to an inactive code.
  * - Issues carry a code, a severity, the sheet, the row number, the field name
  *   and numbers only (§4.1).
  */
@@ -100,6 +105,12 @@ export function buildEmployeeIndex(rows) {
  * Context:
  * - `extractDate`, `asOfDate`: date limits (§2.3, §4).
  * - `departments`, `jobTitles`: normalised reference rows, approved rows first.
+ * - `approvedEmployees`: the employees already approved, matched by
+ *   `employee_code` exactly. An employee who already carries an inactive
+ *   `department_code` or `job_title_code` MAY keep that same code, because the
+ *   history of an approved employee is not rewritten by a deactivation. Moving
+ *   to a different inactive code stays blocked, and an unknown code is always
+ *   blocked.
  * - `employeeCodePattern` MAY override the organization pattern (decision H-01).
  * - `columns` MAY declare the header of an empty sheet.
  *
@@ -119,6 +130,7 @@ export function validateEmployees(inputRows, context = {}) {
   const departmentIndex = buildCodeIndex(context.departments, 'department_code');
   const jobTitleIndex = buildJobTitleIndex(context.jobTitles);
   const jobTitleCodes = buildCodeIndex(context.jobTitles, 'job_title_code');
+  const approvedEmployees = buildEmployeeIndex(context.approvedEmployees);
   const patterns = {
     employee_code: context.employeeCodePattern
       ? new RegExp(context.employeeCodePattern)
@@ -168,11 +180,16 @@ export function validateEmployees(inputRows, context = {}) {
 
     checkDateLimits(sheet, row, limits, rowIssues);
 
+    // An approved employee keeps an inactive code that it already carried; only
+    // a move to a different inactive code is blocked.
+    const approved = code ? approvedEmployees.get(code) : undefined;
+    const unchanged = (field) => approved !== undefined && approved[field] === row[field];
+
     if (row.department_code) {
       const department = resolveCode(row.department_code, departmentIndex, { requireActive: true });
       if (!department.known) {
         rowIssues.push(issue('REF_UNKNOWN', sheet, rowNumber, 'department_code'));
-      } else if (!department.active) {
+      } else if (!department.active && !unchanged('department_code')) {
         rowIssues.push(issue('REF_INACTIVE_CODE', sheet, rowNumber, 'department_code'));
       }
     }
@@ -182,7 +199,7 @@ export function validateEmployees(inputRows, context = {}) {
       if (!title.known) {
         rowIssues.push(issue('REF_UNKNOWN', sheet, rowNumber, 'job_title_code'));
       } else {
-        if (!title.active) {
+        if (!title.active && !unchanged('job_title_code')) {
           rowIssues.push(issue('REF_INACTIVE_CODE', sheet, rowNumber, 'job_title_code'));
         }
         const scope = checkJobTitleScope(

@@ -246,6 +246,76 @@ describe('Employees: references and scope', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('keeps an unchanged inactive reference of an already approved employee', () => {
+    const approvedEmployees = [
+      { employee_code: 'TST-0001', department_code: 'OLD', job_title_code: 'RET' },
+    ];
+    const result = validateEmployees(
+      [employeeRow('TST-0001', { department_code: 'OLD', job_title_code: 'RET' })],
+      employeeContext({ approvedEmployees }),
+    );
+    expect(result.ok).toBe(true);
+    expect(codes(result)).not.toContain('REF_INACTIVE_CODE');
+    expect(result.rows).toHaveLength(1);
+  });
+
+  it('blocks an approved employee moving to a different inactive code', () => {
+    const approvedEmployees = [
+      { employee_code: 'TST-0001', department_code: 'OPS', job_title_code: 'OPR' },
+    ];
+    const result = validateEmployees(
+      [employeeRow('TST-0001', { department_code: 'OLD', job_title_code: 'RET' })],
+      employeeContext({ approvedEmployees }),
+    );
+    expect(result.ok).toBe(false);
+    expect(of(result, 'REF_INACTIVE_CODE').map((entry) => entry.field)).toEqual([
+      'department_code',
+      'job_title_code',
+    ]);
+  });
+
+  it('blocks a new employee that uses an inactive code', () => {
+    const approvedEmployees = [
+      { employee_code: 'TST-0002', department_code: 'OLD', job_title_code: 'RET' },
+    ];
+    const result = validateEmployees(
+      [employeeRow('TST-0001', { department_code: 'OLD', job_title_code: 'RET' })],
+      employeeContext({ approvedEmployees }),
+    );
+    expect(result.ok).toBe(false);
+    expect(of(result, 'REF_INACTIVE_CODE')).toHaveLength(2);
+  });
+
+  it('matches approvedEmployees on employee_code exactly', () => {
+    const approvedEmployees = [
+      { employee_code: 'TST-0001', department_code: 'OLD', job_title_code: 'RET' },
+    ];
+    // A different letter case is a different employee, so the exemption does
+    // not apply.
+    const result = validateEmployees(
+      [employeeRow('tst-0001', { department_code: 'OLD', job_title_code: 'RET' })],
+      employeeContext({ approvedEmployees }),
+    );
+    expect(result.ok).toBe(false);
+    expect(of(result, 'REF_INACTIVE_CODE')).toHaveLength(2);
+  });
+
+  it('never exempts an unknown code', () => {
+    const approvedEmployees = [
+      { employee_code: 'TST-0001', department_code: 'GONE', job_title_code: 'NONE' },
+    ];
+    const result = validateEmployees(
+      [employeeRow('TST-0001', { department_code: 'GONE', job_title_code: 'NONE' })],
+      employeeContext({ approvedEmployees }),
+    );
+    expect(result.ok).toBe(false);
+    expect(of(result, 'REF_UNKNOWN').map((entry) => entry.field)).toEqual([
+      'department_code',
+      'job_title_code',
+    ]);
+    expect(codes(result)).not.toContain('REF_INACTIVE_CODE');
+  });
+
   it('resolves a lower-case reference code against the approved list', () => {
     const result = validateEmployees(
       [employeeRow('TST-0001', { department_code: 'ops', job_title_code: 'opr' })],
@@ -654,10 +724,15 @@ describe('Fingerprint (§3.8)', () => {
     expect(await fingerprintRecord(record)).toBe(fingerprint);
   });
 
-  it('is stable for the known canonical input', async () => {
-    // SHA-256 of the canonical JSON above, computed by the same algorithm the
-    // contract names; a change here means the canonical form changed.
-    const expected = await fingerprintRecord(record);
+  it('matches a fixed test vector', async () => {
+    // Independent vector: SHA-256 of the canonical string below, taken from a
+    // separate implementation. It is written literally on purpose, so that a
+    // change of the canonical form or of the hash makes this test fail.
+    const canonical =
+      '["fp1","TST-0001","H2S-01","Completed","2026-01-15","2028-01-15","TST-CERT-1"]';
+    const expected = 'fp1:5cbe4a82e14bc6a3d5c6f8a307c5cc0a16ec45c7f118b64382028a9f5087badd';
+    expect(fingerprintCanonical(record)).toBe(canonical);
+    expect(await fingerprintRecord(record)).toBe(expected);
     expect(await fingerprintRecord({ ...record, certificate_number: 'TST-CERT-1' })).toBe(expected);
   });
 

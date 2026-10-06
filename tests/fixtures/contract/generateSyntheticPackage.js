@@ -178,6 +178,10 @@ export function generateSyntheticFullPackage({
   requirementsEffectiveFrom = FIXED_DATES.requirementsEffectiveFrom,
 } = {}) {
   const random = createRandom(seed);
+  // Dates that must sit before the extract date are derived from the arguments,
+  // so a package generated for another As Of Date stays internally consistent.
+  const approvedOn = addDays(requirementsEffectiveFrom, -15);
+  const statusEffectiveDate = addDays(asOfDate, -90);
 
   const departments = DEPARTMENT_CODES.map((code) => ({
     department_code: code,
@@ -217,7 +221,7 @@ export function generateSyntheticFullPackage({
           effective_to: '',
           approval_reference: 'TRN-DEC-0001',
           approved_by_role: 'Training Manager',
-          approved_on: FIXED_DATES.approvedOn,
+          approved_on: approvedOn,
           source: 'approved',
         });
       }
@@ -260,8 +264,8 @@ export function generateSyntheticFullPackage({
       department_code: department,
       job_title_code: title,
       employment_status: employmentStatus,
-      status_effective_date: employmentStatus === 'Active' ? '' : '2026-12-31',
-      hire_date: addDays('2020-01-01', (index * 7) % 1800),
+      status_effective_date: employmentStatus === 'Active' ? '' : statusEffectiveDate,
+      hire_date: addDays(asOfDate, -(400 + ((index * 7) % 1800))),
       site_code: `SITE-${(index % 3) + 1}`,
     });
 

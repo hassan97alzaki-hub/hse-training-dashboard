@@ -36,7 +36,7 @@ export default function PriorityActions({ actions, t, lang }) {
                 <span className={`status-badge ${a.Status}`}>{a.Status.replace(/_/g, ' ')}</span>
               </div>
               <div className="priority-row-meta">
-                {a.Employee_ID} · {a.Department} · {a.Course_Code} — {a.Course_Name}
+                {a.Employee_ID} · {a.Department_Name ?? a.Department} · {a.Course_Code} — {a.Course_Name}
                 {a.Expiry_Date ? ` · ${t('expiryDate')}: ${a.Expiry_Date}` : ''}
               </div>
             </div>

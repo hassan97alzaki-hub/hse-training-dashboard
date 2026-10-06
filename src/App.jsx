@@ -11,6 +11,13 @@ import {
   convertMatrixWorkbook, compareSourceStatus, toImportResult,
 } from './lib/matrixWorkbook.js';
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
+import { defaultBatchId, defaultApprovedAt } from './lib/localBatch.js';
+import { createApprovedState, clearOrganizationBinding } from './lib/contract/staging.js';
+import {
+  readProductionWorkbook, isProductionPackage, validateProductionPackage,
+  buildProductionPreview, approveProductionPackage,
+  projectForDisplay, projectEmployeesForDisplay,
+} from './lib/contract/productionPackage.js';
 
 import Header from './components/Header.jsx';
 import ImportPanel from './components/ImportPanel.jsx';
@@ -22,6 +29,7 @@ import { DeptComplianceChart, StatusBreakdownChart, CourseComplianceChart } from
 import PriorityActions from './components/PriorityActions.jsx';
 import DataQualityPanel from './components/DataQualityPanel.jsx';
 import MatrixImportPreview from './components/MatrixImportPreview.jsx';
+import ProductionPackagePreview from './components/ProductionPackagePreview.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -31,7 +39,7 @@ const EMPTY_FILTERS = {
   course: '', status: '', employmentStatus: '', priority: '',
 };
 
-export default function App() {
+export default function App({ now = defaultApprovedAt, newBatchId = defaultBatchId } = {}) {
   const [lang, setLang] = useState('en');
   const i18n = useMemo(() => createI18n(lang), [lang]);
   const t = i18n.t;
@@ -55,6 +63,13 @@ export default function App() {
   // Employee master list (three-sheet workbook only). null = derive employees
   // from training records, the original behaviour.
   const [employeeMaster, setEmployeeMaster] = useState(null);
+  // Local Mode approved data of HSE-DC-1.0 packages, and the pending preview.
+  const [approvedState, setApprovedState] = useState(() => createApprovedState());
+  const [productionPreview, setProductionPreview] = useState(null);
+  const [approverRole, setApproverRole] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+  // Code → display name lookups of the approved production data.
+  const [displayLookups, setDisplayLookups] = useState(null);
 
   const complianceResult = useMemo(() => {
     if (trainingRecords.length === 0 && !employeeMaster?.length) return null;
@@ -75,24 +90,75 @@ export default function App() {
     return getPriorityActions(complianceResult.universe);
   }, [complianceResult]);
 
+  // Display projection: codes stay the matching keys inside the engine; the
+  // names are added afterwards, in the language of the interface.
+  const displayUniverse = useMemo(
+    () => projectForDisplay(complianceResult?.universe ?? [], displayLookups, lang),
+    [complianceResult, displayLookups, lang],
+  );
+  const displayInactiveUniverse = useMemo(
+    () => projectForDisplay(complianceResult?.inactiveUniverse ?? [], displayLookups, lang),
+    [complianceResult, displayLookups, lang],
+  );
+  const displayUnconfigured = useMemo(
+    () => projectEmployeesForDisplay(complianceResult?.unconfiguredEmployees ?? [], displayLookups, lang),
+    [complianceResult, displayLookups, lang],
+  );
+  const displayKpis = useMemo(() => {
+    if (!kpis || !displayLookups) return kpis;
+    const name = (lookup, code) => {
+      const row = lookup?.get(code);
+      if (!row) return code;
+      const value = lang === 'ar' ? row.name_ar || row.name_en : row.name_en || row.name_ar;
+      return value || code;
+    };
+    return {
+      ...kpis,
+      departmentCompliance: kpis.departmentCompliance.map((entry) => ({
+        ...entry,
+        department_code: entry.department,
+        department: name(displayLookups.departments, entry.department),
+      })),
+      courseCompliance: kpis.courseCompliance.map((entry) => ({
+        ...entry,
+        course_name: name(displayLookups.courses, entry.course_code) || entry.course_name,
+      })),
+    };
+  }, [kpis, displayLookups, lang]);
+  const displayPriorityActions = useMemo(
+    () => projectForDisplay(priorityActions, displayLookups, lang),
+    [priorityActions, displayLookups, lang],
+  );
+
   const filterOptions = useMemo(() => {
     if (!complianceResult) return {};
-    const universe = complianceResult.universe;
+    const universe = displayUniverse;
     const departments = [...new Set(universe.map(i => i.Department).filter(Boolean))].sort();
     const jobTitles = [...new Set(universe.map(i => i.Job_Title).filter(Boolean))].sort();
     const courseSet = new Map();
     for (const i of universe) if (i.Course_Code) courseSet.set(i.Course_Code, i.Course_Name);
     const courses = [...courseSet.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code));
-    return { departments, jobTitles, courses };
-  }, [complianceResult]);
+    const departmentNames = new Map(universe.map(i => [i.Department, i.Department_Name ?? i.Department]));
+    const jobTitleNames = new Map(universe.map(i => [i.Job_Title, i.Job_Title_Name ?? i.Job_Title]));
+    return { departments, jobTitles, courses, departmentNames, jobTitleNames };
+  }, [complianceResult, displayUniverse]);
 
   const showBanner = useCallback((type, title, lines = []) => {
     setImportBanner({ type, title, lines });
   }, []);
 
+  /** Any legacy path drops the production binding first (§6). */
+  function clearProductionBinding() {
+    setApprovedState((state) => clearOrganizationBinding(state));
+    setProductionPreview(null);
+    setDisplayLookups(null);
+    setApproverRole('');
+  }
+
   async function handleLoadDemo() {
     setIsLoading(true);
     setImportBanner(null);
+    clearProductionBinding();
     try {
       const { trainingResult, reqResult } = await loadDemoDataFromPublic();
       if (trainingResult.success) {
@@ -120,8 +186,26 @@ export default function App() {
     setIsLoading(true);
     setImportBanner(null);
     setMatrixPreview(null);
+    setProductionPreview(null);
     try {
       if (/\.xlsx?$/i.test(file.name)) {
+        // 1. HSE-DC-1.0 production package.
+        const parsed = await readProductionWorkbook(file);
+        if (isProductionPackage(parsed)) {
+          const previewAsOf = getRuntimeAsOfDate();
+          const validated = await validateProductionPackage(parsed, { approvedState, asOfDate: previewAsOf });
+          const metadata = {
+            batchId: newBatchId(),
+            preparedByRole: validated.contract.prepared_by_role ?? '',
+            approvedByRole: approverRole || 'pending',
+            approvedAt: now(),
+          };
+          const preview = await buildProductionPreview(validated, { approvedState, approvalMetadata: metadata });
+          setProductionPreview({ ...preview, fileName: file.name, batchId: metadata.batchId, asOfDate: previewAsOf });
+          return;
+        }
+
+        // 2. Legacy three-sheet Training Matrix workbook.
         const workbook = await readWorkbookFromFile(file);
         if (looksLikeMatrixWorkbook(workbook)) {
           const conversion = convertMatrixWorkbook(readMatrixSheets(workbook));
@@ -132,9 +216,12 @@ export default function App() {
             comparison = compareSourceStatus(conversion.sourceStatuses, cr.universe);
           }
           setMatrixPreview({ conversion, comparison, asOfDate: previewAsOf, fileName: file.name });
+          clearProductionBinding();
           return;
         }
       }
+      // 3. Legacy CSV / XLSX path.
+      clearProductionBinding();
       const result = await importTrainingFile(file);
       if (result.success) {
         setLastImportResult(result);
@@ -176,9 +263,56 @@ export default function App() {
     setMatrixPreview(null);
   }
 
+  async function handleApproveProductionPackage() {
+    if (!productionPreview || isApplying) return;
+    setIsApplying(true);
+    try {
+      const metadata = {
+        batchId: productionPreview.batchId,
+        preparedByRole: productionPreview.validated.contract.prepared_by_role ?? '',
+        approvedByRole: approverRole.trim(),
+        approvedAt: now(),
+      };
+      const result = await approveProductionPackage(approvedState, productionPreview.validated, metadata);
+      if (!result.ok) {
+        showBanner('error', t('ppBlockedNote'), [
+          `${t('ppBlocks')}: ${result.plan.counts.blocking}`,
+        ]);
+        setProductionPreview({ ...productionPreview, plan: result.plan, impact: { ...productionPreview.impact, after: null } });
+        return;
+      }
+
+      setApprovedState(result.state);
+      setDisplayLookups(result.view.prepared.lookups);
+      setEmployeeMaster(result.view.prepared.employees);
+      setTrainingRecords(result.view.prepared.records);
+      setRequirements(result.view.prepared.requirements);
+      setSourceFileName(productionPreview.fileName);
+      setAsOfDate(productionPreview.asOfDate);
+      setLastImportResult(null);
+      setLastRefresh(new Date().toLocaleString());
+      setProductionPreview(null);
+
+      const counts = result.plan.counts;
+      const sum = (suffix) => Object.entries(counts)
+        .filter(([key]) => key.endsWith(suffix))
+        .reduce((total, [, value]) => total + value, 0);
+      showBanner('success', t('ppApprovedTitle'), [
+        `${sum('.new')} ${t('ppApprovedRows')} · ${sum('.changed')} ${t('ppApprovedChanged')} · ${sum('.unchanged')} ${t('ppApprovedUnchanged')}`,
+        `${t('ppOrgBound')}: ${result.state.organizationCode}`,
+      ]);
+    } catch (e) {
+      showBanner('error', t('importError'), [e.message]);
+    } finally {
+      setIsApplying(false);
+    }
+  }
+
   async function handleRequirementsImport(file) {
     setIsLoading(true);
     setImportBanner(null);
+    // A legacy path never sits on approved production data (§6).
+    clearProductionBinding();
     try {
       const result = await importRequirementsFile(file);
       if (result.success) {
@@ -226,6 +360,7 @@ export default function App() {
     setImportBanner({ type: 'success', title: t('dataReset'), lines: [] });
     setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null); setMatrixPreview(null);
     setEmployeeMaster(null);
+    clearProductionBinding();
     setAsOfDate(getRuntimeAsOfDate());
   }
 
@@ -255,6 +390,19 @@ export default function App() {
           isLoading={isLoading} importBanner={importBanner}
         />
 
+        {productionPreview && (
+          <ProductionPackagePreview
+            preview={productionPreview}
+            fileName={productionPreview.fileName}
+            approverRole={approverRole}
+            onApproverRoleChange={setApproverRole}
+            onApprove={handleApproveProductionPackage}
+            onCancel={() => setProductionPreview(null)}
+            isApplying={isApplying}
+            t={t}
+          />
+        )}
+
         {matrixPreview && (
           <MatrixImportPreview
             preview={matrixPreview} t={t}
@@ -277,18 +425,18 @@ export default function App() {
         {hasData && (
           <>
             <ExecutiveSummary
-              kpis={kpis}
+              kpis={displayKpis}
               priorityActions={priorityActions}
               duplicateCount={complianceResult?.duplicates?.length || 0}
               t={t}
             />
 
-            <KpiCards kpis={kpis} t={t} />
+            <KpiCards kpis={displayKpis} t={t} />
 
             <div className="charts-grid">
               <div className="chart-wrap">
                 <div className="chart-title">{t('deptComplianceTitle')}</div>
-                <DeptComplianceChart data={kpis?.departmentCompliance} t={t} lang={lang} />
+                <DeptComplianceChart data={displayKpis?.departmentCompliance} t={t} lang={lang} />
               </div>
               <div className="chart-wrap">
                 <div className="chart-title">{t('statusBreakdownTitle')}</div>
@@ -300,7 +448,7 @@ export default function App() {
               <div className="section-header">
                 <span className="section-title">{t('courseComplianceTitle')}</span>
               </div>
-              <CourseComplianceChart data={kpis?.courseCompliance} t={t} lang={lang} />
+              <CourseComplianceChart data={displayKpis?.courseCompliance} t={t} lang={lang} />
             </div>
 
             <div className="section">
@@ -320,8 +468,8 @@ export default function App() {
                 onClear={() => setFilters(EMPTY_FILTERS)}
               />
               <ComplianceTable
-                universe={complianceResult?.universe || []}
-                inactiveUniverse={complianceResult?.inactiveUniverse || []}
+                universe={displayUniverse}
+                inactiveUniverse={displayInactiveUniverse}
                 filters={filters} t={t} lang={lang} showInactive={showInactive}
               />
             </div>
@@ -333,7 +481,7 @@ export default function App() {
                   <span className="badge-count" style={{ background: '#dc2626' }}>{priorityActions.length}</span>
                 )}
               </div>
-              <PriorityActions actions={priorityActions} t={t} lang={lang} />
+              <PriorityActions actions={displayPriorityActions} t={t} lang={lang} />
             </div>
 
             <div className="section">
@@ -368,12 +516,12 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {complianceResult.unconfiguredEmployees.map((emp, i) => (
+                      {displayUnconfigured.map((emp, i) => (
                         <tr key={i}>
                           <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{emp.Employee_ID}</td>
                           <td>{emp.Employee_Name}</td>
-                          <td>{emp.Department}</td>
-                          <td>{emp.Job_Title}</td>
+                          <td>{emp.Department_Name ?? emp.Department}</td>
+                          <td>{emp.Job_Title_Name ?? emp.Job_Title}</td>
                         </tr>
                       ))}
                     </tbody>

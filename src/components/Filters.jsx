@@ -61,14 +61,14 @@ export default function Filters({ filters, options, t, onChange, onClear }) {
                 <label className="filter-label">{t('filterDepartment')}</label>
                 <select className="filter-select" value={filters.department} onChange={e => onChange('department', e.target.value)}>
                   <option value="">{t('allDepartments')}</option>
-                  {(options.departments || []).map(d => <option key={d} value={d}>{d}</option>)}
+                  {(options.departments || []).map(d => <option key={d} value={d}>{options.departmentNames?.get(d) ?? d}</option>)}
                 </select>
               </div>
               <div className="filter-group">
                 <label className="filter-label">{t('filterJobTitle')}</label>
                 <select className="filter-select" value={filters.jobTitle} onChange={e => onChange('jobTitle', e.target.value)}>
                   <option value="">{t('allJobTitles')}</option>
-                  {(options.jobTitles || []).map(j => <option key={j} value={j}>{j}</option>)}
+                  {(options.jobTitles || []).map(j => <option key={j} value={j}>{options.jobTitleNames?.get(j) ?? j}</option>)}
                 </select>
               </div>
               <div className="filter-group">

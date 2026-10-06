@@ -20,6 +20,13 @@ import * as XLSX from 'xlsx';
 import { generateSyntheticFullPackage, DEFAULT_SEED } from '../tests/fixtures/contract/generateSyntheticPackage.js';
 import { runSyntheticPipeline, summarise, blocking } from '../tests/fixtures/contract/runSyntheticPipeline.js';
 import { buildWorkbook, SHEET_ORDER } from './generate-contract-workbook.mjs';
+import { createApprovedState } from '../src/lib/contract/staging.js';
+import {
+  readProductionWorkbook,
+  validateProductionPackage,
+  buildProductionPreview,
+  approveProductionPackage,
+} from '../src/lib/contract/productionPackage.js';
 
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -42,11 +49,16 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const samples = { generation: [], workbook: [], validation: [], staging: [], apply: [], preparation: [], engine: [], kpis: [], total: [] };
+  const samples = {
+    generation: [], workbook: [], validation: [], staging: [], apply: [], preparation: [], engine: [], kpis: [], total: [],
+    // The production entry: the same bytes read back through the real parser.
+    productionParse: [], productionValidate: [], productionPreview: [], productionApprove: [], productionTotal: [],
+  };
   const heapBefore = process.memoryUsage().heapUsed;
   let lastSummary = null;
   let lastRowCounts = null;
   let lastResult = null;
+  let lastProduction = null;
 
   for (let run = 0; run < args.runs; run += 1) {
     const totalStart = performance.now();
@@ -71,6 +83,34 @@ async function main() {
     samples.total.push(performance.now() - totalStart);
     lastSummary = summarise(result);
     lastResult = result;
+
+    // The production path: XLSX buffer -> parser -> validators -> staging ->
+    // preparation -> engine, exactly as the interface runs it.
+    const productionStart = performance.now();
+    const parseStart = performance.now();
+    const parsed = await readProductionWorkbook(buffer);
+    samples.productionParse.push(performance.now() - parseStart);
+
+    const state = createApprovedState();
+    const validateStart = performance.now();
+    const validated = await validateProductionPackage(parsed, { approvedState: state, asOfDate: pkg.asOfDate });
+    samples.productionValidate.push(performance.now() - validateStart);
+
+    const metadata = {
+      batchId: `MEASURE-${args.seed}-${run}`,
+      preparedByRole: 'Training Coordinator',
+      approvedByRole: 'Training Manager',
+      approvedAt: '2027-01-11T08:00:00.000Z',
+    };
+    const previewStart = performance.now();
+    const preview = await buildProductionPreview(validated, { approvedState: state, approvalMetadata: metadata });
+    samples.productionPreview.push(performance.now() - previewStart);
+
+    const approveStart = performance.now();
+    const approved = await approveProductionPackage(state, validated, metadata);
+    samples.productionApprove.push(performance.now() - approveStart);
+    samples.productionTotal.push(performance.now() - productionStart);
+    lastProduction = { validated, preview, approved };
   }
 
   const heapAfter = process.memoryUsage().heapUsed;
@@ -96,6 +136,12 @@ async function main() {
   for (const [name, values] of Object.entries(samples)) {
     if (values.length > 0) console.log(`    ${name.padEnd(19)} ${ms(median(values))}`);
   }
+  console.log('');
+  console.log('  Production entry (XLSX buffer -> parser -> validators -> staging -> preparation -> engine)');
+  console.log(`    blocking issues:    ${lastProduction.validated.counts.blocking}`);
+  console.log(`    accepted rows:      ${lastProduction.validated.counts.accepted}`);
+  console.log(`    compliance items:   ${lastProduction.approved.view.compliance.universe.length}`);
+  console.log(`    requirement compl.: ${lastProduction.approved.view.kpis.requirementCompliance}%`);
   console.log('');
   console.log(`  heap used before: ${mb(heapBefore)}`);
   console.log(`  heap used after:  ${mb(heapAfter)}`);

@@ -89,8 +89,8 @@ export default function ComplianceTable({
                 <tr key={i}>
                   <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{item.Employee_ID}</td>
                   <td>{item.Employee_Name}</td>
-                  <td>{item.Department}</td>
-                  <td>{item.Job_Title}</td>
+                  <td title={item.Department_Code ?? item.Department}>{item.Department_Name ?? item.Department}</td>
+                  <td title={item.Job_Title_Code ?? item.Job_Title}>{item.Job_Title_Name ?? item.Job_Title}</td>
                   <td title={item.Course_Name}>{item.Course_Code} — {item.Course_Name}</td>
                   <td><StatusBadge status={item.Status} /></td>
                   <td style={{ fontFamily: 'monospace', fontSize: 11 }}>

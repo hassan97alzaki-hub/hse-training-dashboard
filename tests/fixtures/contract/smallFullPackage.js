@@ -117,9 +117,10 @@ export const smallFullPackage = Object.freeze({
       source: 'approved',
     },
   ]),
+  // `source_system` is a `_Contract` field, so the sheet carries no column of
+  // that name (a column would be reported as unknown and ignored).
   trainingRecords: Object.freeze([
     {
-      source_system: 'TEST-LMS',
       source_record_id: 'TR-000001',
       employee_code: 'TST-0001',
       course_code: 'H2S-01',
@@ -131,7 +132,6 @@ export const smallFullPackage = Object.freeze({
       remarks: '',
     },
     {
-      source_system: 'TEST-LMS',
       source_record_id: 'TR-000002',
       employee_code: 'TST-0003',
       course_code: 'H2S-01',

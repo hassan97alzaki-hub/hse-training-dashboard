@@ -9,6 +9,9 @@ import {
   DEFAULT_APPROVED_BASES,
   DEFAULT_ALLOWED_CONTACT_STATUSES,
   ALERT_WINDOW_DAYS,
+  NEVER_ELIGIBLE_BASES,
+  hasUsableEmail,
+  hasUsablePhone,
 } from '../src/lib/contract/contactEligibility.js';
 import {
   validateContactPackage,
@@ -97,6 +100,28 @@ describe('the default policy counts nothing (P-01 pending)', () => {
       });
       expect(result, JSON.stringify(policy)).toEqual({ email: 0, whatsapp: 0 });
     }
+  });
+
+  it('keeps not_defined out of the count even when a caller lists it', () => {
+    expect(NEVER_ELIGIBLE_BASES).toEqual([UNDEFINED_BASIS]);
+    const row = contact('TST-0001', {
+      communication_authorization_basis: UNDEFINED_BASIS,
+      authorization_reference: 'PRV-DEC-0001',
+      authorization_recorded_at: '2026-12-01',
+    });
+    for (const approvedBases of [[UNDEFINED_BASIS], [UNDEFINED_BASIS, 'consent']]) {
+      expect(
+        count({ contacts: [row], authorizationPolicy: { approvedBases } }),
+        JSON.stringify(approvedBases),
+      ).toEqual({ email: 0, whatsapp: 0 });
+    }
+    // Another basis of the same explicit policy is unaffected.
+    expect(
+      count({
+        contacts: [contact('TST-0001')],
+        authorizationPolicy: { approvedBases: [UNDEFINED_BASIS, 'consent'] },
+      }),
+    ).toEqual({ email: 1, whatsapp: 1 });
   });
 
   it('stays 0 for a package that passed validation with not_defined', () => {
@@ -212,13 +237,60 @@ describe('eligibility conditions', () => {
       email: 0,
       whatsapp: 0,
     });
-    // A policy that does not require evidence is a decision of its own.
+    // Evidence cannot be switched off: a legacy requireEvidence flag is ignored.
     expect(
       count({
         contacts: [contact('TST-0001', { authorization_reference: '', authorization_recorded_at: '' })],
         authorizationPolicy: { approvedBases: ['consent'], requireEvidence: false },
       }),
+    ).toEqual({ email: 0, whatsapp: 0 });
+    // With the evidence present the same policy counts.
+    expect(
+      count({ authorizationPolicy: { approvedBases: ['consent'], requireEvidence: false } }),
     ).toEqual({ email: 1, whatsapp: 1 });
+  });
+
+  it('refuses a channel value that does not match its pattern', () => {
+    for (const email of ['bad', 'a@b', 'no-at-sign', ' ', 'TST@', 42, null]) {
+      expect(count({ contacts: [contact('TST-0001', { email })] }), String(email)).toMatchObject({
+        email: 0,
+      });
+    }
+    for (const phone of [
+      'bad',
+      '+999 00000001',
+      '+999-00000001',
+      '(+999)00000001',
+      '999000000001',
+      '+0990000001',
+      '+99900',
+      42,
+      null,
+    ]) {
+      expect(count({ contacts: [contact('TST-0001', { phone_e164: phone })] }), String(phone)).toMatchObject(
+        { whatsapp: 0 },
+      );
+    }
+  });
+
+  it('counts the other channel when one channel value is unusable', () => {
+    expect(count({ contacts: [contact('TST-0001', { email: 'bad' })] })).toEqual({
+      email: 0,
+      whatsapp: 1,
+    });
+    expect(count({ contacts: [contact('TST-0001', { phone_e164: '+999 00000001' })] })).toEqual({
+      email: 1,
+      whatsapp: 0,
+    });
+  });
+
+  it('uses the same patterns as the validator', () => {
+    expect(hasUsableEmail({ email: 'test.one@example.invalid' })).toBe(true);
+    expect(hasUsableEmail({ email: 'bad' })).toBe(false);
+    expect(hasUsableEmail({})).toBe(false);
+    expect(hasUsablePhone({ phone_e164: '+999000000001' })).toBe(true);
+    expect(hasUsablePhone({ phone_e164: '+999 00000001' })).toBe(false);
+    expect(hasUsablePhone({})).toBe(false);
   });
 
   it('ignores a contact without an employee_code', () => {

@@ -109,6 +109,32 @@ describe('contact package: _Contract', () => {
     });
   });
 
+  it('refuses an organization_code that is not a reference code', () => {
+    for (const bad of ['@@', 'A', 'O'.repeat(21), 'TST ORG', 'TST.ORG', 'org/1']) {
+      // Even when the bound organization carries the same text, the code must
+      // match the reference pattern first.
+      const result = run({
+        contract: contract({ organization_code: bad }),
+        boundOrganizationCode: bad,
+      });
+      expect(of(result, 'KEY_PATTERN')[0], bad).toMatchObject({
+        sheet: '_Contract',
+        field: 'organization_code',
+        severity: SEVERITY.BLOCK,
+      });
+      expect(result.ok, bad).toBe(false);
+    }
+  });
+
+  it('accepts a valid code and matches it after upper-casing', () => {
+    expect(run({ contract: contract({ organization_code: 'TST-ORG' }) }).ok).toBe(true);
+    expect(run({ contract: contract({ organization_code: 'tst-org' }) }).ok).toBe(true);
+    expect(
+      run({ contract: contract({ organization_code: 'tst-org' }), boundOrganizationCode: 'TST-ORG' }).ok,
+    ).toBe(true);
+    expect(run({ contract: contract({ organization_code: 'AB' }), boundOrganizationCode: 'ab' }).ok).toBe(true);
+  });
+
   it('refuses an invalid or future extract_date', () => {
     for (const bad of ['10/01/2027', '2027-02-30', 'soon']) {
       expect(of(run({ contract: contract({ extract_date: bad }) }), 'DATE_INVALID')[0], bad).toMatchObject({
@@ -145,6 +171,76 @@ describe('contact package: _Contract', () => {
     expect(of(mixed, 'SHEET_UNEXPECTED')[0].severity).toBe(SEVERITY.WARN);
     expect(mixed.ok).toBe(true);
     expect(mixed.rows).toHaveLength(1);
+  });
+});
+
+describe('contact package: structure', () => {
+  it('refuses a package without a usable sheet list', () => {
+    for (const sheetNames of [undefined, null, 'Contacts', 42, {}]) {
+      const result = run({ sheetNames });
+      expect(result.ok, String(sheetNames)).toBe(false);
+      expect(of(result, 'SHEET_MISSING').map((entry) => entry.sheet), String(sheetNames)).toEqual([
+        '_Contract',
+        'Contacts',
+      ]);
+    }
+  });
+
+  it('refuses a package without _Contract', () => {
+    const result = run({ sheetNames: ['Contacts'] });
+    expect(result.ok).toBe(false);
+    expect(of(result, 'SHEET_MISSING').map((entry) => entry.sheet)).toEqual(['_Contract']);
+  });
+
+  it('refuses a package without Contacts and does not report its columns', () => {
+    const result = run({ sheetNames: ['_Contract'], contacts: [] });
+    expect(result.ok).toBe(false);
+    expect(of(result, 'SHEET_MISSING').map((entry) => entry.sheet)).toEqual(['Contacts']);
+    // No column noise for a sheet that is not there.
+    expect(codes(result)).not.toContain('COLUMN_MISSING');
+  });
+
+  it('accepts an empty Contacts sheet that declares a complete header', () => {
+    const header = [
+      'employee_code',
+      'email',
+      'phone_e164',
+      'preferred_language',
+      'email_allowed',
+      'whatsapp_allowed',
+      'communication_authorization_basis',
+      'authorization_reference',
+      'authorization_recorded_at',
+      'contact_status',
+      'verified_at',
+    ];
+    const result = run({ contacts: [], columns: header });
+    expect(result.ok).toBe(true);
+    expect(result.rows).toHaveLength(0);
+    expect(result.counts).toMatchObject({ input: 0, accepted: 0, columns: 11 });
+  });
+
+  it('reports the required columns of an empty Contacts sheet without a header', () => {
+    const result = run({ contacts: [] });
+    expect(result.ok).toBe(false);
+    expect(of(result, 'COLUMN_MISSING').map((entry) => entry.field)).toEqual([
+      'employee_code',
+      'email_allowed',
+      'whatsapp_allowed',
+      'communication_authorization_basis',
+      'contact_status',
+    ]);
+  });
+
+  it('reports one missing required column of a declared header', () => {
+    const result = run({
+      contacts: [],
+      columns: ['employee_code', 'email_allowed', 'whatsapp_allowed', 'contact_status'],
+    });
+    expect(of(result, 'COLUMN_MISSING').map((entry) => entry.field)).toEqual([
+      'communication_authorization_basis',
+    ]);
+    expect(result.ok).toBe(false);
   });
 });
 
@@ -211,6 +307,23 @@ describe('contact package: values', () => {
       expect(of(result, 'CONTACT_PHONE_INVALID')[0], bad).toMatchObject({ field: 'phone_e164' });
     }
     expect(PHONE_E164_PATTERN.test('+999000000001')).toBe(true);
+  });
+
+  it('does not repair a phone number that is not E.164', () => {
+    for (const bad of ['+999 00000001', '+999-00000001', '(+999)00000001', '+999 000 000 001', ' +999 00000001 ']) {
+      const result = run({ contacts: [contact('TST-0001', { phone_e164: bad, whatsapp_allowed: 'No' })] });
+      expect(of(result, 'CONTACT_PHONE_INVALID')[0], bad).toMatchObject({
+        field: 'phone_e164',
+        severity: SEVERITY.BLOCK,
+      });
+      expect(result.rows, bad).toHaveLength(0);
+    }
+  });
+
+  it('accepts a connected number and trims the ends only', () => {
+    const result = run({ contacts: [contact('TST-0001', { phone_e164: '  +999000000001  ' })] });
+    expect(result.ok).toBe(true);
+    expect(result.rows[0].phone_e164).toBe('+999000000001');
   });
 
   it('accepts an empty email and phone', () => {
@@ -486,8 +599,10 @@ describe('privacy and purity', () => {
     expect(empty.ok).toBe(false);
     expect(empty.rows).toHaveLength(0);
     expect(empty.counts.input).toBe(0);
+    // A listed Contacts sheet with no row still has its header checked.
     const noRows = run({ contacts: [] });
-    expect(noRows.ok).toBe(true);
+    expect(noRows.ok).toBe(false);
     expect(noRows.counts.input).toBe(0);
+    expect(of(noRows, 'COLUMN_MISSING')).toHaveLength(5);
   });
 });

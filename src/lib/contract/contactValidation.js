@@ -25,6 +25,7 @@ import {
   CONTACT_SHEET_NAMES,
   ENUMS,
   PRESENCE,
+  REFERENCE_CODE_PATTERN,
   normalizeReferenceCode,
 } from './schema.js';
 import {
@@ -89,6 +90,10 @@ function validateContract({ contract, boundOrganizationCode, asOfDate }, issues)
   const bound = normalizeReferenceCode(boundOrganizationCode);
   if (!organizationCode) {
     issues.push(issue('CONTRACT_FIELD', CONTRACT_SHEET, undefined, 'organization_code'));
+  } else if (!REFERENCE_CODE_PATTERN.test(organizationCode)) {
+    // The code must be a reference code (§2.2 of HSE-DC-1.0) before it is
+    // compared, so an unusable code never passes by matching the binding.
+    issues.push(issue('KEY_PATTERN', CONTRACT_SHEET, undefined, 'organization_code'));
   } else {
     normalised.organization_code = organizationCode;
     if (!bound) {
@@ -135,22 +140,33 @@ function validateContract({ contract, boundOrganizationCode, asOfDate }, issues)
  * ------------------------------------------------------------------ */
 
 /**
- * `_Contract` and `Contacts` are required. Any other sheet, including a sheet
- * of a training package, is `SHEET_UNEXPECTED` (`warn`) and is ignored
- * completely (CONTACT-CONTRACT.md §2).
+ * `_Contract` and `Contacts` are required. Any other sheet, including a sheet of
+ * a training package, is `SHEET_UNEXPECTED` (`warn`) and is ignored completely
+ * (CONTACT-CONTRACT.md §2).
+ *
+ * A missing or unusable sheet list is never treated as a sound package: both
+ * required sheets are then reported as missing. Returns which sheets are
+ * present, so the header of an absent sheet is not reported column by column.
  */
 function validateSheets(sheetNames, issues) {
-  if (!Array.isArray(sheetNames)) return;
+  if (!Array.isArray(sheetNames)) {
+    for (const name of CONTACT_SHEET_NAMES) {
+      issues.push(issue('SHEET_MISSING', name, undefined, undefined));
+    }
+    return { listed: false, contacts: false };
+  }
+  const names = sheetNames.map((name) => collapseText(name));
   for (const name of CONTACT_SHEET_NAMES) {
-    if (!sheetNames.includes(name)) {
+    if (!names.includes(name)) {
       issues.push(issue('SHEET_MISSING', name, undefined, undefined));
     }
   }
-  for (const name of sheetNames) {
+  for (const name of names) {
     if (!CONTACT_SHEET_NAMES.includes(name)) {
       issues.push(issue('SHEET_UNEXPECTED', name, undefined, undefined));
     }
   }
+  return { listed: true, contacts: names.includes(SHEET) };
 }
 
 /* ------------------------------------------------------------------ *
@@ -187,7 +203,11 @@ function validateContactRow(raw, rowNumber, context, issues) {
     }
   }
 
-  const phone = collapseText(raw?.phone_e164).replace(/\s/g, '');
+  // Trimmed at the ends only. An inner space, hyphen or bracket is kept, so a
+  // number that is not E.164 is reported instead of being repaired.
+  const phone = raw?.phone_e164 === null || raw?.phone_e164 === undefined
+    ? ''
+    : String(raw.phone_e164).trim();
   if (phone) {
     if (!PHONE_E164_PATTERN.test(phone)) {
       issues.push(issue('CONTACT_PHONE_INVALID', SHEET, rowNumber, 'phone_e164'));
@@ -280,11 +300,14 @@ export function validateContactPackage({
 } = {}) {
   const rows = Array.isArray(contacts) ? contacts : [];
   const presentColumns = columnsOf(rows, columns);
-  const hasHeader = Array.isArray(columns) || rows.length > 0;
   const issues = [];
 
-  validateSheets(sheetNames, issues);
+  const sheets = validateSheets(sheetNames, issues);
   const contractRow = validateContract({ contract, boundOrganizationCode, asOfDate }, issues);
+  // The header is checked whenever the sheet is part of the package, even when
+  // it carries no data row, so an empty sheet cannot pass silently. When the
+  // sheet itself is absent, `SHEET_MISSING` is the only report.
+  const hasHeader = sheets.contacts || Array.isArray(columns) || rows.length > 0;
   if (hasHeader) issues.push(...validateColumns(SHEET, presentColumns));
   const columnBlocked = issues.some(
     (entry) => entry.severity === SEVERITY.BLOCK && entry.sheet === SHEET,

@@ -721,6 +721,96 @@ describe('approval time', () => {
     expect(normalizeApprovalTime('last Tuesday')).toBe('');
   });
 
+  it('keeps fractional seconds', () => {
+    expect(normalizeApprovalTime('2027-01-05T08:00:00.123Z')).toBe('2027-01-05T08:00:00.123Z');
+    expect(normalizeApprovalTime('2027-01-05T08:00:00.1Z')).toBe('2027-01-05T08:00:00.100Z');
+    expect(normalizeApprovalTime('2027-01-05T11:00:00.456+03:00')).toBe('2027-01-05T08:00:00.456Z');
+    // More digits than milliseconds are accepted and truncated.
+    expect(normalizeApprovalTime('2027-01-05T08:00:00.123456Z')).toBe('2027-01-05T08:00:00.123Z');
+  });
+
+  it('accepts a time without seconds', () => {
+    expect(normalizeApprovalTime('2027-01-05T08:00Z')).toBe(T1_UTC);
+    expect(normalizeApprovalTime('2027-01-05T11:00+03:00')).toBe(T1_UTC);
+  });
+
+  it('refuses a value without an explicit time zone', () => {
+    // new Date() would read these in the zone of the device.
+    expect(normalizeApprovalTime('2027-01-05')).toBe('');
+    expect(normalizeApprovalTime('2027-01-05T08:00:00')).toBe('');
+    expect(normalizeApprovalTime('2027-01-05T08:00')).toBe('');
+    expect(normalizeApprovalTime('2027-01-05 08:00:00')).toBe('');
+    expect(normalizeApprovalTime('2027-01-05 08:00:00Z')).toBe('');
+  });
+
+  it('refuses an impossible offset or an impossible day', () => {
+    for (const bad of [
+      '2027-01-05T08:00:00+25:00',
+      '2027-01-05T08:00:00+03:70',
+      '2027-01-05T08:00:00+0300',
+      '2027-01-05T08:00:00+3:00',
+      '2027-01-05T08:00:00GMT',
+      '2027-01-05T25:00:00Z',
+      '2027-01-05T08:61:00Z',
+      // JavaScript would move these to another day.
+      '2027-02-30T00:00:00Z',
+      '2027-13-01T00:00:00Z',
+      '2027-00-10T00:00:00Z',
+      '2027-01-32T00:00:00Z',
+    ]) {
+      expect(normalizeApprovalTime(bad), bad).toBe('');
+    }
+  });
+
+  it('accepts the leap day of a leap year and refuses it otherwise', () => {
+    expect(normalizeApprovalTime('2028-02-29T00:00:00Z')).toBe('2028-02-29T00:00:00.000Z');
+    expect(normalizeApprovalTime('2027-02-29T00:00:00Z')).toBe('');
+  });
+
+  it('gives the same result under any device time zone', () => {
+    const ORIGINAL_TZ = process.env.TZ;
+    try {
+      const results = [];
+      for (const tz of ['UTC', 'Asia/Riyadh', 'America/Los_Angeles', 'Pacific/Kiritimati']) {
+        process.env.TZ = tz;
+        results.push([
+          normalizeApprovalTime('2027-01-05T08:00:00Z'),
+          normalizeApprovalTime('2027-01-05T11:00:00+03:00'),
+          normalizeApprovalTime('2027-01-05'),
+          normalizeApprovalTime('2027-01-05T08:00:00'),
+        ]);
+      }
+      for (const result of results) {
+        expect(result).toEqual([T1_UTC, T1_UTC, '', '']);
+      }
+    } finally {
+      if (ORIGINAL_TZ === undefined) delete process.env.TZ;
+      else process.env.TZ = ORIGINAL_TZ;
+    }
+  });
+
+  it('refuses a batch whose approval time carries no time zone, atomically', async () => {
+    const state = await stageAndApply(
+      createApprovedState(),
+      batch({ employees: [employee('TST-0001')] }),
+    ).then((result) => result.state);
+
+    for (const bad of ['2027-03-05', '2027-03-05T08:00:00', '2027-03-05 08:00:00', '2027-03-05T08:00:00+25:00']) {
+      const plan = await stageBatch(
+        state,
+        batch({ batchId: 'B-2', approvedAt: bad, employees: [employee('TST-0002')] }),
+      );
+      expect(plan.ok, bad).toBe(false);
+      expect(of(plan, 'CONTRACT_FIELD').map((entry) => entry.field), bad).toContain('approved_at');
+      const applied = applyBatch(state, plan);
+      expect(applied.applied, bad).toBe(false);
+      expect(applied.state, bad).toBe(state);
+      expect(applied.state.employees, bad).toHaveLength(1);
+      expect(applied.state.batches.map((row) => row.batchId), bad).toEqual(['B-1']);
+      expect(applied.state.changeLog.every((entry) => entry.batchId === 'B-1'), bad).toBe(true);
+    }
+  });
+
   it('treats two time zones of one instant as the same approval time', async () => {
     const riyadh = await stageAndApply(
       createApprovedState(),

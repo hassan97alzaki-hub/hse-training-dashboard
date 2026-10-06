@@ -121,16 +121,77 @@ export function bindOrganization(state, organizationCode) {
  * ------------------------------------------------------------------ */
 
 /**
- * Normalise an approval time. Any ISO 8601 instant with a time zone is
- * accepted and stored as UTC through `toISOString()`, so two spellings of the
- * same instant compare equal. Returns `''` when the value is not an instant.
+ * An ISO 8601 instant: a full date, `T`, a time, and an explicit time zone that
+ * is either `Z` or an `±HH:MM` offset. Fractional seconds are allowed.
+ *
+ * The time zone is required on purpose. `new Date()` accepts `2027-01-05` and
+ * `2027-01-05T08:00:00` and reads them in the zone of the device, so the order
+ * of two batches could differ from one machine to the next.
+ */
+const APPROVAL_TIME_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * Normalise an approval time. Only an ISO 8601 instant with an explicit time
+ * zone is accepted, and it is stored as UTC through `toISOString()`, so two
+ * spellings of the same instant compare equal.
+ *
+ * Rejected (returns `''`): a date without a time, a time without `Z` or an
+ * offset, a space instead of `T`, an impossible offset, and any value that
+ * JavaScript would silently move to another day, such as `2027-02-30T00:00:00Z`.
+ *
+ * The device time zone is never used: the parts are read from the text and the
+ * instant is built with `Date.UTC`.
  */
 export function normalizeApprovalTime(value) {
   const text = collapseText(value);
   if (!text) return '';
-  const date = new Date(text);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString();
+  const match = APPROVAL_TIME_PATTERN.exec(text);
+  if (!match) return '';
+
+  const [, year, month, day, hour, minute, second = '00', fraction = '', zone] = match;
+  const milli = Number((`${fraction}000`).slice(0, 3) || '0');
+  const parts = {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+    hour: Number(hour),
+    minute: Number(minute),
+    second: Number(second),
+  };
+  if (parts.month < 1 || parts.month > 12) return '';
+  if (parts.day < 1 || parts.day > 31) return '';
+  if (parts.hour > 23 || parts.minute > 59 || parts.second > 59) return '';
+
+  let offsetMinutes = 0;
+  if (zone !== 'Z') {
+    const offsetHour = Number(zone.slice(1, 3));
+    const offsetMinute = Number(zone.slice(4, 6));
+    if (offsetHour > 23 || offsetMinute > 59) return '';
+    offsetMinutes = (offsetHour * 60 + offsetMinute) * (zone[0] === '-' ? -1 : 1);
+  }
+
+  const local = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+    milli,
+  );
+  if (Number.isNaN(local)) return '';
+  // A day that does not exist in its month would roll over, so the written
+  // parts must survive the round trip.
+  const written = new Date(local);
+  if (
+    written.getUTCFullYear() !== parts.year ||
+    written.getUTCMonth() + 1 !== parts.month ||
+    written.getUTCDate() !== parts.day
+  ) {
+    return '';
+  }
+  return new Date(local - offsetMinutes * 60000).toISOString();
 }
 
 /** Milliseconds of a normalised approval time, or null. */

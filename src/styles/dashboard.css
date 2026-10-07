@@ -952,3 +952,170 @@ tbody tr:last-child { border-bottom: none; }
 @media print {
   .app-header, .action-bar, .filters-panel, .pagination-bar { display: none; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Responsive layout (BL-001)
+
+   Rules this block keeps, at 375, 390, 768, 1024 and 1440 px,
+   in LTR and in RTL:
+   - the page never scrolls horizontally; only a table may scroll
+     inside its own wrapper;
+   - the sticky header never covers the content it sits above;
+   - every control stays touchable (44 px) and its label stays whole.
+   It changes layout only. No compliance rule and no data contract
+   depends on anything here.
+   ══════════════════════════════════════════════════════════ */
+
+/* A flex or grid child defaults to min-width:auto, so a wide table
+   stretches its own section instead of scrolling inside it. */
+.app-shell,
+.main-content,
+.main-content > *,
+.section,
+.chart-wrap,
+.dq-card {
+  min-width: 0;
+}
+.table-wrap {
+  max-width: 100%;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+}
+/* A long code or name must wrap rather than widen the page. */
+.dq-issue,
+.kpi-value,
+.exec-item-value {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1024px) {
+  .header-row { padding: var(--sp-3) var(--sp-4); }
+  .main-content { padding: var(--sp-4); }
+}
+
+/* ── Laptop and below: the header scrolls away ──────────── */
+@media (max-width: 1100px) {
+  /* A sticky header costs a quarter of a 768 px tall laptop screen and
+     covers the content under it. Above this width it stays sticky, where
+     it costs about a seventh of the screen. */
+  .app-header {
+    position: static;
+    backdrop-filter: none;
+  }
+}
+
+/* ── Tablet and below ───────────────────────────────────── */
+@media (max-width: 820px) {
+  /* The header holds the brand, the controls, two editable fields and
+     three export buttons; stacked on a narrow screen it reached 58 % of
+     the viewport and hid the content under it. Below this width it
+     scrolls away with the page instead of sticking. */
+  .app-header {
+    position: static;
+    backdrop-filter: none;
+  }
+  .header-row {
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+  .header-row.header-row-secondary { padding-bottom: var(--sp-3); }
+  .header-brand { gap: var(--sp-2); }
+  .header-meta-fields {
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
+    width: 100%;
+  }
+  .header-field { min-width: 0; flex: 1 1 140px; }
+  .header-field input { width: 100%; min-width: 0; }
+  .header-export-group {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .header-export-group .btn { flex: 1 1 auto; }
+  .action-bar { flex-wrap: wrap; }
+
+  /* A tablet is a touch device: no control smaller than 40 px. */
+  .btn,
+  .btn-sm,
+  .filters-toggle,
+  .page-btn,
+  .lang-toggle,
+  .filter-select,
+  .filter-input,
+  input[type='text'],
+  select,
+  summary {
+    min-height: 40px;
+  }
+}
+
+/* Any touch device, whatever its width: 44 px. */
+@media (pointer: coarse) {
+  .btn,
+  .btn-sm,
+  .filters-toggle,
+  .page-btn,
+  .lang-toggle,
+  .filter-select,
+  .filter-input,
+  input[type='text'],
+  select,
+  summary {
+    min-height: 44px;
+  }
+}
+
+/* ── Phone ──────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .header-title { font-size: 18px; line-height: 1.25; }
+  .header-subtitle { font-size: 11px; }
+  .logo-slot { width: 32px; height: 32px; }
+  .main-content { padding: var(--sp-3); }
+  .section { padding: var(--sp-3); }
+
+  /* Touch targets: 44 px minimum, label never clipped. */
+  .btn,
+  .btn-sm,
+  .filters-toggle,
+  .page-btn,
+  .filter-select,
+  .filter-input,
+  input[type='text'],
+  select,
+  summary {
+    min-height: 44px;
+  }
+  .filters-toggle,
+  .page-btn {
+    padding-inline: 14px;
+  }
+  .btn {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .header-export-group .btn { flex: 1 1 45%; }
+  .import-actions .btn,
+  .action-bar .btn { flex: 1 1 100%; }
+
+  /* Filters stack: one control per row, full width, nothing clipped. */
+  .filters-grid { grid-template-columns: 1fr; }
+  .filter-select,
+  .filter-input { width: 100%; min-width: 0; }
+
+  /* A table keeps its own horizontal scroll; the page keeps none. */
+  .table-wrap { max-height: 60vh; }
+  table { min-width: 560px; }
+}
+
+/* ── Reduced motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

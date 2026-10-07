@@ -4,3 +4,6 @@ dist/
 *.local
 .env
 *.log
+.env.trial
+release/
+artifacts/

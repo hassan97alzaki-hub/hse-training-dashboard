@@ -11,6 +11,8 @@ export default function ImportPanel({
   hasRequirements,
   isLoading,
   importBanner,
+  // Trial Mode: an ended trial switches customer data off. UX gate only.
+  customerDataAllowed = true,
 }) {
   const trainingRef = useRef(null);
   const reqRef = useRef(null);
@@ -35,18 +37,40 @@ export default function ImportPanel({
           {t('loadDemoData')}
         </button>
 
-        <label className="file-input-label">
+        <label
+          className="file-input-label"
+          data-disabled={!customerDataAllowed}
+          style={customerDataAllowed ? undefined : { opacity: 0.55, cursor: 'not-allowed' }}
+        >
           <UploadCloud size={15} />
           {t('importTrainingData')}
           <span className="text-muted text-sm">({t('importTrainingHint')})</span>
-          <input ref={trainingRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleTrainingFile} />
+          <input
+            ref={trainingRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleTrainingFile}
+            disabled={!customerDataAllowed}
+            data-testid="training-file-input"
+          />
         </label>
 
-        <label className="file-input-label">
+        <label
+          className="file-input-label"
+          data-disabled={!customerDataAllowed}
+          style={customerDataAllowed ? undefined : { opacity: 0.55, cursor: 'not-allowed' }}
+        >
           <FileSpreadsheet size={15} />
           {t('importRequirements')}
           <span className="text-muted text-sm">({t('importRequirementsHint')})</span>
-          <input ref={reqRef} type="file" accept=".csv" onChange={handleReqFile} />
+          <input
+            ref={reqRef}
+            type="file"
+            accept=".csv"
+            onChange={handleReqFile}
+            disabled={!customerDataAllowed}
+            data-testid="requirements-file-input"
+          />
         </label>
 
         <div className="ml-auto flex-row">

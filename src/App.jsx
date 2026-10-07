@@ -15,6 +15,7 @@ import { defaultBatchId, defaultApprovedAt } from './lib/localBatch.js';
 import {
   REQUIREMENTS_PROVENANCE, resolveRequirementsProvenance,
 } from './lib/contract/requirementsProvenance.js';
+import { readTrialConfig, resolveTrialState, customerDataAllowed } from './lib/trial.js';
 import { createApprovedState, clearOrganizationBinding } from './lib/contract/staging.js';
 import {
   readProductionWorkbook, isProductionPackage, validateProductionPackage,
@@ -34,6 +35,8 @@ import DataQualityPanel from './components/DataQualityPanel.jsx';
 import MatrixImportPreview from './components/MatrixImportPreview.jsx';
 import ProductionPackagePreview from './components/ProductionPackagePreview.jsx';
 import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
+import TrialBanner from './components/TrialBanner.jsx';
+import TrialQuickStart from './components/TrialQuickStart.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -43,7 +46,21 @@ const EMPTY_FILTERS = {
   course: '', status: '', employmentStatus: '', priority: '',
 };
 
-export default function App({ now = defaultApprovedAt, newBatchId = defaultBatchId } = {}) {
+export default function App({
+  now = defaultApprovedAt,
+  newBatchId = defaultBatchId,
+  // Injectable so a test never depends on the build environment or the clock.
+  trialConfig,
+  trialNow,
+} = {}) {
+  // Trial Mode is a build-time presentation layer. Without VITE_TRIAL_MODE the
+  // state is `off` and nothing below changes behaviour.
+  const trial = useMemo(() => {
+    const config = trialConfig ?? readTrialConfig();
+    return resolveTrialState(config, trialNow ? trialNow() : new Date());
+  }, [trialConfig, trialNow]);
+  const customerDataEnabled = customerDataAllowed(trial);
+
   const [lang, setLang] = useState('en');
   const i18n = useMemo(() => createI18n(lang), [lang]);
   const t = i18n.t;
@@ -200,6 +217,12 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
   }
 
   async function handleTrainingImport(file) {
+    // UX gate only (see src/lib/trial.js): an ended trial hides the feature,
+    // it does not protect the page.
+    if (!customerDataEnabled) {
+      showBanner('warning', t('trialImportBlocked'), []);
+      return;
+    }
     setIsLoading(true);
     setImportBanner(null);
     setMatrixPreview(null);
@@ -263,6 +286,10 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
   }
 
   function handleApproveMatrix() {
+    if (!customerDataEnabled) {
+      showBanner('warning', t('trialImportBlocked'), []);
+      return;
+    }
     const { conversion, asOfDate: previewAsOf, fileName } = matrixPreview;
     const result = toImportResult(conversion, fileName);
     setLastImportResult(result);
@@ -283,6 +310,10 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
 
   async function handleApproveProductionPackage() {
     if (!productionPreview || isApplying) return;
+    if (!customerDataEnabled) {
+      showBanner('warning', t('trialImportBlocked'), []);
+      return;
+    }
     setIsApplying(true);
     try {
       const metadata = {
@@ -328,6 +359,10 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
   }
 
   async function handleRequirementsImport(file) {
+    if (!customerDataEnabled) {
+      showBanner('warning', t('trialImportBlocked'), []);
+      return;
+    }
     setIsLoading(true);
     setImportBanner(null);
     // A legacy path never sits on approved production data (§6).
@@ -402,6 +437,8 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
       />
 
       <main className="main-content">
+        <TrialBanner state={trial} t={t} />
+
         <ImportPanel
           t={t}
           onLoadDemo={handleLoadDemo}
@@ -410,7 +447,12 @@ export default function App({ now = defaultApprovedAt, newBatchId = defaultBatch
           onReset={handleReset}
           hasData={hasData} hasRequirements={hasRequirements}
           isLoading={isLoading} importBanner={importBanner}
+          customerDataAllowed={customerDataEnabled}
         />
+
+        {trial.phase !== 'off' && !hasData && (
+          <TrialQuickStart t={t} customerDataAllowed={customerDataEnabled} />
+        )}
 
         {productionPreview && (
           <ProductionPackagePreview

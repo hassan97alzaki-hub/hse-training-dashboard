@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>لوحة امتثال تدريب السلامة — HSE Training Compliance</title>
+<meta name="description" content="لوحة امتثال تدريب السلامة والصحة والبيئة للشركات والمقاولين: ارفع ملف التدريب، راجع الأخطاء، واعرف المنتهي والمفقود. تعمل داخل المتصفح." />
+<meta name="robots" content="noindex, nofollow" />
+<!-- Self-contained on purpose: no font CDN, no analytics, no tracker, no
+     external request of any kind. The page works from a file:// URL. -->
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-soft: #161c23;
+    --card: #1b232c;
+    --border: #2b3643;
+    --text: #e8edf3;
+    --muted: #9fb0c3;
+    --brand: #e67814;
+    --ok: #16a34a;
+    --radius: 12px;
+    --maxw: 1080px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f7f9fc; --bg-soft: #ffffff; --card: #ffffff; --border: #dce3ec;
+      --text: #15202b; --muted: #5b6b7d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; max-width: 100%; overflow-x: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, Arial, sans-serif;
+    line-height: 1.7;
+    font-size: 17px;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+  header.site {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(6px);
+  }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 18px; }
+  .brand small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 10px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-soft); color: var(--text);
+    font: inherit; font-weight: 600; cursor: pointer; text-decoration: none;
+  }
+  .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+  section { padding: 44px 0; border-bottom: 1px solid var(--border); }
+  h1 { font-size: clamp(26px, 5vw, 40px); line-height: 1.25; margin: 0 0 12px; }
+  h2 { font-size: clamp(20px, 3.4vw, 27px); margin: 0 0 14px; }
+  h3 { font-size: 17px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; max-width: 70ch; }
+  .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .card p:last-child { margin-bottom: 0; }
+  ol.steps { margin: 0; padding-inline-start: 22px; display: grid; gap: 10px; }
+  ul.plain { margin: 0; padding-inline-start: 20px; display: grid; gap: 8px; }
+  .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+  details { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 10px; }
+  details summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+  details summary:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+  .note { border-inline-start: 3px solid var(--brand); padding-inline-start: 14px; color: var(--muted); }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .request { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .request pre {
+    white-space: pre-wrap; word-break: break-word; background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin: 12px 0 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; color: var(--text);
+  }
+  footer.site { padding: 26px 0; color: var(--muted); font-size: 14px; }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media print {
+    header.site, .cta, .no-print { display: none !important; }
+    body { background: #fff; color: #000; font-size: 12pt; }
+    .request pre { border: 1px solid #999; }
+  }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="wrap bar">
+    <div class="brand">
+      <span data-i18n="brand">لوحة امتثال تدريب السلامة</span>
+      <small data-i18n="brandSub">HSE Training Compliance — نسخة محلية داخل المتصفح</small>
+    </div>
+    <div class="cta">
+      <button class="btn" id="lang-toggle" type="button" aria-label="Switch language">English</button>
+      <a class="btn btn-primary" href="#request" data-i18n="ctaTop">اطلب تجربة 7 أيام</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <h1 data-i18n="heroTitle">اعرف من انتهت شهادته ومن ينقصه تدريب، قبل أن يسألك العميل.</h1>
+      <p class="lede" data-i18n="heroLede">ارفع ملف التدريب، راجع الأخطاء، واعرف المنتهي والمفقود والقريب من الانتهاء، وابحث بالرقم الوظيفي. كل المعالجة داخل متصفحك.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#request" data-i18n="ctaTop">اطلب تجربة 7 أيام</a>
+        <a class="btn" href="#how" data-i18n="ctaHow">كيف تعمل</a>
+      </div>
+      <p class="note" style="margin-top:18px" data-i18n="heroNote">نسخة التجربة تعمل بوضع محلي: لا حسابات، ولا رفع ملفات إلى أي خادم، ولا تنبيهات تلقائية.</p>
+    </div>
+  </section>
+
+  <section id="problem">
+    <div class="wrap">
+      <h2 data-i18n="problemTitle">المشكلة</h2>
+      <div class="grid">
+        <div class="card"><h3 data-i18n="p1t">الملف يكبر، والصورة تضيع</h3><p data-i18n="p1b">جدول واحد فيه آلاف الصفوف لا يقول لك من ينقصه تدريب اليوم ولا من تنتهي شهادته هذا الشهر.</p></div>
+        <div class="card"><h3 data-i18n="p2t">أخطاء الإدخال تُكتشف متأخرة</h3><p data-i18n="p2b">تاريخ خاطئ أو رمز كورس غير معروف أو صف مكرر، تظهر آثاره عند التدقيق لا عند الإدخال.</p></div>
+        <div class="card"><h3 data-i18n="p3t">السؤال يأتي فجأة</h3><p data-i18n="p3b">المقاول الرئيسي أو جهة التدقيق تطلب حالة الامتثال الآن، والإجابة تحتاج يومًا من العمل اليدوي.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2 data-i18n="howTitle">كيف تعمل</h2>
+      <ol class="steps">
+        <li data-i18n="h1">افتح الصفحة في المتصفح. لا تثبيت ولا تسجيل دخول.</li>
+        <li data-i18n="h2">اختر «بيانات تجريبية» لترى اللوحة كاملة فورًا، أو استورد ملفك.</li>
+        <li data-i18n="h3">راجع معاينة الاستيراد: عدد الصفوف المقبولة والمرفوضة، ورموز الأخطاء بالورقة والصف والحقل.</li>
+        <li data-i18n="h4">اعتمد الاستيراد، فتظهر المؤشرات: الامتثال العام، المنتهي، القريب من الانتهاء، المفقود.</li>
+        <li data-i18n="h5">ابحث بالرقم الوظيفي أو القسم أو الكورس، وصدّر CSV أو تقرير PDF للإدارة.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <h2 data-i18n="featTitle">ما هو مُنفَّذ فعلًا اليوم</h2>
+      <p class="lede" data-i18n="featLede">هذه قائمة بما يعمل في النسخة الحالية، لا بما هو مخطط.</p>
+      <div class="grid">
+        <div class="card"><h3 data-i18n="f1t">استيراد CSV وXLSX</h3><p data-i18n="f1b">ملف تدريب واحد، أو ملف متطلبات، أو حزمة بثلاث أوراق، أو حزمة عقد بيانات بسبع أوراق.</p></div>
+        <div class="card"><h3 data-i18n="f2t">معاينة قبل الاعتماد</h3><p data-i18n="f2b">لا تدخل بيانات إلى اللوحة قبل أن ترى عدد الصفوف المقبولة والمرفوضة ورموز الملاحظات.</p></div>
+        <div class="card"><h3 data-i18n="f3t">حالات محسوبة بقاعدة واضحة</h3><p data-i18n="f3b">صالح، ينتهي خلال 90/60/30 يومًا، منتهي، قيد التنفيذ، لم يبدأ، مفقود. الشهادة صالحة حتى تاريخ انتهائها شاملًا.</p></div>
+        <div class="card"><h3 data-i18n="f4t">مؤشرات ولوحة إدارة</h3><p data-i18n="f4b">نسبة الامتثال، الموظفون الممتثلون بالكامل، الأقسام الأعلى خطورة، الكورسات الأضعف تغطية.</p></div>
+        <div class="card"><h3 data-i18n="f5t">بحث وفلاتر</h3><p data-i18n="f5b">بالرقم الوظيفي والاسم والقسم والمسمى والكورس والحالة.</p></div>
+        <div class="card"><h3 data-i18n="f6t">تصدير</h3><p data-i18n="f6b">CSV للتفاصيل وللأولويات، وتقرير PDF للإدارة. الملفات تحمل الرموز والأسماء معًا.</p></div>
+        <div class="card"><h3 data-i18n="f7t">عربي وإنجليزي</h3><p data-i18n="f7b">واجهة كاملة بالاتجاهين، وأسماء الأقسام والكورسات بلغة العرض.</p></div>
+        <div class="card"><h3 data-i18n="f8t">وضوح مصدر المتطلبات</h3><p data-i18n="f8b">إذا كانت المتطلبات تجريبية أو مشتقة، تقول اللوحة والتصدير ذلك صراحة بدل تقديمها كنتيجة امتثال.</p></div>
+      </div>
+      <p class="note" style="margin-top:18px" data-i18n="featNot"><strong>غير منفَّذ اليوم:</strong> لا حسابات مستخدمين، ولا قاعدة بيانات سحابية، ولا تنبيهات بريد أو واتساب، ولا تكامل مع أنظمة أخرى. لا نعرض هذه كميزات متاحة.</p>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="wrap">
+      <h2 data-i18n="privTitle">الخصوصية — وضع محلي</h2>
+      <ul class="plain">
+        <li data-i18n="pr1">يُقرأ الملف داخل متصفحك. لا يُرفع إلى خادم، ولا يمر عبر طرف ثالث.</li>
+        <li data-i18n="pr2">لا حسابات ولا كلمات مرور ولا ملفات تعريف ارتباط ولا أدوات قياس.</li>
+        <li data-i18n="pr3">إغلاق الصفحة يمسح كل شيء. لا تخزين بعد الجلسة.</li>
+        <li data-i18n="pr4">لا نطلب بيانات اتصال الموظفين في التجربة، ولا أرقام هوية أو إقامة أو تاريخ ميلاد أو جنسية.</li>
+        <li data-i18n="pr5">نوصي بإرسال ملف منقّح للتجربة: رقم وظيفي ورمز كورس وتواريخ، بلا أسماء إن أمكن.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="trial">
+    <div class="wrap">
+      <h2 data-i18n="trialTitle">برنامج التجربة — 7 أيام</h2>
+      <div class="grid">
+        <div class="card"><h3 data-i18n="t1t">قبل البداية</h3><p data-i18n="t1b">نتفق على تاريخ البداية والنهاية، ونجهّز نسخة باسم شركتك.</p></div>
+        <div class="card"><h3 data-i18n="t2t">أثناء التجربة</h3><p data-i18n="t2b">تستخدم النسخة على بياناتك المنقّحة، وتسأل عن أي ملاحظة تظهر في المعاينة.</p></div>
+        <div class="card"><h3 data-i18n="t3t">عند الانتهاء</h3><p data-i18n="t3b">تُغلق النسخة وتُحذف الملفات المؤقتة، وتقرر إن أردت الاستمرار.</p></div>
+      </div>
+      <p class="note" style="margin-top:18px" data-i18n="trialNote">التجربة عرض للمنتج الحالي، لا التزام بمدة تطوير ولا بميزات مستقبلية.</p>
+    </div>
+  </section>
+
+  <section id="fit">
+    <div class="wrap">
+      <h2 data-i18n="fitTitle">لمن تناسب</h2>
+      <div class="grid">
+        <div class="card"><h3 data-i18n="fit1t">تناسب</h3><ul class="plain">
+          <li data-i18n="fit1a">مقاول أو شركة لديها ملف تدريب في Excel وتحتاج صورة أسبوعية.</li>
+          <li data-i18n="fit1b">مسؤول سلامة يجهّز حالة الامتثال لتدقيق أو لعميل.</li>
+          <li data-i18n="fit1c">فريق يريد اكتشاف أخطاء الملف قبل أن تصل إلى تقرير.</li>
+        </ul></div>
+        <div class="card"><h3 data-i18n="fit2t">لا تناسب بعد</h3><ul class="plain">
+          <li data-i18n="fit2a">من يحتاج حسابات متعددة وصلاحيات وسجل تدقيق مركزي.</li>
+          <li data-i18n="fit2b">من يحتاج تنبيهات تلقائية بالبريد أو واتساب.</li>
+          <li data-i18n="fit2c">من يحتاج تكاملًا مباشرًا مع نظام موارد بشرية أو نظام تعلم.</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2 data-i18n="faqTitle">أسئلة شائعة</h2>
+      <details><summary data-i18n="q1">هل تُرفع بياناتنا إلى أي مكان؟</summary><p data-i18n="a1">لا. الملف يُقرأ في المتصفح فقط، ولا يوجد في النسخة أي كود يرسل بيانات إلى الخارج.</p></details>
+      <details><summary data-i18n="q2">ما الصيغ المدعومة؟</summary><p data-i18n="a2">CSV وXLSX. يمكن أن يكون ملف تدريب واحدًا، أو حزمة بثلاث أوراق، أو حزمة عقد البيانات بسبع أوراق.</p></details>
+      <details><summary data-i18n="q3">ماذا يحدث للصفوف الخاطئة؟</summary><p data-i18n="a3">تُعرض في المعاينة برمز الملاحظة والورقة والصف والحقل، ولا تدخل اللوحة قبل اعتمادك.</p></details>
+      <details><summary data-i18n="q4">هل تحسبون تاريخ الانتهاء بأنفسكم؟</summary><p data-i18n="a4">لا. يُؤخذ تاريخ الانتهاء كما ورد في ملفك. إن اختلف عن مدة الصلاحية، تظهر ملاحظة بالفرق بالأيام ولا يُعاد الحساب.</p></details>
+      <details><summary data-i18n="q5">ما معنى «متطلبات تجريبية»؟</summary><p data-i18n="a5">إذا لم تكن مصفوفة المتطلبات معتمدة من مسؤول التدريب لديك، تعلن اللوحة والتصدير أن النتيجة عرض تقني لا نتيجة امتثال.</p></details>
+      <details><summary data-i18n="q6">هل تنتهي النسخة التجريبية تلقائيًا؟</summary><p data-i18n="a6">نسخة التجربة تعرض تاريخ النهاية وتوقف استيراد بياناتك بعده. الإغلاق الفعلي للوصول يتم من جهة الاستضافة، لا من داخل الصفحة.</p></details>
+      <details><summary data-i18n="q7">ماذا عن اللغة العربية؟</summary><p data-i18n="a7">الواجهة عربية وإنجليزية كاملة. تقرير PDF إنجليزي حاليًا بسبب قيد في مكتبة التوليد، وهو مذكور في الوثائق.</p></details>
+    </div>
+  </section>
+
+  <section id="request">
+    <div class="wrap">
+      <h2 data-i18n="reqTitle">اطلب تجربة 7 أيام</h2>
+      <p data-i18n="reqLede">لا يوجد نموذج يُرسل من هذه الصفحة. انسخ الطلب التالي أو اطبعه وأرسله بالقناة التي تفضّلها.</p>
+      <div class="request">
+        <div class="cta no-print">
+          <button class="btn btn-primary" type="button" id="copy-request" data-i18n="reqCopy">انسخ نص الطلب</button>
+          <button class="btn" type="button" id="print-request" data-i18n="reqPrint">اطبع الطلب</button>
+          <span class="pill" id="copy-state" role="status" aria-live="polite"></span>
+        </div>
+        <pre id="request-text" data-i18n-pre="reqBody">طلب تجربة 7 أيام — لوحة امتثال تدريب السلامة
+
+اسم الشركة:
+النشاط (مقاولات / تشغيل / صيانة / أخرى):
+عدد الموظفين في النطاق (تقريبي):
+المسؤول عن التجربة (الدور الوظيفي، لا الاسم):
+تاريخ البداية المقترح:
+صيغة ملف التدريب لديكم (CSV / XLSX / أخرى):
+هل لديكم مصفوفة متطلبات معتمدة؟ (نعم / لا / غير متأكد):
+ملاحظات:
+
+تنبيه قبل الإرسال: أرسل ملفًا منقّحًا للتجربة. لا ترسل أسماء موظفين ولا أرقام
+هوية أو إقامة ولا تواريخ ميلاد ولا جنسيات ولا بيانات اتصال.</pre>
+        <p class="note" style="margin-top:14px" data-i18n="reqNote">قناة الإرسال تُحدَّد عند الاتفاق. هذه الصفحة لا تحتوي عنوان بريد أو رقم هاتف، ولا ترسل شيئًا بنفسها.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <p data-i18n="footer1">لوحة امتثال تدريب السلامة والصحة والبيئة — نسخة محلية تعمل داخل المتصفح.</p>
+    <p data-i18n="footer2">هذه الصفحة لا تستخدم أدوات قياس ولا ملفات تعريف ارتباط ولا خدمات خارجية.</p>
+  </div>
+</footer>
+
+<script>
+// Bilingual content. Arabic is the default; English is a full replacement.
+// No framework, no request, no storage: the switch only rewrites text nodes.
+const EN = {
+  brand: 'HSE Training Compliance Dashboard',
+  brandSub: 'Runs locally, inside your browser',
+  ctaTop: 'Request a 7-day trial',
+  ctaHow: 'How it works',
+  heroTitle: 'Know whose certificate has expired and who is missing training — before the client asks.',
+  heroLede: 'Import your training file, review the issues, and see what is expired, missing or close to expiry. Search by employee number. Everything is processed in your browser.',
+  heroNote: 'The trial build runs in local mode: no accounts, no file upload to any server, no automatic alerts.',
+  problemTitle: 'The problem',
+  p1t: 'The file grows and the picture is lost',
+  p1b: 'One sheet with thousands of rows does not tell you who is missing training today, or whose certificate expires this month.',
+  p2t: 'Entry errors surface too late',
+  p2b: 'A wrong date, an unknown course code, a duplicated row — you find them during an audit, not during entry.',
+  p3t: 'The question arrives without warning',
+  p3b: 'The main contractor or the auditor asks for the compliance status now, and the answer costs a day of manual work.',
+  howTitle: 'How it works',
+  h1: 'Open the page in a browser. No installation, no sign-in.',
+  h2: 'Pick the demonstration data to see the full dashboard at once, or import your own file.',
+  h3: 'Review the import preview: accepted and rejected rows, with an issue code, sheet, row and field.',
+  h4: 'Approve the import and the indicators appear: overall compliance, expired, expiring soon, missing.',
+  h5: 'Search by employee number, department or course, and export a CSV or a management PDF.',
+  featTitle: 'What actually works today',
+  featLede: 'This is a list of what the current version does, not of what is planned.',
+  f1t: 'CSV and XLSX import',
+  f1b: 'A single training file, a requirements file, a three-sheet workbook, or a seven-sheet data-contract package.',
+  f2t: 'Preview before approval',
+  f2b: 'Nothing enters the dashboard before you see the accepted and rejected counts and the issue codes.',
+  f3t: 'Statuses from one clear rule',
+  f3b: 'Valid, expiring in 90/60/30 days, expired, in progress, not started, missing. A certificate is valid through its expiry date, inclusive.',
+  f4t: 'Indicators and a management view',
+  f4b: 'Compliance rate, fully compliant employees, the departments most at risk, the courses with the weakest coverage.',
+  f5t: 'Search and filters',
+  f5b: 'By employee number, name, department, job title, course and status.',
+  f6t: 'Export',
+  f6b: 'A detail CSV, a priority CSV and a management PDF. Every file carries the codes next to the names.',
+  f7t: 'Arabic and English',
+  f7b: 'A complete interface in both directions, with department and course names in the language on screen.',
+  f8t: 'Honest about the requirements',
+  f8b: 'When the requirements are demo or derived data, the dashboard and the exports say so instead of presenting a compliance result.',
+  featNot: '<strong>Not built today:</strong> no user accounts, no cloud database, no email or WhatsApp alerts, no integration with other systems. None of these is offered as available.',
+  privTitle: 'Privacy — local mode',
+  pr1: 'The file is read inside your browser. It is not uploaded and it does not pass through a third party.',
+  pr2: 'No accounts, no passwords, no cookies, no analytics.',
+  pr3: 'Closing the page clears everything. Nothing is stored after the session.',
+  pr4: 'The trial asks for no employee contact details, and for no national id, iqama, date of birth or nationality.',
+  pr5: 'We recommend a redacted file for the trial: employee number, course code and dates, without names where possible.',
+  trialTitle: 'The 7-day trial',
+  t1t: 'Before it starts',
+  t1b: 'We agree the start and end dates and prepare a build carrying your company name.',
+  t2t: 'During the trial',
+  t2b: 'You use the build on your redacted data and ask about anything the preview reports.',
+  t3t: 'At the end',
+  t3b: 'The build is closed, the temporary files are deleted, and you decide whether to continue.',
+  trialNote: 'The trial shows the current product. It is not a commitment to a delivery date or to future features.',
+  fitTitle: 'Who it fits',
+  fit1t: 'A good fit',
+  fit1a: 'A contractor or company with a training file in Excel that needs a weekly picture.',
+  fit1b: 'An HSE officer preparing a compliance status for an audit or a client.',
+  fit1c: 'A team that wants to catch file errors before they reach a report.',
+  fit2t: 'Not yet a fit',
+  fit2a: 'Anyone who needs several accounts, permissions and a central audit trail.',
+  fit2b: 'Anyone who needs automatic email or WhatsApp alerts.',
+  fit2c: 'Anyone who needs a direct integration with an HR or learning system.',
+  faqTitle: 'Frequently asked',
+  q1: 'Is our data uploaded anywhere?', a1: 'No. The file is read in the browser only, and the build contains no code that sends data out.',
+  q2: 'Which formats are supported?', a2: 'CSV and XLSX: a single training file, a three-sheet workbook, or the seven-sheet data-contract package.',
+  q3: 'What happens to bad rows?', a3: 'They appear in the preview with an issue code, the sheet, the row and the field, and they do not enter the dashboard before you approve.',
+  q4: 'Do you calculate the expiry date yourselves?', a4: 'No. The expiry date is taken as written in your file. If it differs from the validity period, the difference is reported in days and nothing is recalculated.',
+  q5: 'What does "test requirements" mean?', a5: 'If your requirements matrix has not been approved by your training owner, the dashboard and the exports state that the result is a technical demonstration, not a compliance result.',
+  q6: 'Does the trial build expire by itself?', a6: 'It shows the end date and switches off importing your data after it. Access itself is closed on the hosting side, not inside the page.',
+  q7: 'What about Arabic?', a7: 'The interface is fully Arabic and English. The PDF report is English for now because of a limitation in the generating library, which is documented.',
+  reqTitle: 'Request a 7-day trial',
+  reqLede: 'This page sends no form. Copy or print the request below and send it through whichever channel you prefer.',
+  reqCopy: 'Copy the request', reqPrint: 'Print the request',
+  reqNote: 'The channel is agreed with you. This page carries no email address and no phone number, and it sends nothing by itself.',
+  footer1: 'HSE training compliance dashboard — a local build that runs inside the browser.',
+  footer2: 'This page uses no analytics, no cookies and no external service.',
+};
+const EN_PRE = {
+  reqBody: `7-day trial request — HSE Training Compliance Dashboard
+
+Company name:
+Activity (contracting / operations / maintenance / other):
+Employees in scope (approximate):
+Trial owner (job role, not a personal name):
+Preferred start date:
+Format of your training file (CSV / XLSX / other):
+Do you have an approved requirements matrix? (yes / no / not sure):
+Notes:
+
+Before sending: send a redacted file for the trial. Do not send employee names,
+national id or iqama numbers, dates of birth, nationalities or contact details.`,
+};
+
+const AR_TEXT = new Map();
+const AR_PRE = new Map();
+for (const el of document.querySelectorAll('[data-i18n]')) AR_TEXT.set(el, el.innerHTML);
+for (const el of document.querySelectorAll('[data-i18n-pre]')) AR_PRE.set(el, el.textContent);
+
+let lang = 'ar';
+const toggle = document.getElementById('lang-toggle');
+
+function applyLanguage(next) {
+  lang = next;
+  const arabic = lang === 'ar';
+  document.documentElement.lang = arabic ? 'ar' : 'en';
+  document.documentElement.dir = arabic ? 'rtl' : 'ltr';
+  toggle.textContent = arabic ? 'English' : 'عربي';
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    const key = el.dataset.i18n;
+    el.innerHTML = arabic ? AR_TEXT.get(el) : (EN[key] ?? AR_TEXT.get(el));
+  }
+  for (const el of document.querySelectorAll('[data-i18n-pre]')) {
+    const key = el.dataset.i18nPre;
+    el.textContent = arabic ? AR_PRE.get(el) : (EN_PRE[key] ?? AR_PRE.get(el));
+  }
+}
+
+toggle.addEventListener('click', () => applyLanguage(lang === 'ar' ? 'en' : 'ar'));
+
+const state = document.getElementById('copy-state');
+document.getElementById('copy-request').addEventListener('click', async () => {
+  const text = document.getElementById('request-text').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    state.textContent = lang === 'ar' ? 'نُسخ' : 'Copied';
+  } catch {
+    // Clipboard permission is not granted in every browser; select instead.
+    const range = document.createRange();
+    range.selectNodeContents(document.getElementById('request-text'));
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    state.textContent = lang === 'ar' ? 'محدَّد — انسخ يدويًا' : 'Selected — copy manually';
+  }
+});
+document.getElementById('print-request').addEventListener('click', () => window.print());
+</script>
+</body>
+</html>

@@ -160,6 +160,18 @@ describe('production import inside the app', () => {
     expect(await screen.findAllByText('Test Operations')).not.toHaveLength(0);
   });
 
+  it('retranslates the production approval result when the language changes', async () => {
+    renderApp();
+    await importProduction();
+    await approveProduction();
+    expect(await screen.findByText('Package approved')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Arabic' }));
+    expect(screen.getByText('تم اعتماد الحزمة')).toBeInTheDocument();
+    expect(screen.getByText(/المؤسسة المرتبطة: TST-ORG/)).toBeInTheDocument();
+    expect(screen.queryByText('Package approved')).toBeNull();
+  });
+
   it('shows no production preview for a legacy workbook or CSV', async () => {
     renderApp();
     selectFile(trainingInput(), fileFrom(matrixBytes(), 'legacy-matrix.xlsx'));

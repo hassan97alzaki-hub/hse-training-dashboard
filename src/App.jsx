@@ -65,7 +65,9 @@ export default function App({
   const i18n = useMemo(() => createI18n(lang), [lang]);
   const t = i18n.t;
 
-  const [companyName, setCompanyName] = useState(DEFAULT_COMPANY);
+  const [companyName, setCompanyName] = useState(
+    () => trial.phase !== 'off' && trial.company ? trial.company : DEFAULT_COMPANY,
+  );
   const [projectName, setProjectName] = useState(DEFAULT_PROJECT);
 
   const [trainingRecords, setTrainingRecords] = useState([]);
@@ -94,6 +96,19 @@ export default function App({
   // Where the loaded requirements come from. Only an approved HSE-DC-1.0
   // Requirements sheet is production data (AT-13).
   const [requirementsSource, setRequirementsSource] = useState(REQUIREMENTS_PROVENANCE.NONE);
+
+  const visibleImportBanner = useMemo(() => {
+    if (importBanner?.kind !== 'productionApproved') return importBanner;
+    const { rowsNew, changed, unchanged, organizationCode } = importBanner;
+    return {
+      type: importBanner.type,
+      title: t('ppApprovedTitle'),
+      lines: [
+        `${rowsNew} ${t('ppApprovedRows')} · ${changed} ${t('ppApprovedChanged')} · ${unchanged} ${t('ppApprovedUnchanged')}`,
+        `${t('ppOrgBound')}: ${organizationCode}`,
+      ],
+    };
+  }, [importBanner, t]);
 
   // A derived row wins over the declared source, so test data can never be
   // shown as approved.
@@ -347,10 +362,14 @@ export default function App({
       const sum = (suffix) => Object.entries(counts)
         .filter(([key]) => key.endsWith(suffix))
         .reduce((total, [, value]) => total + value, 0);
-      showBanner('success', t('ppApprovedTitle'), [
-        `${sum('.new')} ${t('ppApprovedRows')} · ${sum('.changed')} ${t('ppApprovedChanged')} · ${sum('.unchanged')} ${t('ppApprovedUnchanged')}`,
-        `${t('ppOrgBound')}: ${result.state.organizationCode}`,
-      ]);
+      setImportBanner({
+        type: 'success',
+        kind: 'productionApproved',
+        rowsNew: sum('.new'),
+        changed: sum('.changed'),
+        unchanged: sum('.unchanged'),
+        organizationCode: result.state.organizationCode,
+      });
     } catch (e) {
       showBanner('error', t('importError'), [e.message]);
     } finally {
@@ -446,7 +465,7 @@ export default function App({
           onRequirementsImport={handleRequirementsImport}
           onReset={handleReset}
           hasData={hasData} hasRequirements={hasRequirements}
-          isLoading={isLoading} importBanner={importBanner}
+          isLoading={isLoading} importBanner={visibleImportBanner}
           customerDataAllowed={customerDataEnabled}
         />
 
@@ -599,7 +618,7 @@ export default function App({
         )}
       </main>
 
-      <Footer t={t} asOfDate={asOfDate} />
+      <Footer t={t} asOfDate={asOfDate} isTrial={trial.phase !== 'off'} />
     </div>
   );
 }

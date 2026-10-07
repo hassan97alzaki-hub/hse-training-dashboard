@@ -289,6 +289,27 @@ describe('Trial Mode inside the app', () => {
     expect(screen.getByTestId('trial-banner')).toHaveAttribute('data-phase', 'active');
     expect(screen.getByTestId('trial-quick-start')).toBeInTheDocument();
     expect(screen.getByTestId('training-file-input')).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: 'Company' })).toHaveValue('Example Contracting Company');
+    expect(screen.getByText(/Private Trial — Local Browser Session/)).toBeInTheDocument();
+  });
+
+  it('shows progress and prevents another import while a file is being processed', async () => {
+    const releases = [];
+    const demoFile = (name) => readFileSync(resolve(process.cwd(), 'public/data', name), 'utf8');
+    globalThis.fetch = vi.fn((url) => new Promise((done) => {
+      const content = demoFile(String(url).includes('requirements') ? 'sample-requirements.csv' : 'sample-training-data.csv');
+      releases.push(() => done(new Response(content, { status: 200 })));
+    }));
+
+    renderApp(CONFIG, atRiyadh('2027-01-07'));
+    fireEvent.click(screen.getByRole('button', { name: /Load Demo Data/i }));
+
+    expect(await screen.findByTestId('import-loading')).toHaveTextContent('Processing the selected file');
+    expect(screen.getByTestId('training-file-input')).toBeDisabled();
+    expect(screen.getByTestId('requirements-file-input')).toBeDisabled();
+
+    for (const release of releases) release();
+    await waitFor(() => expect(screen.queryByTestId('import-loading')).toBeNull());
   });
 
   it('switches customer data off once the trial has ended', async () => {

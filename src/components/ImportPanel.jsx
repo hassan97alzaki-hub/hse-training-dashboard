@@ -39,8 +39,8 @@ export default function ImportPanel({
 
         <label
           className="file-input-label"
-          data-disabled={!customerDataAllowed}
-          style={customerDataAllowed ? undefined : { opacity: 0.55, cursor: 'not-allowed' }}
+          data-disabled={!customerDataAllowed || isLoading}
+          style={customerDataAllowed && !isLoading ? undefined : { opacity: 0.55, cursor: 'not-allowed' }}
         >
           <UploadCloud size={15} />
           {t('importTrainingData')}
@@ -50,15 +50,15 @@ export default function ImportPanel({
             type="file"
             accept=".csv,.xlsx,.xls"
             onChange={handleTrainingFile}
-            disabled={!customerDataAllowed}
+            disabled={!customerDataAllowed || isLoading}
             data-testid="training-file-input"
           />
         </label>
 
         <label
           className="file-input-label"
-          data-disabled={!customerDataAllowed}
-          style={customerDataAllowed ? undefined : { opacity: 0.55, cursor: 'not-allowed' }}
+          data-disabled={!customerDataAllowed || isLoading}
+          style={customerDataAllowed && !isLoading ? undefined : { opacity: 0.55, cursor: 'not-allowed' }}
         >
           <FileSpreadsheet size={15} />
           {t('importRequirements')}
@@ -68,7 +68,7 @@ export default function ImportPanel({
             type="file"
             accept=".csv"
             onChange={handleReqFile}
-            disabled={!customerDataAllowed}
+            disabled={!customerDataAllowed || isLoading}
             data-testid="requirements-file-input"
           />
         </label>
@@ -80,6 +80,13 @@ export default function ImportPanel({
           </button>
         </div>
       </div>
+
+      {isLoading && (
+        <div className="import-banner info" role="status" aria-live="polite" data-testid="import-loading">
+          <div className="import-banner-title">{t('loading')}</div>
+          <div>{t('importProcessingNote')}</div>
+        </div>
+      )}
 
       {importBanner && (
         <div className={`import-banner ${importBanner.type}`}>

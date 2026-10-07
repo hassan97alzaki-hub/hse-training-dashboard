@@ -121,6 +121,7 @@ const translations = {
     noDataHint: 'Load demo data or import a CSV/XLSX file to begin.',
     noResults: 'No records match your filters.',
     loading: 'Loading…',
+    importProcessingNote: 'Processing the selected file in this browser. Keep this page open.',
     requirementsNotLoaded: 'Requirements matrix not loaded',
     requirementsNotLoadedHint: 'Import the requirements matrix to enable missing-training detection.',
 
@@ -220,6 +221,7 @@ const translations = {
     footerReportDate: 'Report Date',
     footerEnvironment: 'Environment',
     footerEnvironmentValue: 'Management Demonstration — Local Browser Session',
+    footerTrialEnvironmentValue: 'Private Trial — Local Browser Session',
 
     // Training Matrix workbook import preview
     mxPreviewTitle: 'Training Matrix workbook — import preview',
@@ -497,6 +499,7 @@ const translations = {
     noDataHint: 'قم بتحميل البيانات التجريبية أو استيراد ملف CSV/XLSX للبدء.',
     noResults: 'لا توجد سجلات تطابق الفلاتر المحددة.',
     loading: 'جارٍ التحميل…',
+    importProcessingNote: 'تجري معالجة الملف المحدد في هذا المتصفح. أبقِ الصفحة مفتوحة.',
     requirementsNotLoaded: 'لم يتم تحميل مصفوفة المتطلبات',
     requirementsNotLoadedHint: 'استورد مصفوفة المتطلبات لتمكين اكتشاف التدريب المفقود.',
 
@@ -596,6 +599,7 @@ const translations = {
     footerReportDate: 'تاريخ التقرير',
     footerEnvironment: 'البيئة',
     footerEnvironmentValue: 'عرض توضيحي للإدارة — جلسة متصفح محلية',
+    footerTrialEnvironmentValue: 'تجربة خاصة — جلسة متصفح محلية',
 
     // Training Matrix workbook import preview
     mxPreviewTitle: 'ملف مصفوفة التدريب — معاينة قبل الاستيراد',

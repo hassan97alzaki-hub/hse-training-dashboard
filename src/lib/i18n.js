@@ -378,6 +378,10 @@ const translations = {
     trialStep3: 'Review the indicators and the table, then export the CSV or the management PDF.',
     trialStepDisabled: 'switched off, the trial has ended',
     trialImportBlocked: 'The trial has ended, so importing your own file is switched off in this build. The demonstration data is still available.',
+
+    // Import banners rendered from data (so they follow the language)
+    rowsLoaded: 'rows loaded',
+    requirementsLoadedTitle: 'Requirements loaded',
   },
 
   ar: {
@@ -756,6 +760,10 @@ const translations = {
     trialStep3: 'راجع المؤشرات والجدول، ثم صدّر CSV أو تقرير الإدارة PDF.',
     trialStepDisabled: 'متوقف، انتهت التجربة',
     trialImportBlocked: 'انتهت التجربة، فاستيراد ملفك متوقف في هذه النسخة. البيانات التجريبية ما زالت متاحة.',
+
+    // لافتات الاستيراد المبنية من بيانات (لتتبع لغة الواجهة)
+    rowsLoaded: 'صفًا محمَّلًا',
+    requirementsLoadedTitle: 'تم تحميل المتطلبات',
   },
 };
 

@@ -16,6 +16,7 @@ import {
   REQUIREMENTS_PROVENANCE, resolveRequirementsProvenance,
 } from './lib/contract/requirementsProvenance.js';
 import { readTrialConfig, resolveTrialState, customerDataAllowed } from './lib/trial.js';
+import { BANNER_KIND, banner, renderImportBanner } from './lib/importBanner.js';
 import { createApprovedState, clearOrganizationBinding } from './lib/contract/staging.js';
 import {
   readProductionWorkbook, isProductionPackage, validateProductionPackage,
@@ -97,18 +98,9 @@ export default function App({
   // Requirements sheet is production data (AT-13).
   const [requirementsSource, setRequirementsSource] = useState(REQUIREMENTS_PROVENANCE.NONE);
 
-  const visibleImportBanner = useMemo(() => {
-    if (importBanner?.kind !== 'productionApproved') return importBanner;
-    const { rowsNew, changed, unchanged, organizationCode } = importBanner;
-    return {
-      type: importBanner.type,
-      title: t('ppApprovedTitle'),
-      lines: [
-        `${rowsNew} ${t('ppApprovedRows')} · ${changed} ${t('ppApprovedChanged')} · ${unchanged} ${t('ppApprovedUnchanged')}`,
-        `${t('ppOrgBound')}: ${organizationCode}`,
-      ],
-    };
-  }, [importBanner, t]);
+  // Every banner is stored as data and rendered in the language on screen, so
+  // switching the language rewrites it instead of leaving the old text.
+  const visibleImportBanner = useMemo(() => renderImportBanner(importBanner, t), [importBanner, t]);
 
   // A derived row wins over the declared source, so test data can never be
   // shown as approved.
@@ -189,8 +181,9 @@ export default function App({
     return { departments, jobTitles, courses, departmentNames, jobTitleNames };
   }, [complianceResult, displayUniverse]);
 
-  const showBanner = useCallback((type, title, lines = []) => {
-    setImportBanner({ type, title, lines });
+  /** Raise a banner as data; the text is produced at render time. */
+  const showKind = useCallback((kind, type, data) => {
+    setImportBanner(banner(kind, type, data));
   }, []);
 
   /** Any legacy path drops the production binding first (§6). */
@@ -217,15 +210,16 @@ export default function App({
         setRequirements(reqResult.validRecords);
         setRequirementsSource(REQUIREMENTS_PROVENANCE.DEMO);
       }
-      const lines = [
-        `Training: ${trainingResult.importSummary.valid} valid, ${trainingResult.importSummary.invalid} invalid, ${trainingResult.importSummary.duplicates} duplicate groups`,
-        `Requirements: ${reqResult.importSummary.valid} rows loaded`,
-      ];
-      showBanner('success', t('demoLoaded'), lines);
+      showKind(BANNER_KIND.DEMO_LOADED, 'success', {
+        validRecords: trainingResult.importSummary.valid,
+        invalidRecords: trainingResult.importSummary.invalid,
+        duplicateGroups: trainingResult.importSummary.duplicates,
+        requirementRows: reqResult.importSummary.valid,
+      });
       if (trainingResult.success) setAsOfDate(DEMO_AS_OF_DATE);
       setLastRefresh(new Date().toLocaleString());
     } catch (e) {
-      showBanner('error', t('importError'), [e.message]);
+      showKind(BANNER_KIND.IMPORT_ERROR, 'error', { errors: [e.message] });
     } finally {
       setIsLoading(false);
     }
@@ -235,7 +229,7 @@ export default function App({
     // UX gate only (see src/lib/trial.js): an ended trial hides the feature,
     // it does not protect the page.
     if (!customerDataEnabled) {
-      showBanner('warning', t('trialImportBlocked'), []);
+      showKind(BANNER_KIND.TRIAL_BLOCKED, 'warning');
       return;
     }
     setIsLoading(true);
@@ -283,18 +277,19 @@ export default function App({
         setEmployeeMaster(null);
         setTrainingRecords(result.validRecords);
         setSourceFileName(result.sourceFileName);
-        const lines = [
-          `${result.importSummary.valid} ${t('validRecords')}, ${result.importSummary.invalid} ${t('invalidRecords')}, ${result.importSummary.duplicates} ${t('duplicateGroups')}`,
-          ...result.warnings,
-        ];
-        showBanner(result.importSummary.invalid > 0 ? 'warning' : 'success', t('importSuccess'), lines);
+        showKind(BANNER_KIND.IMPORT_SUCCESS, result.importSummary.invalid > 0 ? 'warning' : 'success', {
+          validRecords: result.importSummary.valid,
+          invalidRecords: result.importSummary.invalid,
+          duplicateGroups: result.importSummary.duplicates,
+          warnings: result.warnings,
+        });
         setAsOfDate(getRuntimeAsOfDate());
         setLastRefresh(new Date().toLocaleString());
       } else {
-        showBanner('error', t('importError'), result.errors.slice(0, 6));
+        showKind(BANNER_KIND.IMPORT_ERROR, 'error', { errors: result.errors.slice(0, 6) });
       }
     } catch (e) {
-      showBanner('error', t('importError'), [e.message]);
+      showKind(BANNER_KIND.IMPORT_ERROR, 'error', { errors: [e.message] });
     } finally {
       setIsLoading(false);
     }
@@ -302,7 +297,7 @@ export default function App({
 
   function handleApproveMatrix() {
     if (!customerDataEnabled) {
-      showBanner('warning', t('trialImportBlocked'), []);
+      showKind(BANNER_KIND.TRIAL_BLOCKED, 'warning');
       return;
     }
     const { conversion, asOfDate: previewAsOf, fileName } = matrixPreview;
@@ -316,17 +311,18 @@ export default function App({
     setAsOfDate(previewAsOf);
     setLastRefresh(new Date().toLocaleString());
     const c = conversion.counts;
-    showBanner(conversion.warningCount > 0 ? 'warning' : 'success', t('importSuccess'), [
-      `${c.importedRecords} ${t('mxBannerImported')} · ${c.skippedNoEvidence} ${t('mxCountSkipped')}`,
-      `${c.requirementRows} ${t('mxCountRequirements')}`,
-    ]);
+    showKind(BANNER_KIND.MATRIX_APPROVED, conversion.warningCount > 0 ? 'warning' : 'success', {
+      importedRecords: c.importedRecords,
+      skippedNoEvidence: c.skippedNoEvidence,
+      requirementRows: c.requirementRows,
+    });
     setMatrixPreview(null);
   }
 
   async function handleApproveProductionPackage() {
     if (!productionPreview || isApplying) return;
     if (!customerDataEnabled) {
-      showBanner('warning', t('trialImportBlocked'), []);
+      showKind(BANNER_KIND.TRIAL_BLOCKED, 'warning');
       return;
     }
     setIsApplying(true);
@@ -339,9 +335,7 @@ export default function App({
       };
       const result = await approveProductionPackage(approvedState, productionPreview.validated, metadata);
       if (!result.ok) {
-        showBanner('error', t('ppBlockedNote'), [
-          `${t('ppBlocks')}: ${result.plan.counts.blocking}`,
-        ]);
+        showKind(BANNER_KIND.PRODUCTION_BLOCKED, 'error', { blocking: result.plan.counts.blocking });
         setProductionPreview({ ...productionPreview, plan: result.plan, impact: { ...productionPreview.impact, after: null } });
         return;
       }
@@ -362,16 +356,14 @@ export default function App({
       const sum = (suffix) => Object.entries(counts)
         .filter(([key]) => key.endsWith(suffix))
         .reduce((total, [, value]) => total + value, 0);
-      setImportBanner({
-        type: 'success',
-        kind: 'productionApproved',
+      showKind(BANNER_KIND.PRODUCTION_APPROVED, 'success', {
         rowsNew: sum('.new'),
         changed: sum('.changed'),
         unchanged: sum('.unchanged'),
         organizationCode: result.state.organizationCode,
       });
     } catch (e) {
-      showBanner('error', t('importError'), [e.message]);
+      showKind(BANNER_KIND.IMPORT_ERROR, 'error', { errors: [e.message] });
     } finally {
       setIsApplying(false);
     }
@@ -379,7 +371,7 @@ export default function App({
 
   async function handleRequirementsImport(file) {
     if (!customerDataEnabled) {
-      showBanner('warning', t('trialImportBlocked'), []);
+      showKind(BANNER_KIND.TRIAL_BLOCKED, 'warning');
       return;
     }
     setIsLoading(true);
@@ -391,12 +383,15 @@ export default function App({
       if (result.success) {
         setRequirements(result.validRecords);
         setRequirementsSource(REQUIREMENTS_PROVENANCE.LEGACY);
-        showBanner('success', `Requirements loaded — ${result.importSummary.valid} rows`, result.warnings);
+        showKind(BANNER_KIND.REQUIREMENTS_LOADED, 'success', {
+          rows: result.importSummary.valid,
+          warnings: result.warnings,
+        });
       } else {
-        showBanner('error', t('importError'), result.errors.slice(0, 6));
+        showKind(BANNER_KIND.IMPORT_ERROR, 'error', { errors: result.errors.slice(0, 6) });
       }
     } catch (e) {
-      showBanner('error', t('importError'), [e.message]);
+      showKind(BANNER_KIND.IMPORT_ERROR, 'error', { errors: [e.message] });
     } finally {
       setIsLoading(false);
     }
@@ -433,7 +428,7 @@ export default function App({
   function handleReset() {
     setTrainingRecords([]); setRequirements([]); setLastImportResult(null);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.NONE);
-    setImportBanner({ type: 'success', title: t('dataReset'), lines: [] });
+    setImportBanner(banner(BANNER_KIND.DATA_RESET, 'success'));
     setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null); setMatrixPreview(null);
     setEmployeeMaster(null);
     clearProductionBinding();

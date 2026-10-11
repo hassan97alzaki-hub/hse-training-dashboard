@@ -7,11 +7,13 @@
 #
 #   scripts/render-brief-pdf.sh [input.html] [output.pdf]
 #
-# Nothing is published; the PDF is written locally and is not committed.
+# The PDF lands next to its page in docs/ so the desktop app can open it, and
+# git ignores it: it is a build output of a committed source, not a source.
+# Nothing is published.
 set -euo pipefail
 
 INPUT="${1:-docs/DECISION-BRIEF-T01-P01.html}"
-OUTPUT="${2:-artifacts/decision-brief/$(basename "${INPUT%.html}").pdf}"
+OUTPUT="${2:-docs/$(basename "${INPUT%.html}").pdf}"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 
 [ -f "$INPUT" ] || { echo "Input not found: $INPUT" >&2; exit 1; }

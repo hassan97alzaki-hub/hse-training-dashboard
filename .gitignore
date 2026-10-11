@@ -7,3 +7,6 @@ dist/
 .env.trial
 release/
 artifacts/
+
+# Rendered briefs: build outputs of the committed .html sources
+docs/*.pdf

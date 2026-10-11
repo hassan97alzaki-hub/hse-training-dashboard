@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ورقة قرار — T-01 و P-01</title>
+<meta name="robots" content="noindex, nofollow">
+<!-- Self-contained: no font, script or image from anywhere else.
+     Print to PDF from the browser. -->
+<style>
+  :root { --ink:#15202b; --muted:#5b6b7d; --line:#d7dee8; --accent:#c2410c; --soft:#f6f8fb; }
+  * { box-sizing:border-box; }
+  body { margin:0 auto; padding:32px 22px 64px; max-width:860px; background:#fff; color:var(--ink);
+    font-family:system-ui,-apple-system,'Segoe UI',Tahoma,Arial,sans-serif; line-height:1.75; font-size:16px; }
+  h1 { font-size:27px; margin:0 0 6px; }
+  h2 { font-size:21px; margin:34px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--line); }
+  h3 { font-size:17px; margin:22px 0 8px; color:var(--accent); }
+  p { margin:0 0 10px; }
+  ul { margin:0 0 12px; padding-inline-start:22px; }
+  li { margin-bottom:5px; }
+  code { background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:1px 5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:0.9em; direction:ltr;
+    display:inline-block; unicode-bidi:embed; }
+  table { width:100%; border-collapse:collapse; margin:12px 0 18px; font-size:15px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:start; vertical-align:top; }
+  th { background:var(--soft); font-weight:700; }
+  hr { border:0; border-top:1px solid var(--line); margin:28px 0; }
+  .ph { background:#fff4e5; border:1px dashed var(--accent); border-radius:4px; padding:0 4px; color:var(--accent); }
+  @media print {
+    body { padding:0; font-size:11.5pt; max-width:none; }
+    h2 { page-break-after:avoid; }
+    table, ul { page-break-inside:avoid; }
+    .ph { background:none; }
+  }
+</style>
+</head>
+<body>
+<h1>ورقة قرار — T-01 و P-01</h1>
+<p><strong>إلى:</strong> مسؤول التدريب / مدير السلامة (T-01) · الخصوصية والشؤون القانونية (P-01)</p>
+<p><strong>من:</strong> فريق المنتج — لوحة امتثال تدريب السلامة</p>
+<p><strong>التاريخ:</strong> 2026-10-11 · <strong>مطلوب ردّ قبل:</strong> <span class="ph">⟦نائب: تاريخ⟧</span></p>
+<p><strong>المرجع:</strong> <code>docs/DECISIONS.md</code> (T-01، P-01) · <code>docs/DATA-CONTRACT.md</code> §3.5 · <code>docs/CONTACT-CONTRACT.md</code> §5</p>
+<hr>
+<h2>لماذا هذه الورقة</h2>
+<p>النظام جاهز تقنيًا. اختباران من القرارات يمنعان تحويله من عرض تقني إلى نتيجة</p>
+<p>يُبنى عليها قرار. كلاهما قرار عمل لا قرار هندسة، ولا يستطيع الفريق التقني</p>
+<p>اتخاذه نيابةً عن أحد.</p>
+<p>بدون القرارين يعمل النظام اليوم كما يلي: كل لوحة تحمل شريطًا يقول «متطلبات</p>
+<p>اختبار — ليست متطلبات إنتاج معتمدة»، وكل تصدير يحمل سطر <code>TEST DATA</code>، وكل عدّ</p>
+<p>للأهلية للتنبيهات يساوي صفرًا. هذا سلوك مقصود ومُختبَر، وليس عيبًا.</p>
+<hr>
+<h2>T-01 — أول مجموعة متطلبات معتمدة</h2>
+<p><strong>السؤال:</strong> ما الكورسات <strong>الإلزامية</strong> وما <strong>الموصى بها</strong> لكل زوج</p>
+<p>(قسم، مسمى وظيفي)، ومن أي تاريخ تسري؟</p>
+<p><strong>المالك:</strong> مسؤول التدريب / مدير السلامة.</p>
+<p><strong>ما نحتاجه بالضبط</strong> — صف واحد لكل (قسم، مسمى، كورس):</p>
+<table><thead><tr><th>الحقل</th><th>المعنى</th><th>مثال</th></tr></thead><tbody>
+<tr><td><code>department_code</code></td><td>رمز القسم من قائمة الموارد البشرية المعتمدة</td><td><code>OPS</code></td></tr>
+<tr><td><code>job_title_code</code></td><td>رمز المسمى من القائمة نفسها</td><td><code>OPR</code></td></tr>
+<tr><td><code>course_code</code></td><td>رمز الكورس</td><td><code>H2S-01</code></td></tr>
+<tr><td><code>requirement_type</code></td><td><code>Mandatory</code> أو <code>Recommended</code></td><td><code>Mandatory</code></td></tr>
+<tr><td><code>validity_months</code></td><td>مدة الصلاحية بالأشهر، 1–120. <strong>فارغ = لا تنتهي لهذا الدور</strong></td><td><code>24</code></td></tr>
+<tr><td><code>effective_from</code></td><td>تاريخ سريان هذه النسخة، موحّد لكل الصفوف</td><td><code>2026-11-01</code></td></tr>
+<tr><td><code>approval_reference</code></td><td>رقم القرار أو المذكرة المعتمِدة</td><td><code>TRN-DEC-0001</code></td></tr>
+<tr><td><code>approved_by_role</code></td><td><strong>الدور الوظيفي المعتمِد، لا اسم شخص</strong></td><td><code>مدير التدريب</code></td></tr>
+<tr><td><code>approved_on</code></td><td>تاريخ الاعتماد</td><td><code>2026-10-20</code></td></tr>
+</tbody></table>
+<p><strong>ثلاثة قيود تقنية يجب معرفتها قبل الردّ:</strong></p>
+<ul><li><strong>المجموعة كاملة لكل قسم مُدرج.</strong> إذا أُدرج قسم، تُدرج كل أدواره وكورساتها.</li>
+</ul><p>حزمة ناقصة لقسم مُدرج تُرفض.</p>
+<ul><li><strong>لا بدائل (wildcards).</strong> صف صريح لكل مسمى؛ لا «كل مسميات القسم».</li>
+<li><strong>تاريخ النسخة واحد</strong> لكل صفوف المجموعة، ويفتح نسخة تُغلق ما قبلها</li>
+</ul><p>للأقسام المُدرجة فقط.</p>
+<p><strong>الخيارات:</strong></p>
+<table><thead><tr><th>#</th><th>الخيار</th><th>الأثر</th></tr></thead><tbody>
+<tr><td>أ</td><td>مصفوفة واحدة معتمدة لكل الأقسام في النطاق</td><td>✅ الموصى به. نتيجة امتثال حقيقية لكل من أُدرج</td></tr>
+<tr><td>ب</td><td>البدء بقسم أو قسمين ثم التوسّع</td><td>نتيجة حقيقية للمُدرج فقط؛ الباقي يبقى «غير مُهيّأ»</td></tr>
+<tr><td>ج</td><td>التأجيل</td><td>يبقى النظام عرضًا تقنيًا، والشريط والعلامة يبقيان</td></tr>
+</tbody></table>
+<p><strong>ما يتغيّر فور الاعتماد:</strong> يختفي شريط «متطلبات اختبار»، وتختفي علامة</p>
+<p><code>TEST DATA</code> من التصدير، وتصبح نسبة الامتثال رقمًا قابلًا للعرض على جهة تدقيق.</p>
+<p><strong>الوضع الافتراضي الحالي:</strong> لا متطلبات إنتاج. المتطلبات المشتقة من ملف</p>
+<p>الاختبار <strong>ليست بديلًا</strong> ومرفوضة في أي حزمة إنتاج.</p>
+<hr>
+<h2>P-01 — أساس التواصل مع الموظفين</h2>
+<p><strong>السؤال:</strong> ما أسس التواصل (<code>communication_authorization_basis</code>) المسموح</p>
+<p>الاعتماد عليها لإرسال تنبيه انتهاء تدريب، وما الدليل المطلوب لكل أساس؟</p>
+<p><strong>المالك:</strong> الخصوصية / القانونية، بالتنسيق مع الموارد البشرية.</p>
+<p><strong>الوضع اليوم:</strong> القيمة الوحيدة المقبولة <code>not_defined</code>، ومعناها «لم يُحدَّد</p>
+<p>أساس». النتيجة: <strong>كل عدّ أهلية = صفر</strong>، بالتصميم. ملف جهات اتصال يُقبل</p>
+<p>للتحقق فقط ولا يُنتج مرسَلًا إليه واحدًا.</p>
+<p><strong>ما نحتاجه:</strong></p>
+<ul><li>قائمة الأسس المسموحة (مثال توضيحي لا توصية: علاقة عمل / موافقة صريحة /</li>
+</ul><p>التزام نظامي).</p>
+<ul><li>لكل أساس: ما الدليل المطلوب (<code>authorization_reference</code>) ومن يحفظه.</li>
+<li>هل تُشترط حالة <code>verified</code> للتواصل، أم تكفي <code>unverified</code>؟ (قرار P-05)</li>
+<li>مدة الاحتفاظ ببيانات الاتصال وما يحدث بعدها. (قرار P-03)</li>
+</ul><p><strong>ثلاثة قيود تقنية:</strong></p>
+<ul><li><strong>الدليل ليس اختياريًا.</strong> أي أساس غير <code>not_defined</code> يتطلب مرجعًا وتاريخ</li>
+</ul><p>تسجيل، وإلا رُفض الصف. لا يمكن تعطيل هذا الشرط بإعداد.</p>
+<ul><li><strong>الإفصاح لا يُغني عن الموافقة</strong> حيث تكون الموافقة مطلوبة.</li>
+<li><strong>لا إرسال اليوم.</strong> لا يوجد في النظام كود إرسال بريد أو واتساب، واختبار</li>
+</ul><p>آلي يثبت عدم وجود أي طلب شبكة. P-01 يفتح <strong>العدّ</strong> فقط؛ الإرسال مرحلة</p>
+<p>لاحقة بقرار منفصل.</p>
+<p><strong>الخيارات:</strong></p>
+<table><thead><tr><th>#</th><th>الخيار</th><th>الأثر</th></tr></thead><tbody>
+<tr><td>أ</td><td>اعتماد قائمة أسس بأدلتها الآن</td><td>يُفعِّل عدّ الأهلية؛ الإرسال يبقى قرارًا لاحقًا</td></tr>
+<tr><td>ب</td><td>اعتماد أساس واحد لحالة ضيقة (مثلاً الموظفون النشطون فقط)</td><td>بداية محدودة وقابلة للتوسعة</td></tr>
+<tr><td>ج</td><td>التأجيل</td><td>✅ مقبول تمامًا. كل الأعداد تبقى صفرًا، ولا شيء يتعطّل</td></tr>
+</tbody></table>
+<p><strong>ملاحظة صريحة:</strong> تأجيل P-01 <strong>لا يعطّل</strong> لوحة الامتثال. يعطّل التنبيهات فقط،</p>
+<p>وهي غير منفَّذة أصلًا. أما T-01 فتأجيله يُبقي كل رقم على الشاشة عرضًا تقنيًا.</p>
+<hr>
+<h2>الأولوية التي نوصي بها</h2>
+<ul><li><strong>T-01 أولًا.</strong> هو وحده ما يحوّل اللوحة إلى أداة قرار.</li>
+<li><strong>P-01 لاحقًا</strong>، مع مرحلة التنبيهات، لا قبلها.</li>
+</ul><hr>
+<h2>ما لا تقوله هذه الورقة</h2>
+<ul><li>لا تمثّل اعتمادًا تجاريًا ولا قانونيًا، ولا تلتزم بتاريخ تسليم.</li>
+<li>القيم الافتراضية في <code>docs/DECISIONS.md</code> ضمانات هندسية مؤقتة، وليست</li>
+</ul><p>موافقات. الحالة تبقى <code>Pending</code> حتى يرد المالك بقرار مؤرَّخ ومرجع.</p>
+<ul><li>لا أسماء أشخاص في أي حقل اعتماد؛ الأدوار الوظيفية فقط.</li>
+</ul><h2>خانة الردّ</h2>
+<table><thead><tr><th>الحقل</th><th>T-01</th><th>P-01</th></tr></thead><tbody>
+<tr><td>القرار (أ/ب/ج)</td><td></td><td></td></tr>
+<tr><td>المرجع</td><td></td><td></td></tr>
+<tr><td>الدور المعتمِد</td><td></td><td></td></tr>
+<tr><td>التاريخ</td><td></td><td></td></tr>
+<tr><td>ملاحظات</td><td></td><td></td></tr>
+</tbody></table>
+<p>بعد الردّ: يُحدَّث <code>docs/DECISIONS.md</code> في commit مستقل يذكر رقم القرار</p>
+<p>ومرجعه، ويتحوّل الافتراضي المؤقت إلى الخيار المعتمد.</p>
+</body>
+</html>

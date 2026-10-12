@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { STATUS_COLORS } from './constants.js';
+import { isSupabaseConfigured } from './supabaseClient.js';
 import {
   REQUIREMENTS_PROVENANCE,
   isTestRequirements,
@@ -250,7 +251,15 @@ export function exportManagementPDF(opts) {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(...GREY);
-  doc.text('Local MVP — data processed in browser only. No external upload or storage.', margin, y);
+  // The local-only claim is only true in a local-only build. A cloud build
+  // stores the data in the account's own database, so it says so instead.
+  doc.text(
+    isSupabaseConfigured()
+      ? 'Data stored in the account that generated this report. No personal contact data is exported.'
+      : 'Local MVP — data processed in browser only. No external upload or storage.',
+    margin,
+    y,
+  );
   y += 8;
   kv('Data source', sourceFileName || 'Demo data');
   kv('Generated', new Date().toLocaleString('en-GB'));

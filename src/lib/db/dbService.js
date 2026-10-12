@@ -1,6 +1,12 @@
 /**
- * Local Database Service (IndexedDB)
- * Abstraction for self-hosted MVP. Supabase support deferred to Phase 2C.
+ * Database Service
+ *
+ * Two backends behind one surface:
+ * - Supabase, when the build has VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
+ *   The data follows the account, so the same company sees the same data from
+ *   any device.
+ * - The browser's own database otherwise. Nothing leaves the device. This is
+ *   what the self-hosted and trial builds ship as.
  *
  * Usage:
  * const db = getDbService();
@@ -8,17 +14,52 @@
  * const all = await db.courses.list();
  */
 
+import { getSupabaseClient } from '../supabaseClient.js';
+import { SupabaseDbService } from './supabaseDbService.js';
+
 let dbInstance = null;
+let backend = 'local';
 
 /**
- * Initialize database service (local IndexedDB)
+ * Initialize the database service. Picks the backend from the build
+ * environment; falls back to the local one when the cloud is unreachable, so
+ * a configuration mistake degrades instead of blocking the application.
  */
 export async function initDb() {
   if (!dbInstance) {
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        dbInstance = await new SupabaseDbService(client).init();
+        backend = 'supabase';
+        return dbInstance;
+      } catch (err) {
+        console.warn('Supabase unavailable, using the local database:', err.message);
+        dbInstance = null;
+      }
+    }
     dbInstance = new LocalDbService();
     await dbInstance.init();
+    backend = 'local';
   }
   return dbInstance;
+}
+
+/**
+ * Which backend initDb() selected: 'supabase' or 'local'.
+ * @returns {string}
+ */
+export function getDbBackend() {
+  return backend;
+}
+
+/**
+ * Drop the instance so the next initDb() picks a backend again. Used when the
+ * signed-in user changes, and by tests.
+ */
+export function resetDb() {
+  dbInstance = null;
+  backend = 'local';
 }
 
 /**

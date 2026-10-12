@@ -7,6 +7,9 @@ const translations = {
     appTitle: 'HSE Training Compliance Dashboard',
     appSubtitle: 'Health, Safety & Environment',
     privacyNote: 'Local MVP — all data is processed in this browser only. No data is uploaded or stored externally.',
+    // The cloud build stores data in the account's own database, so the
+    // local-only claim above would be untrue there. Header picks between them.
+    privacyNoteCloud: 'Your data is stored in your own account. Only this account can read it.',
     asOfDate: 'As Of Date',
     companyLabel: 'Company',
     projectLabel: 'Project',
@@ -389,6 +392,7 @@ const translations = {
     appTitle: 'لوحة امتثال تدريب السلامة والصحة والبيئة',
     appSubtitle: 'الصحة والسلامة والبيئة',
     privacyNote: 'نموذج محلي — تتم معالجة جميع البيانات في هذا المتصفح فقط. لا يتم رفع البيانات أو تخزينها خارجيًا.',
+    privacyNoteCloud: 'بياناتك محفوظة في حسابك الخاص. لا يقرأها إلا هذا الحساب.',
     asOfDate: 'تاريخ المرجع',
     companyLabel: 'الشركة',
     projectLabel: 'المشروع',

@@ -1,4 +1,5 @@
 import { ShieldCheck, Building2, FolderKanban, Languages } from 'lucide-react';
+import { isSupabaseConfigured } from '../lib/supabaseClient.js';
 
 export default function Header({
   companyName, projectName, asOfDate, lang, t,
@@ -25,7 +26,8 @@ export default function Header({
         <div className="header-actions">
           <span className="privacy-badge">
             <ShieldCheck size={14} />
-            {t('privacyNote')}
+            {/* The local-only claim is only true in a local-only build. */}
+            {t(isSupabaseConfigured() ? 'privacyNoteCloud' : 'privacyNote')}
           </span>
           <button
             className="lang-toggle"

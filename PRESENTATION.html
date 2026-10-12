@@ -398,7 +398,7 @@
           <div class="stat-label">Fully functional</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">907</div>
+          <div class="stat-number">932</div>
           <div class="stat-label">Tests passing</div>
         </div>
         <div class="stat-card">
@@ -409,9 +409,10 @@
       <p><strong>Phase 2B Complete (Oct 2026):</strong></p>
       <ul>
         <li>✅ Course management (add/edit/delete), persisted</li>
-        <li>✅ Employee management (add/edit/delete) from the UI</li>
+        <li>✅ Employee management (add/edit/delete) from the UI, persisted</li>
+        <li>✅ Department registry — picked from a list, never typed twice</li>
         <li>✅ Side drawer for all data management — uncluttered dashboard</li>
-        <li>✅ Manual courses flow into filters, tables and reports</li>
+        <li>✅ Manual courses and employees flow into filters, tables and reports</li>
         <li>✅ Certificate gallery with images/URLs</li>
         <li>✅ Email reminder preview (15-30 day window)</li>
         <li>✅ Data persistence (IndexedDB)</li>
@@ -429,8 +430,8 @@
       <p style="margin-top: 30px; font-size: 16px;">
         <strong>What you can do:</strong><br>
         • Import sample CSV training records<br>
-        • Add courses and employees from the Manage Data drawer<br>
-        • Add custom courses (persists across refresh)<br>
+        • Add departments, courses and employees from the Manage Data drawer<br>
+        • Everything added persists across refresh<br>
         • Upload certificate images<br>
         • Generate compliance reports<br>
         • Switch to Arabic interface<br>
@@ -586,11 +587,11 @@
       </ul>
     </div>
 
-    <!-- SLIDE 14: Course & Employee Management -->
+    <!-- SLIDE 14: Course, Department & Employee Management -->
     <div class="slide">
-      <h2>Managing Courses & Employees</h2>
+      <h2>Managing Courses, Departments & Employees</h2>
       <p style="margin-bottom: 18px;">كل الإضافة والحذف من زر واحد: <strong>Manage Data</strong> أعلى الصفحة.
-      يفتح لوحة جانبية فيها تبويبان: <strong>Courses</strong> و <strong>Employees</strong>.
+      يفتح لوحة جانبية فيها ثلاثة تبويبات: <strong>Courses</strong> و <strong>Departments</strong> و <strong>Employees</strong>.
       الداشبورد يبقى نظيفًا — لا أقسام إدارة تشغل المساحة.</p>
       <div class="feature-grid">
         <div class="feature-box">
@@ -611,19 +612,20 @@
           </p>
         </div>
         <div class="feature-box">
-          <h4>👤 إضافة موظف</h4>
-          <p>• Manage Data › تبويب Employees<br>
-          • الرقم الوظيفي والاسم والقسم (مطلوبة)<br>
-          • المسمى والإيميل والجوال (اختيارية)<br>
-          • أو استورد CSV/XLSX لعدد كبير مرة واحدة
+          <h4>🏢 إضافة قسم</h4>
+          <p>• Manage Data › تبويب Departments<br>
+          • اكتب اسم القسم واحفظ ✓<br>
+          • القسم المكتشف من الاستيراد يظهر باسم From import<br>
+          <strong style="color: #10b981;">القسم يُختار من قائمة، فلا يصير Operations و operations قسمين</strong>
           </p>
         </div>
         <div class="feature-box">
-          <h4>👥 حذف أو تعديل موظف</h4>
+          <h4>👤 إضافة موظف</h4>
           <p>• Manage Data › تبويب Employees<br>
+          • الرقم الوظيفي والاسم (مطلوبة)<br>
+          • القسم يُختار من قائمة الأقسام المسجّلة<br>
           • أزرار Edit و Delete لكل صف<br>
-          • أو Export as CSV لنسخة احتياطية<br>
-          <strong style="color: #f59e0b;">الموظف المضاف يدويًا يزول بعد تحديث الصفحة (الحفظ الدائم قادم)</strong>
+          <strong style="color: #10b981;">يُحفظ تلقائيًا ويبقى بعد التحديث</strong>
           </p>
         </div>
       </div>
@@ -652,7 +654,16 @@
         A: يدويًا (الحالي). الدعم التلقائي قادم Q4 2026.<br>
         <br>
         <strong>Q: أين زر إضافة كورس أو موظف؟</strong><br>
-        A: زر <strong>Manage Data</strong> أعلى الصفحة. يفتح لوحة جانبية فيها تبويبا Courses و Employees.<br>
+        A: زر <strong>Manage Data</strong> أعلى الصفحة. يفتح لوحة جانبية فيها تبويبات Courses و Departments و Employees.<br>
+        <br>
+        <strong>Q: كيف أضيف قسمًا جديدًا؟</strong><br>
+        A: Manage Data › تبويب Departments › اكتب الاسم › Add. بعدها يظهر القسم في قائمة نموذج الموظف.<br>
+        <br>
+        <strong>Q: لماذا لا أستطيع حذف بعض الأقسام؟</strong><br>
+        A: القسم القادم من استيراد لا يُحذف هنا، لأنه يعود مع استيراده. والقسم المسجّل لا يُحذف إلا بعد خلوّه من الموظفين.<br>
+        <br>
+        <strong>Q: الموظف المضاف يدويًا يبقى بعد تحديث الصفحة؟</strong><br>
+        A: نعم. يُحفظ في IndexedDB ويظهر في التقارير كـ Missing لكل متطلب، وهي الحالة الصحيحة لمن سُجّل الآن.<br>
         <br>
         <strong>Q: أضفت كورسًا ولم يظهر في قائمة الكورسات. لماذا؟</strong><br>
         A: كان خطأً وتم إصلاحه. الكورس الجديد يظهر الآن في الفلتر والجدول والتقارير فورًا، حتى قبل استيراد مصفوفة المتطلبات.<br>

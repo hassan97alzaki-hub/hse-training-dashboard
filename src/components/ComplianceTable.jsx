@@ -16,6 +16,7 @@ export default function ComplianceTable({
   t,
   lang,
   showInactive,
+  onCertificateClick,
 }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -113,7 +114,25 @@ export default function ComplianceTable({
                   <td style={{ fontFamily: 'monospace', fontSize: 11 }}>
                     {item.Issue_Date ? formatDateDisplay(item.Issue_Date, lang) : '—'}
                   </td>
-                  <td style={{ fontSize: 11 }}>{item.Certificate_Number || '—'}</td>
+                  <td style={{ fontSize: 11 }}>
+                    {item.Certificate_Number ? (
+                      <button
+                        onClick={() => onCertificateClick?.(item.Certificate_Number)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2563eb',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0,
+                          fontSize: 'inherit',
+                          fontFamily: 'monospace',
+                        }}
+                      >
+                        {item.Certificate_Number}
+                      </button>
+                    ) : '—'}
+                  </td>
                 </tr>
               );
             })}

@@ -6,6 +6,7 @@ import { createI18n } from './lib/i18n.js';
 import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from './lib/complianceEngine.js';
 import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js';
 import { loadDemoDataFromPublic } from './lib/demoData.js';
+import { createCertificateGallery } from './lib/certificateGallery.js';
 import {
   readWorkbookFromFile, looksLikeMatrixWorkbook, readMatrixSheets,
   convertMatrixWorkbook, compareSourceStatus, toImportResult,
@@ -39,6 +40,7 @@ import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
 import TrialBanner from './components/TrialBanner.jsx';
 import TrialQuickStart from './components/TrialQuickStart.jsx';
 import { CourseManager } from './components/CourseManager.jsx';
+import { CertificateGallery } from './components/CertificateGallery.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -75,6 +77,8 @@ export default function App({
   const [trainingRecords, setTrainingRecords] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [manualCourses, setManualCourses] = useState([]); // User-added courses (Phase 2B)
+  const [certificateGallery] = useState(() => createCertificateGallery()); // Certificate metadata store
+  const [selectedCertificate, setSelectedCertificate] = useState(null); // Cert modal: {number, isNew}
   const [lastImportResult, setLastImportResult] = useState(null);
   const [importBanner, setImportBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -467,6 +471,8 @@ export default function App({
 
   function handleReset() {
     setTrainingRecords([]); setRequirements([]); setManualCourses([]); setLastImportResult(null);
+    certificateGallery.clear();
+    setSelectedCertificate(null);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.NONE);
     setImportBanner(banner(BANNER_KIND.DATA_RESET, 'success'));
     setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null); setMatrixPreview(null);
@@ -526,6 +532,19 @@ export default function App({
             preview={matrixPreview} t={t}
             onApprove={handleApproveMatrix}
             onCancel={() => setMatrixPreview(null)}
+          />
+        )}
+
+        {selectedCertificate && (
+          <CertificateGallery
+            certificate={certificateGallery.get(selectedCertificate.number)}
+            certificateNumber={selectedCertificate.number}
+            isNewCertificate={selectedCertificate.isNew}
+            onClose={() => setSelectedCertificate(null)}
+            onSave={(data) => {
+              certificateGallery.set(data.certificateNumber, data);
+              setSelectedCertificate(null);
+            }}
           />
         )}
 
@@ -603,6 +622,7 @@ export default function App({
                 universe={displayUniverse}
                 inactiveUniverse={displayInactiveUniverse}
                 filters={filters} t={t} lang={lang} showInactive={showInactive}
+                onCertificateClick={(certNumber) => setSelectedCertificate({ number: certNumber, isNew: false })}
               />
             </div>
 

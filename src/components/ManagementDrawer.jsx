@@ -1,0 +1,205 @@
+import { useState, useEffect } from 'react';
+import { X, Settings } from 'lucide-react';
+import { CourseManager } from './CourseManager.jsx';
+import { EmployeeManager } from './EmployeeManager.jsx';
+
+/**
+ * ManagementDrawer Component
+ *
+ * Slide-in side panel that holds data-management tools.
+ * Keeps the main dashboard clean: one trigger button instead of
+ * two large always-visible sections.
+ *
+ * Tabs: Courses | Employees
+ *
+ * Props:
+ * - open: boolean
+ * - onClose: () => void
+ * - courses, onCoursesChange
+ * - employees, onEmployeesChange
+ */
+export function ManagementDrawer({
+  open = false,
+  onClose,
+  courses = [],
+  onCoursesChange,
+  employees = [],
+  onEmployeesChange,
+}) {
+  const [tab, setTab] = useState('courses');
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div style={styles.overlay} onClick={onClose}>
+      <aside
+        style={styles.drawer}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Data management"
+      >
+        <header style={styles.header}>
+          <h3 style={styles.title}>Manage Data</h3>
+          <button onClick={onClose} style={styles.closeBtn} aria-label="Close">
+            <X size={18} />
+          </button>
+        </header>
+
+        <nav style={styles.tabs}>
+          <button
+            onClick={() => setTab('courses')}
+            style={{ ...styles.tab, ...(tab === 'courses' ? styles.tabActive : {}) }}
+          >
+            Courses
+            <span style={styles.tabCount}>{courses.length}</span>
+          </button>
+          <button
+            onClick={() => setTab('employees')}
+            style={{ ...styles.tab, ...(tab === 'employees' ? styles.tabActive : {}) }}
+          >
+            Employees
+            <span style={styles.tabCount}>{employees.length}</span>
+          </button>
+        </nav>
+
+        <div style={styles.body}>
+          {tab === 'courses' && (
+            <CourseManager
+              courses={courses}
+              onCoursesChange={onCoursesChange}
+              disabled={false}
+            />
+          )}
+          {tab === 'employees' && (
+            <EmployeeManager
+              employees={employees}
+              onEmployeesChange={onEmployeesChange}
+              disabled={false}
+            />
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+/**
+ * Trigger button for the drawer. Place in the toolbar.
+ */
+export function ManagementDrawerButton({ onClick, count = 0 }) {
+  return (
+    <button onClick={onClick} style={styles.trigger}>
+      <Settings size={16} />
+      <span>Manage Data</span>
+      {count > 0 && <span style={styles.triggerBadge}>{count}</span>}
+    </button>
+  );
+}
+
+const styles = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    zIndex: 900,
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  drawer: {
+    width: 'min(560px, 95vw)',
+    height: '100%',
+    backgroundColor: '#ffffff',
+    boxShadow: '-4px 0 24px rgba(0,0,0,0.25)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px 20px',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  title: {
+    margin: 0,
+    fontSize: '17px',
+    fontWeight: 600,
+    color: '#1f2937',
+  },
+  closeBtn: {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#6b7280',
+    padding: '6px',
+    borderRadius: '4px',
+    display: 'inline-flex',
+  },
+  tabs: {
+    display: 'flex',
+    gap: '4px',
+    padding: '12px 20px 0',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  tab: {
+    background: 'transparent',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    padding: '10px 14px',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#6b7280',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  tabActive: {
+    color: '#2563eb',
+    borderBottom: '2px solid #2563eb',
+  },
+  tabCount: {
+    backgroundColor: '#e5e7eb',
+    color: '#374151',
+    borderRadius: '10px',
+    padding: '1px 7px',
+    fontSize: '11px',
+    fontWeight: 600,
+  },
+  body: {
+    padding: '16px 20px',
+    overflowY: 'auto',
+    flex: 1,
+  },
+  trigger: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 14px',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    backgroundColor: 'transparent',
+    color: 'inherit',
+    fontSize: '13px',
+    fontWeight: 500,
+    cursor: 'pointer',
+  },
+  triggerBadge: {
+    backgroundColor: '#2563eb',
+    color: '#ffffff',
+    borderRadius: '10px',
+    padding: '1px 7px',
+    fontSize: '11px',
+    fontWeight: 600,
+  },
+};

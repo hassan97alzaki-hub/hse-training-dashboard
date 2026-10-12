@@ -41,8 +41,7 @@ import ProductionPackagePreview from './components/ProductionPackagePreview.jsx'
 import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
 import TrialBanner from './components/TrialBanner.jsx';
 import TrialQuickStart from './components/TrialQuickStart.jsx';
-import { CourseManager } from './components/CourseManager.jsx';
-import { EmployeeManager } from './components/EmployeeManager.jsx';
+import { ManagementDrawer, ManagementDrawerButton } from './components/ManagementDrawer.jsx';
 import { CertificateGallery } from './components/CertificateGallery.jsx';
 import { ReminderSender } from './components/ReminderSender.jsx';
 import Footer from './components/Footer.jsx';
@@ -84,6 +83,7 @@ export default function App({
   const [manualEmployees, setManualEmployees] = useState([]); // User-added employees (Phase 2B.5)
   const [certificateGallery] = useState(() => createCertificateGallery()); // Certificate metadata store
   const [selectedCertificate, setSelectedCertificate] = useState(null); // Cert modal: {number, isNew}
+  const [drawerOpen, setDrawerOpen] = useState(false); // Side drawer: courses/employees management
   const [lastImportResult, setLastImportResult] = useState(null);
   const [importBanner, setImportBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -583,6 +583,22 @@ export default function App({
       <main className="main-content">
         <TrialBanner state={trial} t={t} />
 
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <ManagementDrawerButton
+            onClick={() => setDrawerOpen(true)}
+            count={manualCourses.length + manualEmployees.length}
+          />
+        </div>
+
+        <ManagementDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          courses={manualCourses}
+          onCoursesChange={setManualCourses}
+          employees={manualEmployees}
+          onEmployeesChange={setManualEmployees}
+        />
+
         <ImportPanel
           t={t}
           onLoadDemo={handleLoadDemo}
@@ -660,30 +676,6 @@ export default function App({
             />
 
             <KpiCards kpis={displayKpis} t={t} />
-
-            <div className="section">
-              <div className="section-header">
-                <span className="section-title">Course Management</span>
-                <span className="badge-count">{manualCourses.length}</span>
-              </div>
-              <CourseManager
-                courses={manualCourses}
-                onCoursesChange={setManualCourses}
-                disabled={false}
-              />
-            </div>
-
-            <div className="section">
-              <div className="section-header">
-                <span className="section-title">Employee Management</span>
-                <span className="badge-count">{manualEmployees.length}</span>
-              </div>
-              <EmployeeManager
-                employees={manualEmployees}
-                onEmployeesChange={setManualEmployees}
-                disabled={false}
-              />
-            </div>
 
             <div className="charts-grid">
               <div className="chart-wrap">

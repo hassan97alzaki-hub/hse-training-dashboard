@@ -38,6 +38,7 @@ import ProductionPackagePreview from './components/ProductionPackagePreview.jsx'
 import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
 import TrialBanner from './components/TrialBanner.jsx';
 import TrialQuickStart from './components/TrialQuickStart.jsx';
+import { CourseManager } from './components/CourseManager.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -73,6 +74,7 @@ export default function App({
 
   const [trainingRecords, setTrainingRecords] = useState([]);
   const [requirements, setRequirements] = useState([]);
+  const [manualCourses, setManualCourses] = useState([]); // User-added courses (Phase 2B)
   const [lastImportResult, setLastImportResult] = useState(null);
   const [importBanner, setImportBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,10 +111,48 @@ export default function App({
     [requirements, requirementsSource],
   );
 
+  // Merge manual courses into requirements for the compliance universe.
+  // Manual courses are added to every department that would otherwise have no courses.
+  // This preserves the original requirements while augmenting with user-added courses.
+  const mergedRequirements = useMemo(() => {
+    if (manualCourses.length === 0) return requirements;
+
+    const merged = [...requirements];
+    // Get unique departments from requirements
+    const departmentsInReqs = new Set(requirements.map(r => r.Department).filter(Boolean));
+
+    // For each manual course, add it to departments that don't have it yet
+    for (const course of manualCourses) {
+      // If requirements is empty or if department doesn't have this course, add it
+      if (departmentsInReqs.size === 0) {
+        // No departments defined yet; don't add manual courses
+        continue;
+      }
+
+      for (const dept of departmentsInReqs) {
+        const exists = merged.some(
+          r => r.Department === dept && r.Course_Code && r.Course_Code.toUpperCase() === course.code.toUpperCase()
+        );
+        if (!exists) {
+          merged.push({
+            Department: dept,
+            Job_Title: '', // Manual courses apply to all roles in department
+            Course_Code: course.code,
+            Course_Name: course.name,
+            Mandatory: course.mandatory ? 1 : 0,
+            Validity_Months: course.validityMonths ?? 12,
+            Description: course.description || '',
+          });
+        }
+      }
+    }
+    return merged;
+  }, [requirements, manualCourses]);
+
   const complianceResult = useMemo(() => {
     if (trainingRecords.length === 0 && !employeeMaster?.length) return null;
-    return buildComplianceUniverse(trainingRecords, requirements, asOfDate, employeeMaster ?? undefined);
-  }, [trainingRecords, requirements, asOfDate, employeeMaster]);
+    return buildComplianceUniverse(trainingRecords, mergedRequirements, asOfDate, employeeMaster ?? undefined);
+  }, [trainingRecords, mergedRequirements, asOfDate, employeeMaster]);
 
   const kpis = useMemo(() => {
     if (!complianceResult) return null;
@@ -426,7 +466,7 @@ export default function App({
   }
 
   function handleReset() {
-    setTrainingRecords([]); setRequirements([]); setLastImportResult(null);
+    setTrainingRecords([]); setRequirements([]); setManualCourses([]); setLastImportResult(null);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.NONE);
     setImportBanner(banner(BANNER_KIND.DATA_RESET, 'success'));
     setSourceFileName(''); setFilters(EMPTY_FILTERS); setLastRefresh(null); setMatrixPreview(null);
@@ -512,6 +552,18 @@ export default function App({
             />
 
             <KpiCards kpis={displayKpis} t={t} />
+
+            <div className="section">
+              <div className="section-header">
+                <span className="section-title">Course Management</span>
+                <span className="badge-count">{manualCourses.length}</span>
+              </div>
+              <CourseManager
+                courses={manualCourses}
+                onCoursesChange={setManualCourses}
+                disabled={false}
+              />
+            </div>
 
             <div className="charts-grid">
               <div className="chart-wrap">

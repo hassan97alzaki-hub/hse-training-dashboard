@@ -11,6 +11,7 @@ import { initDb } from './lib/db/dbService.js';
 import {
   loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeManualCourses,
   loadEmployeesFromDb, addEmployeeWithDb, editEmployeeWithDb, deleteEmployeeWithDb, mergeManualEmployees,
+  loadDepartmentsFromDb, addDepartmentWithDb, deleteDepartmentWithDb, listDepartments,
 } from './lib/dataService.js';
 import {
   readWorkbookFromFile, looksLikeMatrixWorkbook, readMatrixSheets,
@@ -116,6 +117,9 @@ export default function App({
   const [dbInitialized, setDbInitialized] = useState(false);
   const [loadedCourses, setLoadedCourses] = useState(new Set()); // Course codes already in the database
   const [loadedEmployees, setLoadedEmployees] = useState(new Set()); // Employee IDs already in the database
+  // Departments registered through the interface. A department that only
+  // exists in imported data is discovered from the people, not stored here.
+  const [registeredDepartments, setRegisteredDepartments] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -161,6 +165,12 @@ export default function App({
         if (dbEmployees && dbEmployees.length > 0) {
           setManualEmployees(dbEmployees);
           setLoadedEmployees(new Set(dbEmployees.map(e => e.employeeId.toUpperCase())));
+        }
+
+        // Load the departments that were registered through the interface
+        const dbDepartments = await loadDepartmentsFromDb();
+        if (dbDepartments && dbDepartments.length > 0) {
+          setRegisteredDepartments(dbDepartments);
         }
 
         setDbInitialized(true);
@@ -269,6 +279,30 @@ export default function App({
     () => mergeManualEmployees(employeeMaster ?? trainingRecords, manualEmployees),
     [employeeMaster, trainingRecords, manualEmployees],
   );
+
+  // The department list shown in the drawer: the registered ones plus the ones
+  // discovered in the people, with a head count for each. See listDepartments.
+  const departments = useMemo(
+    () => listDepartments(registeredDepartments, mergedPeople),
+    [registeredDepartments, mergedPeople],
+  );
+
+  const handleDepartmentAdd = useCallback(async (name) => {
+    const result = await addDepartmentWithDb(name, registeredDepartments);
+    if (result.success) {
+      setRegisteredDepartments(prev => [...prev, name.trim()]);
+    }
+    return result;
+  }, [registeredDepartments]);
+
+  const handleDepartmentDelete = useCallback(async (name) => {
+    const result = await deleteDepartmentWithDb(name, mergedPeople);
+    if (result.success) {
+      const key = name.trim().toLowerCase();
+      setRegisteredDepartments(prev => prev.filter(d => d.trim().toLowerCase() !== key));
+    }
+    return result;
+  }, [mergedPeople]);
 
   // Manual courses become requirement rows so they reach the compliance
   // universe, the filters and the reports. See mergeManualCourses.
@@ -639,6 +673,9 @@ export default function App({
           onCoursesChange={setManualCourses}
           employees={manualEmployees}
           onEmployeesChange={setManualEmployees}
+          departments={departments}
+          onDepartmentAdd={handleDepartmentAdd}
+          onDepartmentDelete={handleDepartmentDelete}
         />
 
         <ImportPanel

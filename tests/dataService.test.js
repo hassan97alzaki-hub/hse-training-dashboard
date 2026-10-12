@@ -9,6 +9,9 @@ import {
   getRequirementsByDepartment,
   mergeManualCourses,
   mergeManualEmployees,
+  departmentKey,
+  validateDepartment,
+  listDepartments,
 } from '../src/lib/dataService.js';
 import { buildComplianceUniverse } from '../src/lib/complianceEngine.js';
 
@@ -525,6 +528,85 @@ describe('dataService.js', () => {
 
       expect(row.Course_Code).toBe('MAN001');
       expect(row.isMissing).toBe(true);
+    });
+  });
+
+  describe('departmentKey', () => {
+    it('lower-cases and trims', () => {
+      expect(departmentKey('  Operations ')).toBe('operations');
+    });
+
+    it('returns an empty string for null or undefined', () => {
+      expect(departmentKey(null)).toBe('');
+      expect(departmentKey(undefined)).toBe('');
+    });
+  });
+
+  describe('validateDepartment', () => {
+    it('rejects an empty name', () => {
+      const result = validateDepartment('   ');
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toBe('Department name required');
+    });
+
+    it('accepts a new name', () => {
+      expect(validateDepartment('Operations', ['Drilling']).valid).toBe(true);
+    });
+
+    it('rejects a duplicate regardless of case or spacing', () => {
+      const result = validateDepartment(' operations ', ['Operations']);
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toContain('already exists');
+    });
+
+    it('rejects a name longer than 60 characters', () => {
+      const result = validateDepartment('x'.repeat(61));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toContain('60 characters');
+    });
+  });
+
+  describe('listDepartments', () => {
+    it('returns an empty list with no sources', () => {
+      expect(listDepartments([], [])).toEqual([]);
+    });
+
+    it('lists a registered department with no people', () => {
+      expect(listDepartments(['Operations'], [])).toEqual([
+        { name: 'Operations', registered: true, employeeCount: 0 },
+      ]);
+    });
+
+    it('counts the people in a registered department', () => {
+      const people = [
+        { Employee_ID: 'E1', Department: 'Operations' },
+        { Employee_ID: 'E2', Department: 'Operations' },
+      ];
+      expect(listDepartments(['Operations'], people)[0].employeeCount).toBe(2);
+    });
+
+    it('discovers a department that only exists in the people', () => {
+      const result = listDepartments([], [{ Employee_ID: 'E1', Department: 'Drilling' }]);
+      expect(result).toEqual([{ name: 'Drilling', registered: false, employeeCount: 1 }]);
+    });
+
+    it('matches a registered name to the people without case, keeping the registered spelling', () => {
+      const result = listDepartments(['Operations'], [{ Employee_ID: 'E1', Department: 'operations' }]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ name: 'Operations', registered: true, employeeCount: 1 });
+    });
+
+    it('skips a person with no department', () => {
+      expect(listDepartments([], [{ Employee_ID: 'E1', Department: '  ' }])).toEqual([]);
+    });
+
+    it('skips an empty registered name', () => {
+      expect(listDepartments(['', '  '], [])).toEqual([]);
+    });
+
+    it('sorts by name', () => {
+      const result = listDepartments(['Operations', 'Drilling'], [{ Employee_ID: 'E1', Department: 'Admin' }]);
+      expect(result.map(d => d.name)).toEqual(['Admin', 'Drilling', 'Operations']);
     });
   });
 });

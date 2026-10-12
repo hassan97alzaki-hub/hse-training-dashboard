@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Settings } from 'lucide-react';
 import { CourseManager } from './CourseManager.jsx';
 import { EmployeeManager } from './EmployeeManager.jsx';
+import { DepartmentManager } from './DepartmentManager.jsx';
 
 /**
  * ManagementDrawer Component
@@ -10,13 +11,16 @@ import { EmployeeManager } from './EmployeeManager.jsx';
  * Keeps the main dashboard clean: one trigger button instead of
  * two large always-visible sections.
  *
- * Tabs: Courses | Employees
+ * Tabs: Courses | Departments | Employees
  *
  * Props:
  * - open: boolean
  * - onClose: () => void
  * - courses, onCoursesChange
  * - employees, onEmployeesChange
+ * - departments: [{name, registered, employeeCount}] from listDepartments
+ * - onDepartmentAdd: (name) => Promise<{success, error}>
+ * - onDepartmentDelete: (name) => Promise<{success, error}>
  */
 export function ManagementDrawer({
   open = false,
@@ -25,6 +29,9 @@ export function ManagementDrawer({
   onCoursesChange,
   employees = [],
   onEmployeesChange,
+  departments = [],
+  onDepartmentAdd,
+  onDepartmentDelete,
 }) {
   const [tab, setTab] = useState('courses');
 
@@ -64,6 +71,13 @@ export function ManagementDrawer({
             <span style={styles.tabCount}>{courses.length}</span>
           </button>
           <button
+            onClick={() => setTab('departments')}
+            style={{ ...styles.tab, ...(tab === 'departments' ? styles.tabActive : {}) }}
+          >
+            Departments
+            <span style={styles.tabCount}>{departments.length}</span>
+          </button>
+          <button
             onClick={() => setTab('employees')}
             style={{ ...styles.tab, ...(tab === 'employees' ? styles.tabActive : {}) }}
           >
@@ -80,10 +94,19 @@ export function ManagementDrawer({
               disabled={false}
             />
           )}
+          {tab === 'departments' && (
+            <DepartmentManager
+              departments={departments}
+              onAdd={onDepartmentAdd}
+              onDelete={onDepartmentDelete}
+              disabled={false}
+            />
+          )}
           {tab === 'employees' && (
             <EmployeeManager
               employees={employees}
               onEmployeesChange={onEmployeesChange}
+              departments={departments.map(d => d.name)}
               disabled={false}
             />
           )}

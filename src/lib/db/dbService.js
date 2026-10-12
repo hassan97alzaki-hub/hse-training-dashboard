@@ -39,11 +39,13 @@ export function getDbService() {
 class LocalDbService {
   constructor() {
     this.dbName = 'hse-training-db';
-    // Version 2 added the employees store. Raising this number is what runs
-    // onupgradeneeded for a browser that already holds a version 1 database.
-    this.version = 2;
+    // Version 2 added the employees store, version 3 the departments store.
+    // Raising this number is what runs onupgradeneeded for a browser that
+    // already holds an older database.
+    this.version = 3;
     this.courses = {};
     this.certificates = {};
+    this.departments = {};
     this.employees = {};
     this.employeeContacts = {};
     this.remindersSent = {};
@@ -69,6 +71,13 @@ class LocalDbService {
           certStore.createIndex('certificate_number', 'certificate_number', { unique: true });
         }
 
+        if (!db.objectStoreNames.contains('departments')) {
+          const departmentStore = db.createObjectStore('departments', { keyPath: 'id' });
+          // The key is the lower-case name, so "Operations" and "operations"
+          // cannot both be registered.
+          departmentStore.createIndex('name_key', 'name_key', { unique: true });
+        }
+
         if (!db.objectStoreNames.contains('employees')) {
           const employeeStore = db.createObjectStore('employees', { keyPath: 'id' });
           employeeStore.createIndex('employee_id', 'employee_id', { unique: true });
@@ -91,6 +100,7 @@ class LocalDbService {
     // Initialize service methods
     this._initCourses();
     this._initCertificates();
+    this._initDepartments();
     this._initEmployees();
     this._initEmployeeContacts();
     this._initRemindersSent();
@@ -225,6 +235,52 @@ class LocalDbService {
         return new Promise((resolve, reject) => {
           const tx = db.transaction('certificates', 'readwrite');
           const store = tx.objectStore('certificates');
+          const request = store.delete(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve();
+        });
+      },
+    };
+  }
+
+  _initDepartments() {
+    this.departments = {
+      add: async (data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('departments', 'readwrite');
+          const store = tx.objectStore('departments');
+          const request = store.add({ ...data, created_at: new Date().toISOString() });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      getByNameKey: async (nameKey) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('departments', 'readonly');
+          const store = tx.objectStore('departments');
+          const index = store.index('name_key');
+          const request = index.get(nameKey);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || null);
+        });
+      },
+      list: async () => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('departments', 'readonly');
+          const store = tx.objectStore('departments');
+          const request = store.getAll();
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+      delete: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('departments', 'readwrite');
+          const store = tx.objectStore('departments');
           const request = store.delete(id);
           request.onerror = () => reject(request.error);
           request.onsuccess = () => resolve();

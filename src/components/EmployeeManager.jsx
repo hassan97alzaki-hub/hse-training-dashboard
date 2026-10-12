@@ -11,11 +11,20 @@ import { validateEmployee } from '../lib/dataService.js';
  * - Delete employees
  * - Export employees as CSV
  *
+ * The department is picked from the registered departments rather than typed,
+ * so the same department cannot enter the reports under two spellings.
+ *
  * Props:
  * - employees: array of employee objects
  * - onEmployeesChange: callback to update parent state
+ * - departments: department names to choose from
  */
-export function EmployeeManager({ employees = [], onEmployeesChange, disabled = false }) {
+export function EmployeeManager({
+  employees = [],
+  onEmployeesChange,
+  disabled = false,
+  departments = [],
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [formData, setFormData] = useState({
@@ -181,14 +190,29 @@ export function EmployeeManager({ employees = [], onEmployeesChange, disabled = 
 
           <div style={styles.formGroup}>
             <label style={styles.label}>Department *</label>
-            <input
-              type="text"
-              name="department"
-              value={formData.department}
-              onChange={handleInputChange}
-              placeholder="e.g., Operations"
-              style={styles.input}
-            />
+            {departments.length === 0 ? (
+              <p style={styles.inlineNote}>
+                No departments yet. Add one in the Departments tab first.
+              </p>
+            ) : (
+              <select
+                name="department"
+                value={formData.department}
+                onChange={handleInputChange}
+                style={styles.input}
+              >
+                <option value="">Select a department…</option>
+                {/* An employee may already sit in a department that is no
+                    longer offered. Keep that value selectable so editing the
+                    employee does not silently move them. */}
+                {(departments.includes(formData.department) || !formData.department
+                  ? departments
+                  : [formData.department, ...departments]
+                ).map(department => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div style={styles.formGroup}>
@@ -302,7 +326,8 @@ export function EmployeeManager({ employees = [], onEmployeesChange, disabled = 
       <div style={styles.actions}>
         <button
           onClick={handleAddEmployee}
-          disabled={disabled}
+          disabled={disabled || departments.length === 0}
+          title={departments.length === 0 ? 'Add a department first' : undefined}
           style={{ ...styles.btn, ...styles.btnPrimary }}
         >
           + Add Employee
@@ -467,6 +492,15 @@ const styles = {
     fontSize: '14px',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
+  },
+  inlineNote: {
+    margin: 0,
+    padding: '10px',
+    backgroundColor: '#fef3c7',
+    color: '#92400e',
+    border: '1px solid #fcd34d',
+    borderRadius: '4px',
+    fontSize: '13px',
   },
   error: {
     backgroundColor: '#fee2e2',

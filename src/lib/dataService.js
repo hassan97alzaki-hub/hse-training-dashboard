@@ -594,6 +594,161 @@ export async function loadEmployeesFromDb() {
   }
 }
 
+// ===== Departments =====
+
+/**
+ * The comparison key of a department name. Names are compared without case
+ * and without surrounding spaces, so "Operations" and " operations " are the
+ * same department.
+ * @param {string} name
+ * @returns {string}
+ */
+export function departmentKey(name) {
+  return String(name ?? '').trim().toLowerCase();
+}
+
+/**
+ * Validate a department name against the names already in use.
+ * @param {string} name - Proposed name
+ * @param {string[]} existingNames - Names already registered or discovered
+ * @returns {{valid: boolean, errors: string[]}}
+ */
+export function validateDepartment(name, existingNames = []) {
+  const errors = [];
+  const trimmed = String(name ?? '').trim();
+
+  if (!trimmed) {
+    errors.push('Department name required');
+    return { valid: false, errors };
+  }
+
+  if (trimmed.length > 60) {
+    errors.push('Department name must be 60 characters or fewer');
+  }
+
+  const key = departmentKey(trimmed);
+  if (existingNames.some(existing => departmentKey(existing) === key)) {
+    errors.push(`Department "${trimmed}" already exists`);
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Register a department and persist it.
+ * @param {string} name
+ * @param {string[]} existingNames - Names already registered or discovered
+ * @returns {Promise<{success: boolean, department?: object, error?: string}>}
+ */
+export async function addDepartmentWithDb(name, existingNames = []) {
+  const validation = validateDepartment(name, existingNames);
+  if (!validation.valid) {
+    return { success: false, error: validation.errors.join('; ') };
+  }
+
+  const trimmed = name.trim();
+  const key = departmentKey(trimmed);
+
+  try {
+    const db = getDbService();
+    const existing = await db.departments?.getByNameKey?.(key);
+    if (existing) {
+      return { success: false, error: `Department "${trimmed}" already exists` };
+    }
+
+    await db.departments.add({ id: `dept_${key}`, name: trimmed, name_key: key });
+    return { success: true, department: { name: trimmed } };
+  } catch (err) {
+    return { success: false, error: `Failed to add department: ${err.message}` };
+  }
+}
+
+/**
+ * Remove a registered department.
+ *
+ * A department that still has people in it is kept, because the people would
+ * otherwise refer to a department that no longer exists. Move or remove the
+ * people first.
+ *
+ * @param {string} name
+ * @param {array} people - People in the engine's field shape
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteDepartmentWithDb(name, people = []) {
+  const key = departmentKey(name);
+  const inUse = (people || []).filter(person => departmentKey(person.Department) === key);
+
+  if (inUse.length > 0) {
+    return {
+      success: false,
+      error: `Department "${name}" still has ${inUse.length} employee(s). Move or remove them first.`,
+    };
+  }
+
+  try {
+    const db = getDbService();
+    const stored = await db.departments?.getByNameKey?.(key);
+    if (stored) {
+      await db.departments.delete(stored.id);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Failed to delete department: ${err.message}` };
+  }
+}
+
+/**
+ * Load the registered department names.
+ * @returns {Promise<string[]>}
+ */
+export async function loadDepartmentsFromDb() {
+  try {
+    const db = getDbService();
+    const rows = await db.departments.list();
+    return rows.map(row => row.name);
+  } catch (err) {
+    console.warn('Failed to load departments:', err.message);
+    return [];
+  }
+}
+
+/**
+ * The departments to offer and to show, from both sources.
+ *
+ * A department is either registered through the interface or discovered in
+ * imported data. A discovered department cannot be removed here, because it
+ * comes back with its import. Names are matched without case, so a registered
+ * name is reported once even when the import spells it differently; the
+ * registered spelling is the one shown.
+ *
+ * @param {string[]} registeredNames - Names from the database
+ * @param {array} people - People in the engine's field shape
+ * @returns {array} [{name, registered: boolean, employeeCount: number}] sorted by name
+ */
+export function listDepartments(registeredNames = [], people = []) {
+  const byKey = new Map(); // key → {name, registered, employeeCount}
+
+  for (const name of registeredNames) {
+    const trimmed = String(name ?? '').trim();
+    if (!trimmed) continue;
+    byKey.set(departmentKey(trimmed), { name: trimmed, registered: true, employeeCount: 0 });
+  }
+
+  for (const person of people || []) {
+    const name = String(person?.Department ?? '').trim();
+    if (!name) continue;
+    const key = departmentKey(name);
+    const entry = byKey.get(key);
+    if (entry) {
+      entry.employeeCount += 1;
+    } else {
+      byKey.set(key, { name, registered: false, employeeCount: 1 });
+    }
+  }
+
+  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /**
  * Merge manually added employees into the list of people the compliance
  * engine reads.

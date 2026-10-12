@@ -19,3 +19,11 @@ Open items found during development and acceptance. Each item states where it wa
 - **Found:** 2026-10-06, same acceptance test (item 7).
 - **Status:** feature never implemented; not a regression.
 - **Priority:** to be decided with the training owner.
+
+## BL-003 — Reminder email must be sent from the account's own registered address
+
+- **Found:** 2026-10-12, review of the Phase 2B reminder preview.
+- **Status:** not implemented. The reminder sender only previews and simulates; no message leaves the browser.
+- **Requirement:** when real sending is added, the From address must be the email address registered on the account, not a shared or vendor-owned sender. The owner's own address should appear to recipients.
+- **Depends on:** Phase 2C delivery work (SMTP or SendGrid), plus sender verification (SPF/DKIM) for the customer domain.
+- **Priority:** required before the first real send; not blocking the demo.

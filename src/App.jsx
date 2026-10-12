@@ -41,6 +41,7 @@ import TrialBanner from './components/TrialBanner.jsx';
 import TrialQuickStart from './components/TrialQuickStart.jsx';
 import { CourseManager } from './components/CourseManager.jsx';
 import { CertificateGallery } from './components/CertificateGallery.jsx';
+import { ReminderSender } from './components/ReminderSender.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -681,6 +682,21 @@ export default function App({
                 </div>
               </div>
             )}
+
+            <div className="section">
+              <div className="section-header">
+                <span className="section-title">Send Training Reminders</span>
+              </div>
+              <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
+                Notify employees about training certificates expiring in the next 15–30 days.
+              </p>
+              <ReminderSender
+                universe={complianceResult?.universe || []}
+                companyName={companyName}
+                lang={lang}
+                t={t}
+              />
+            </div>
           </>
         )}
       </main>

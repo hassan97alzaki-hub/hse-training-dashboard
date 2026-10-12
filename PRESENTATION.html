@@ -559,7 +559,94 @@
       </p>
     </div>
 
-    <!-- SLIDE 13: Contact -->
+    <!-- SLIDE 13: Getting Started - Data Import -->
+    <div class="slide">
+      <h2>Getting Started: How to Import Data</h2>
+      <p><strong>Step 1: Prepare Your Data</strong></p>
+      <p style="background: #f3f4f6; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 14px;">
+        Employee_ID,Employee_Name,Course_Code,Expiry_Date,daysRemaining<br>
+        EMP001,أحمد محمد,H2S001,2026-10-22,20<br>
+        EMP002,فاطمة علي,PTW001,2026-10-25,18<br>
+        EMP003,محمد سالم,H2S001,2026-11-15,45
+      </p>
+      <p style="margin-top: 20px;"><strong>Format: CSV or XLSX</strong></p>
+      <ul>
+        <li><strong>CSV</strong> - نص بسيط (أي تطبيق)</li>
+        <li><strong>XLSX</strong> - ملف Excel الأصلي</li>
+      </ul>
+      <p style="margin-top: 20px;"><strong>Step 2: Upload to Dashboard</strong></p>
+      <ul>
+        <li>اضغط "Import Training Records"</li>
+        <li>اختر ملفك (CSV أو XLSX)</li>
+        <li>تطبيق تحميل البيانات تلقائياً ✓</li>
+      </ul>
+    </div>
+
+    <!-- SLIDE 14: Course & Employee Management -->
+    <div class="slide">
+      <h2>Managing Courses & Employees</h2>
+      <div class="feature-grid">
+        <div class="feature-box">
+          <h4>➕ إضافة كورس جديد</h4>
+          <p>• اضغط "Course Management"<br>
+          • أدخل الكود والاسم<br>
+          • حدد مدة الصلاحية (بالأشهر)<br>
+          • احفظ ✓<br>
+          <strong style="color: #10b981;">يُحفظ تلقائياً</strong>
+          </p>
+        </div>
+        <div class="feature-box">
+          <h4>➖ حذف كورس</h4>
+          <p>• افتح Course Management<br>
+          • اضغط زر الحذف بجانب الكورس<br>
+          • تأكيد ✓<br>
+          <strong style="color: #ef4444;">لا يمكن التراجع</strong>
+          </p>
+        </div>
+        <div class="feature-box">
+          <h4>👤 إضافة موظف جديد</h4>
+          <p>• استيراد CSV جديد يتضمن الموظف<br>
+          • أو استيراد ملف ثالث (3-sheet workbook)<br>
+          • <strong>لا يوجد زر "إضافة موظف" منفرد</strong><br>
+          = البيانات تأتي من استيراد
+          </p>
+        </div>
+        <div class="feature-box">
+          <h4>👥 حذف موظف</h4>
+          <p>• استيراد ملف CSV جديد <strong>بدون</strong> الموظف<br>
+          • أو مسح سجل التدريب الخاص به<br>
+          • البيانات تُحدَّث تلقائياً ✓
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: FAQ -->
+    <div class="slide">
+      <h2>الأسئلة الشائعة (FAQ)</h2>
+      <div style="font-size: 16px; line-height: 2;">
+        <p><strong>Q: هل أحتاج تسجيل دخول؟</strong><br>
+        A: لا. البيانات تُحفظ محلياً في متصفحك. لا يوجد حساب.<br>
+        <br>
+        <strong>Q: أين تُحفظ بياناتي؟</strong><br>
+        A: محلياً في IndexedDB (الجهاز). آمن وسريع.<br>
+        <br>
+        <strong>Q: هل يمكن تحديث تاريخ انتهاء الدورة بدون استيراد جديد؟</strong><br>
+        A: الحالي: استيراد CSV جديد. الميزة قادمة في Q4 2026.<br>
+        <br>
+        <strong>Q: كم عدد الموظفين المدعومين؟</strong><br>
+        A: بدون حد. (اختبار حتى 500 موظف).<br>
+        <br>
+        <strong>Q: هل يمكن تحميل صور الشهادات؟</strong><br>
+        A: نعم. JPEG/PNG فقط، 2 MB حد أقصى.<br>
+        <br>
+        <strong>Q: متى يُرسلون الرسائل التذكيرية؟</strong><br>
+        A: يدويًا (الحالي). الدعم التلقائي قادم Q4 2026.
+        </p>
+      </div>
+    </div>
+
+    <!-- SLIDE 16: Contact -->
     <div class="slide title">
       <h1>Let's Build Compliance</h1>
       <p class="subtitle">HSE Training Dashboard</p>

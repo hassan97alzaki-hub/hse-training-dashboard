@@ -398,7 +398,7 @@
           <div class="stat-label">Fully functional</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">895</div>
+          <div class="stat-number">907</div>
           <div class="stat-label">Tests passing</div>
         </div>
         <div class="stat-card">
@@ -408,9 +408,12 @@
       </div>
       <p><strong>Phase 2B Complete (Oct 2026):</strong></p>
       <ul>
-        <li>✅ Course management (add/edit/delete)</li>
+        <li>✅ Course management (add/edit/delete), persisted</li>
+        <li>✅ Employee management (add/edit/delete) from the UI</li>
+        <li>✅ Side drawer for all data management — uncluttered dashboard</li>
+        <li>✅ Manual courses flow into filters, tables and reports</li>
         <li>✅ Certificate gallery with images/URLs</li>
-        <li>✅ Email reminder system (15-30 day window)</li>
+        <li>✅ Email reminder preview (15-30 day window)</li>
         <li>✅ Data persistence (IndexedDB)</li>
         <li>✅ Bilingual interface</li>
       </ul>
@@ -426,6 +429,7 @@
       <p style="margin-top: 30px; font-size: 16px;">
         <strong>What you can do:</strong><br>
         • Import sample CSV training records<br>
+        • Add courses and employees from the Manage Data drawer<br>
         • Add custom courses (persists across refresh)<br>
         • Upload certificate images<br>
         • Generate compliance reports<br>
@@ -585,37 +589,41 @@
     <!-- SLIDE 14: Course & Employee Management -->
     <div class="slide">
       <h2>Managing Courses & Employees</h2>
+      <p style="margin-bottom: 18px;">كل الإضافة والحذف من زر واحد: <strong>Manage Data</strong> أعلى الصفحة.
+      يفتح لوحة جانبية فيها تبويبان: <strong>Courses</strong> و <strong>Employees</strong>.
+      الداشبورد يبقى نظيفًا — لا أقسام إدارة تشغل المساحة.</p>
       <div class="feature-grid">
         <div class="feature-box">
-          <h4>➕ إضافة كورس جديد</h4>
-          <p>• اضغط "Course Management"<br>
+          <h4>➕ إضافة كورس</h4>
+          <p>• Manage Data › تبويب Courses<br>
           • أدخل الكود والاسم<br>
           • حدد مدة الصلاحية (بالأشهر)<br>
           • احفظ ✓<br>
-          <strong style="color: #10b981;">يُحفظ تلقائياً</strong>
+          <strong style="color: #10b981;">يُحفظ تلقائيًا ويبقى بعد التحديث</strong>
           </p>
         </div>
         <div class="feature-box">
-          <h4>➖ حذف كورس</h4>
-          <p>• افتح Course Management<br>
-          • اضغط زر الحذف بجانب الكورس<br>
-          • تأكيد ✓<br>
-          <strong style="color: #ef4444;">لا يمكن التراجع</strong>
+          <h4>➖ حذف أو تعديل كورس</h4>
+          <p>• Manage Data › تبويب Courses<br>
+          • أزرار Edit و Delete بجانب كل كورس<br>
+          • تأكيد الحذف ✓<br>
+          <strong style="color: #ef4444;">الحذف لا يمكن التراجع عنه</strong>
           </p>
         </div>
         <div class="feature-box">
-          <h4>👤 إضافة موظف جديد</h4>
-          <p>• استيراد CSV جديد يتضمن الموظف<br>
-          • أو استيراد ملف ثالث (3-sheet workbook)<br>
-          • <strong>لا يوجد زر "إضافة موظف" منفرد</strong><br>
-          = البيانات تأتي من استيراد
+          <h4>👤 إضافة موظف</h4>
+          <p>• Manage Data › تبويب Employees<br>
+          • الرقم الوظيفي والاسم والقسم (مطلوبة)<br>
+          • المسمى والإيميل والجوال (اختيارية)<br>
+          • أو استورد CSV/XLSX لعدد كبير مرة واحدة
           </p>
         </div>
         <div class="feature-box">
-          <h4>👥 حذف موظف</h4>
-          <p>• استيراد ملف CSV جديد <strong>بدون</strong> الموظف<br>
-          • أو مسح سجل التدريب الخاص به<br>
-          • البيانات تُحدَّث تلقائياً ✓
+          <h4>👥 حذف أو تعديل موظف</h4>
+          <p>• Manage Data › تبويب Employees<br>
+          • أزرار Edit و Delete لكل صف<br>
+          • أو Export as CSV لنسخة احتياطية<br>
+          <strong style="color: #f59e0b;">الموظف المضاف يدويًا يزول بعد تحديث الصفحة (الحفظ الدائم قادم)</strong>
           </p>
         </div>
       </div>
@@ -641,7 +649,19 @@
         A: نعم. JPEG/PNG فقط، 2 MB حد أقصى.<br>
         <br>
         <strong>Q: متى يُرسلون الرسائل التذكيرية؟</strong><br>
-        A: يدويًا (الحالي). الدعم التلقائي قادم Q4 2026.
+        A: يدويًا (الحالي). الدعم التلقائي قادم Q4 2026.<br>
+        <br>
+        <strong>Q: أين زر إضافة كورس أو موظف؟</strong><br>
+        A: زر <strong>Manage Data</strong> أعلى الصفحة. يفتح لوحة جانبية فيها تبويبا Courses و Employees.<br>
+        <br>
+        <strong>Q: أضفت كورسًا ولم يظهر في قائمة الكورسات. لماذا؟</strong><br>
+        A: كان خطأً وتم إصلاحه. الكورس الجديد يظهر الآن في الفلتر والجدول والتقارير فورًا، حتى قبل استيراد مصفوفة المتطلبات.<br>
+        <br>
+        <strong>Q: الكورس الجديد يُطبَّق على من؟</strong><br>
+        A: على كل الأقسام والمسميات الموجودة في بياناتك. المصفوفة المستوردة تبقى الأساس: لو الكود موجود فيها، صفّها هو المعتمد.<br>
+        <br>
+        <strong>Q: الرسالة التذكيرية تُرسل من أي بريد؟</strong><br>
+        A: من بريدك المسجّل في الحساب، لا من بريد وسيط. يحتاج توثيق الدومين (SPF/DKIM) قبل أول إرسال حقيقي.
         </p>
       </div>
     </div>

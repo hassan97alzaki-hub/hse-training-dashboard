@@ -215,6 +215,66 @@ export function getRequirementsByDepartment(requirements, department) {
     .filter((code, idx, arr) => arr.indexOf(code) === idx); // unique
 }
 
+/**
+ * Merge manually added courses into a requirements matrix.
+ *
+ * A manual course applies to everyone, so it is added once per
+ * Department + Job_Title pair. The compliance engine matches a requirement on
+ * both fields, so a row with an empty Job_Title would never apply to any
+ * employee. Roles are collected from the matrix itself and from the loaded
+ * people, which is what makes a manual course take effect even before a
+ * requirements matrix is imported.
+ *
+ * Existing rows are never changed: a manual course whose code already exists
+ * for a role is skipped, so the imported matrix always wins.
+ *
+ * @param {array} requirements - Requirements matrix rows
+ * @param {array} manualCourses - [{code, name, mandatory, validityMonths, description}]
+ * @param {array} people - Employees or training records with Department/Job_Title
+ * @returns {array} Requirements matrix with the manual courses added
+ */
+export function mergeManualCourses(requirements, manualCourses, people = []) {
+  const base = requirements || [];
+  if (!manualCourses || manualCourses.length === 0) return base;
+
+  const merged = [...base];
+
+  const roles = new Map(); // "Department|Job_Title" → {Department, Job_Title}
+  const addRole = (department, jobTitle) => {
+    if (!department) return;
+    const key = `${department}|${jobTitle ?? ''}`;
+    if (!roles.has(key)) roles.set(key, { Department: department, Job_Title: jobTitle ?? '' });
+  };
+
+  for (const req of base) addRole(req.Department, req.Job_Title);
+  for (const person of people || []) addRole(person.Department, person.Job_Title);
+
+  for (const course of manualCourses) {
+    if (!course?.code) continue;
+    const codeUpper = course.code.toUpperCase();
+    for (const role of roles.values()) {
+      const exists = merged.some(
+        req => req.Department === role.Department
+          && (req.Job_Title ?? '') === role.Job_Title
+          && req.Course_Code
+          && req.Course_Code.toUpperCase() === codeUpper,
+      );
+      if (exists) continue;
+      merged.push({
+        Department: role.Department,
+        Job_Title: role.Job_Title,
+        Course_Code: course.code,
+        Course_Name: course.name,
+        Mandatory: Boolean(course.mandatory),
+        Validity_Months: course.validityMonths ?? 12,
+        Description: course.description || '',
+      });
+    }
+  }
+
+  return merged;
+}
+
 // ===== Database-aware async functions =====
 
 /**

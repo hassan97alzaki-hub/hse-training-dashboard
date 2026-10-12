@@ -8,7 +8,7 @@ import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js'
 import { loadDemoDataFromPublic } from './lib/demoData.js';
 import { createCertificateGallery, loadCertificatesFromDb, saveCertificateWithDb } from './lib/certificateGallery.js';
 import { initDb } from './lib/db/dbService.js';
-import { loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb } from './lib/dataService.js';
+import { loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeManualCourses } from './lib/dataService.js';
 import {
   readWorkbookFromFile, looksLikeMatrixWorkbook, readMatrixSheets,
   convertMatrixWorkbook, compareSourceStatus, toImportResult,
@@ -199,43 +199,12 @@ export default function App({
     [requirements, requirementsSource],
   );
 
-  // Merge manual courses into requirements for the compliance universe.
-  // Manual courses are added to every department that would otherwise have no courses.
-  // This preserves the original requirements while augmenting with user-added courses.
-  const mergedRequirements = useMemo(() => {
-    if (manualCourses.length === 0) return requirements;
-
-    const merged = [...requirements];
-    // Get unique departments from requirements
-    const departmentsInReqs = new Set(requirements.map(r => r.Department).filter(Boolean));
-
-    // For each manual course, add it to departments that don't have it yet
-    for (const course of manualCourses) {
-      // If requirements is empty or if department doesn't have this course, add it
-      if (departmentsInReqs.size === 0) {
-        // No departments defined yet; don't add manual courses
-        continue;
-      }
-
-      for (const dept of departmentsInReqs) {
-        const exists = merged.some(
-          r => r.Department === dept && r.Course_Code && r.Course_Code.toUpperCase() === course.code.toUpperCase()
-        );
-        if (!exists) {
-          merged.push({
-            Department: dept,
-            Job_Title: '', // Manual courses apply to all roles in department
-            Course_Code: course.code,
-            Course_Name: course.name,
-            Mandatory: course.mandatory ? 1 : 0,
-            Validity_Months: course.validityMonths ?? 12,
-            Description: course.description || '',
-          });
-        }
-      }
-    }
-    return merged;
-  }, [requirements, manualCourses]);
+  // Manual courses become requirement rows so they reach the compliance
+  // universe, the filters and the reports. See mergeManualCourses.
+  const mergedRequirements = useMemo(
+    () => mergeManualCourses(requirements, manualCourses, employeeMaster ?? trainingRecords),
+    [requirements, manualCourses, employeeMaster, trainingRecords],
+  );
 
   const complianceResult = useMemo(() => {
     if (trainingRecords.length === 0 && !employeeMaster?.length) return null;

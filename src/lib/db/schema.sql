@@ -28,6 +28,20 @@ CREATE TABLE IF NOT EXISTS certificates (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Employees added through the interface. Imported people are not stored here:
+-- an import stays the source of truth for its own rows. The department is a
+-- free-text name, which is also how a new department comes into existence.
+CREATE TABLE IF NOT EXISTS employees (
+  id TEXT PRIMARY KEY,
+  employee_id TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  department TEXT NOT NULL,
+  job_title TEXT,
+  employment_status TEXT DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Employee Contacts table
 CREATE TABLE IF NOT EXISTS employee_contacts (
   id TEXT PRIMARY KEY,
@@ -56,6 +70,8 @@ CREATE TABLE IF NOT EXISTS reminders_sent (
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code);
 CREATE INDEX IF NOT EXISTS idx_certificates_number ON certificates(certificate_number);
+CREATE INDEX IF NOT EXISTS idx_employees_id ON employees(employee_id);
+CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department);
 CREATE INDEX IF NOT EXISTS idx_employee_contacts_id ON employee_contacts(employee_id);
 CREATE INDEX IF NOT EXISTS idx_reminders_employee ON reminders_sent(employee_id);
 CREATE INDEX IF NOT EXISTS idx_reminders_course ON reminders_sent(course_code);

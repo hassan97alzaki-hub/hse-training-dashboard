@@ -6,6 +6,7 @@
  */
 
 import { getDbService } from './db/dbService.js';
+import { EMPLOYMENT_STATUS } from './constants.js';
 
 // Course validation: Code must be 2-20 chars, alphanumeric + hyphen/underscore
 const COURSE_CODE_PATTERN = /^[A-Z0-9_-]{2,20}$/i;
@@ -453,10 +454,19 @@ export async function addEmployeeWithDb(employeeData) {
 
   try {
     // Check for duplicate
-    const existing = await db.employeeContacts?.getByEmployeeId?.(empId);
+    const existing = await db.employees?.getByEmployeeId?.(empId);
     if (existing) {
       return { success: false, error: `Employee ID "${empId}" already exists` };
     }
+
+    await db.employees.add({
+      id: `emp_${empId}`,
+      employee_id: empId,
+      name: employeeData.name.trim(),
+      department: employeeData.department.trim(),
+      job_title: employeeData.jobTitle?.trim() || '',
+      employment_status: employeeData.employmentStatus || 'Active',
+    });
 
     // Store employee contact info if provided
     if (employeeData.email || employeeData.phone) {
@@ -501,6 +511,18 @@ export async function editEmployeeWithDb(originalId, updates) {
   const db = getDbService();
 
   try {
+    const stored = await db.employees?.getByEmployeeId?.(originalId.trim().toUpperCase());
+    if (stored) {
+      await db.employees.update(stored.id, {
+        ...stored,
+        employee_id: newId,
+        name: updates.name.trim(),
+        department: updates.department.trim(),
+        job_title: updates.jobTitle?.trim() || '',
+        employment_status: updates.employmentStatus || stored.employment_status || 'Active',
+      });
+    }
+
     // Update contact info if email/phone provided
     if (updates.email || updates.phone) {
       const contact = await db.employeeContacts?.getByEmployeeId?.(originalId.toUpperCase());
@@ -537,6 +559,10 @@ export async function deleteEmployeeWithDb(employeeId) {
   const empId = employeeId.trim().toUpperCase();
 
   try {
+    const stored = await db.employees?.getByEmployeeId?.(empId);
+    if (stored) {
+      await db.employees.delete(stored.id);
+    }
     const contact = await db.employeeContacts?.getByEmployeeId?.(empId);
     if (contact) {
       await db.employeeContacts.delete(contact.id);
@@ -545,4 +571,67 @@ export async function deleteEmployeeWithDb(employeeId) {
   } catch (err) {
     return { success: false, error: `Failed to delete employee: ${err.message}` };
   }
+}
+
+/**
+ * Load the employees that were added through the interface.
+ * @returns {Promise<array>} [{employeeId, name, department, jobTitle, employmentStatus}]
+ */
+export async function loadEmployeesFromDb() {
+  try {
+    const db = getDbService();
+    const rows = await db.employees.list();
+    return rows.map(row => ({
+      employeeId: row.employee_id,
+      name: row.name,
+      department: row.department,
+      jobTitle: row.job_title || '',
+      employmentStatus: row.employment_status || 'Active',
+    }));
+  } catch (err) {
+    console.warn('Failed to load employees:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Merge manually added employees into the list of people the compliance
+ * engine reads.
+ *
+ * The engine keys people by Employee_ID and keeps the first entry it sees, so
+ * imported people are placed first and always win over a manual entry with the
+ * same ID. A manual employee carries no training record, so every requirement
+ * for that person is reported as missing, which is the correct state for
+ * somebody who was only just registered.
+ *
+ * Adding a manual employee is also how a new department appears: the
+ * department is a free-text name, and the filters and reports derive their
+ * department list from the people.
+ *
+ * @param {array} people - Imported employees or training records
+ * @param {array} manualEmployees - [{employeeId, name, department, jobTitle, employmentStatus}]
+ * @returns {array} People in the engine's field shape
+ */
+export function mergeManualEmployees(people, manualEmployees) {
+  const imported = people || [];
+  if (!manualEmployees || manualEmployees.length === 0) return imported;
+
+  const importedIds = new Set(imported.map(p => p.Employee_ID).filter(Boolean));
+  const merged = [...imported];
+
+  for (const employee of manualEmployees) {
+    if (!employee?.employeeId || !employee.department) continue;
+    const id = employee.employeeId.trim().toUpperCase();
+    if (importedIds.has(id)) continue;
+    importedIds.add(id);
+    merged.push({
+      Employee_ID: id,
+      Employee_Name: employee.name,
+      Department: employee.department,
+      Job_Title: employee.jobTitle || '',
+      Employment_Status: employee.employmentStatus || EMPLOYMENT_STATUS.ACTIVE,
+    });
+  }
+
+  return merged;
 }

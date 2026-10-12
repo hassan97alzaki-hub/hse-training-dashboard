@@ -8,7 +8,10 @@ import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js'
 import { loadDemoDataFromPublic } from './lib/demoData.js';
 import { createCertificateGallery, loadCertificatesFromDb, saveCertificateWithDb } from './lib/certificateGallery.js';
 import { initDb } from './lib/db/dbService.js';
-import { loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeManualCourses } from './lib/dataService.js';
+import {
+  loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeManualCourses,
+  loadEmployeesFromDb, addEmployeeWithDb, editEmployeeWithDb, deleteEmployeeWithDb, mergeManualEmployees,
+} from './lib/dataService.js';
 import {
   readWorkbookFromFile, looksLikeMatrixWorkbook, readMatrixSheets,
   convertMatrixWorkbook, compareSourceStatus, toImportResult,
@@ -111,7 +114,8 @@ export default function App({
 
   // Initialize database and load persistent data (courses, certificates)
   const [dbInitialized, setDbInitialized] = useState(false);
-  const [loadedCourses, setLoadedCourses] = useState(new Set()); // Track which courses were loaded from DB
+  const [loadedCourses, setLoadedCourses] = useState(new Set()); // Course codes already in the database
+  const [loadedEmployees, setLoadedEmployees] = useState(new Set()); // Employee IDs already in the database
 
   useEffect(() => {
     (async () => {
@@ -152,8 +156,12 @@ export default function App({
           }
         }
 
-        // Load employees from contact data
-        // TODO: Phase 3 - integrate employee persistence into database like courses
+        // Load the employees that were added through the interface
+        const dbEmployees = await loadEmployeesFromDb();
+        if (dbEmployees && dbEmployees.length > 0) {
+          setManualEmployees(dbEmployees);
+          setLoadedEmployees(new Set(dbEmployees.map(e => e.employeeId.toUpperCase())));
+        }
 
         setDbInitialized(true);
       } catch (err) {
@@ -163,11 +171,15 @@ export default function App({
     })();
   }, []); // Run once on mount
 
-  // Persist course changes to database
+  // Persist course changes to database. A course that is in the database but
+  // no longer on screen was deleted, so it is removed there too; otherwise it
+  // would come back on the next refresh.
   useEffect(() => {
     if (!dbInitialized) return; // Don't save until DB is initialized
 
     (async () => {
+      const onScreen = new Set(manualCourses.map(c => c.code.toUpperCase()));
+
       for (const course of manualCourses) {
         const codeUpper = course.code.toUpperCase();
         try {
@@ -183,10 +195,60 @@ export default function App({
           console.warn(`Failed to save course ${course.code}:`, err);
         }
       }
+
+      for (const codeUpper of loadedCourses) {
+        if (onScreen.has(codeUpper)) continue;
+        try {
+          await deleteCourseWithDb(codeUpper);
+          setLoadedCourses(prev => {
+            const next = new Set(prev);
+            next.delete(codeUpper);
+            return next;
+          });
+        } catch (err) {
+          console.warn(`Failed to delete course ${codeUpper}:`, err);
+        }
+      }
     })();
   }, [manualCourses, dbInitialized]);
 
-  // TODO: Phase 3 - Persist employee changes to database (like courses)
+  // Persist employee changes to database, with the same add, update and
+  // delete reconciliation as the courses above.
+  useEffect(() => {
+    if (!dbInitialized) return;
+
+    (async () => {
+      const onScreen = new Set(manualEmployees.map(e => e.employeeId.toUpperCase()));
+
+      for (const employee of manualEmployees) {
+        const idUpper = employee.employeeId.toUpperCase();
+        try {
+          if (loadedEmployees.has(idUpper)) {
+            await editEmployeeWithDb(employee.employeeId, employee);
+          } else {
+            await addEmployeeWithDb(employee);
+            setLoadedEmployees(prev => new Set([...prev, idUpper]));
+          }
+        } catch (err) {
+          console.warn(`Failed to save employee ${employee.employeeId}:`, err);
+        }
+      }
+
+      for (const idUpper of loadedEmployees) {
+        if (onScreen.has(idUpper)) continue;
+        try {
+          await deleteEmployeeWithDb(idUpper);
+          setLoadedEmployees(prev => {
+            const next = new Set(prev);
+            next.delete(idUpper);
+            return next;
+          });
+        } catch (err) {
+          console.warn(`Failed to delete employee ${idUpper}:`, err);
+        }
+      }
+    })();
+  }, [manualEmployees, dbInitialized]);
 
   // Every banner is stored as data and rendered in the language on screen, so
   // switching the language rewrites it instead of leaving the old text.
@@ -199,17 +261,26 @@ export default function App({
     [requirements, requirementsSource],
   );
 
+  // The people the engine reports on: the imported ones plus anybody added
+  // through the interface. Without a master list the engine derives its people
+  // from the training records, so those records are the list to merge into.
+  // See mergeManualEmployees.
+  const mergedPeople = useMemo(
+    () => mergeManualEmployees(employeeMaster ?? trainingRecords, manualEmployees),
+    [employeeMaster, trainingRecords, manualEmployees],
+  );
+
   // Manual courses become requirement rows so they reach the compliance
   // universe, the filters and the reports. See mergeManualCourses.
   const mergedRequirements = useMemo(
-    () => mergeManualCourses(requirements, manualCourses, employeeMaster ?? trainingRecords),
-    [requirements, manualCourses, employeeMaster, trainingRecords],
+    () => mergeManualCourses(requirements, manualCourses, mergedPeople),
+    [requirements, manualCourses, mergedPeople],
   );
 
   const complianceResult = useMemo(() => {
-    if (trainingRecords.length === 0 && !employeeMaster?.length) return null;
-    return buildComplianceUniverse(trainingRecords, mergedRequirements, asOfDate, employeeMaster ?? undefined);
-  }, [trainingRecords, mergedRequirements, asOfDate, employeeMaster]);
+    if (mergedPeople.length === 0) return null;
+    return buildComplianceUniverse(trainingRecords, mergedRequirements, asOfDate, mergedPeople);
+  }, [trainingRecords, mergedRequirements, asOfDate, mergedPeople]);
 
   const kpis = useMemo(() => {
     if (!complianceResult) return null;
@@ -534,7 +605,9 @@ export default function App({
     setAsOfDate(getRuntimeAsOfDate());
   }
 
-  const hasData = trainingRecords.length > 0 || (employeeMaster?.length ?? 0) > 0;
+  // An employee added through the interface is data too, so the dashboard
+  // opens for somebody who starts from the drawer instead of an import.
+  const hasData = mergedPeople.length > 0;
   const hasRequirements = requirements.length > 0;
 
   return (

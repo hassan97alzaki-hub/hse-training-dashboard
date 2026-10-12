@@ -39,9 +39,12 @@ export function getDbService() {
 class LocalDbService {
   constructor() {
     this.dbName = 'hse-training-db';
-    this.version = 1;
+    // Version 2 added the employees store. Raising this number is what runs
+    // onupgradeneeded for a browser that already holds a version 1 database.
+    this.version = 2;
     this.courses = {};
     this.certificates = {};
+    this.employees = {};
     this.employeeContacts = {};
     this.remindersSent = {};
   }
@@ -66,6 +69,12 @@ class LocalDbService {
           certStore.createIndex('certificate_number', 'certificate_number', { unique: true });
         }
 
+        if (!db.objectStoreNames.contains('employees')) {
+          const employeeStore = db.createObjectStore('employees', { keyPath: 'id' });
+          employeeStore.createIndex('employee_id', 'employee_id', { unique: true });
+          employeeStore.createIndex('department', 'department');
+        }
+
         if (!db.objectStoreNames.contains('employee_contacts')) {
           const contactStore = db.createObjectStore('employee_contacts', { keyPath: 'id' });
           contactStore.createIndex('employee_id', 'employee_id', { unique: true });
@@ -82,6 +91,7 @@ class LocalDbService {
     // Initialize service methods
     this._initCourses();
     this._initCertificates();
+    this._initEmployees();
     this._initEmployeeContacts();
     this._initRemindersSent();
   }
@@ -215,6 +225,76 @@ class LocalDbService {
         return new Promise((resolve, reject) => {
           const tx = db.transaction('certificates', 'readwrite');
           const store = tx.objectStore('certificates');
+          const request = store.delete(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve();
+        });
+      },
+    };
+  }
+
+  _initEmployees() {
+    this.employees = {
+      add: async (data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('employees', 'readwrite');
+          const store = tx.objectStore('employees');
+          const request = store.add({ ...data, created_at: new Date().toISOString() });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      get: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('employees', 'readonly');
+          const store = tx.objectStore('employees');
+          const request = store.get(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || null);
+        });
+      },
+      getByEmployeeId: async (employeeId) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('employees', 'readonly');
+          const store = tx.objectStore('employees');
+          const index = store.index('employee_id');
+          const request = index.get(employeeId);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || null);
+        });
+      },
+      list: async () => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('employees', 'readonly');
+          const store = tx.objectStore('employees');
+          const request = store.getAll();
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+      update: async (id, data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('employees', 'readwrite');
+          const store = tx.objectStore('employees');
+          const request = store.put({
+            ...data,
+            id,
+            updated_at: new Date().toISOString(),
+          });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      delete: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('employees', 'readwrite');
+          const store = tx.objectStore('employees');
           const request = store.delete(id);
           request.onerror = () => reject(request.error);
           request.onsuccess = () => resolve();

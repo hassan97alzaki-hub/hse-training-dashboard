@@ -8,7 +8,9 @@ import {
   exportCoursesAsCSV,
   getRequirementsByDepartment,
   mergeManualCourses,
+  mergeManualEmployees,
 } from '../src/lib/dataService.js';
+import { buildComplianceUniverse } from '../src/lib/complianceEngine.js';
 
 describe('dataService.js', () => {
   describe('isValidCourseCode', () => {
@@ -417,6 +419,112 @@ describe('dataService.js', () => {
 
     it('returns an empty matrix when there is no role to attach the course to', () => {
       expect(mergeManualCourses([], manual, [])).toEqual([]);
+    });
+  });
+
+  describe('mergeManualEmployees', () => {
+    const manual = [{
+      employeeId: 'EMP900', name: 'Hassan Ali',
+      department: 'Inspection', jobTitle: 'Inspector',
+    }];
+
+    it('returns the people unchanged when there are no manual employees', () => {
+      const people = [{ Employee_ID: 'EMP001', Department: 'Operations' }];
+
+      expect(mergeManualEmployees(people, [])).toBe(people);
+      expect(mergeManualEmployees(people, null)).toBe(people);
+    });
+
+    it('translates a manual employee into the fields the engine reads', () => {
+      const [, added] = mergeManualEmployees([{ Employee_ID: 'EMP001' }], manual);
+
+      expect(added).toEqual({
+        Employee_ID: 'EMP900',
+        Employee_Name: 'Hassan Ali',
+        Department: 'Inspection',
+        Job_Title: 'Inspector',
+        Employment_Status: 'Active',
+      });
+    });
+
+    it('treats a manual employee as active so they are reported on', () => {
+      const [added] = mergeManualEmployees([], manual);
+
+      expect(added.Employment_Status).toBe('Active');
+    });
+
+    it('keeps an explicit employment status', () => {
+      const [added] = mergeManualEmployees([], [{ ...manual[0], employmentStatus: 'Left' }]);
+
+      expect(added.Employment_Status).toBe('Left');
+    });
+
+    it('uppercases the employee ID, which is how the engine keys people', () => {
+      const [added] = mergeManualEmployees([], [{ ...manual[0], employeeId: 'emp900' }]);
+
+      expect(added.Employee_ID).toBe('EMP900');
+    });
+
+    it('lets an imported person win over a manual entry with the same ID', () => {
+      const people = [{ Employee_ID: 'EMP900', Employee_Name: 'From the import', Department: 'Operations' }];
+      const merged = mergeManualEmployees(people, manual);
+
+      expect(merged.length).toBe(1);
+      expect(merged[0].Employee_Name).toBe('From the import');
+    });
+
+    it('adds a manual employee only once when listed twice', () => {
+      const merged = mergeManualEmployees([], [manual[0], { ...manual[0], name: 'Second entry' }]);
+
+      expect(merged.length).toBe(1);
+      expect(merged[0].Employee_Name).toBe('Hassan Ali');
+    });
+
+    it('skips an entry without an ID or without a department', () => {
+      const merged = mergeManualEmployees([], [
+        { name: 'No ID', department: 'Inspection' },
+        { employeeId: 'EMP901', name: 'No department' },
+        manual[0],
+      ]);
+
+      expect(merged.length).toBe(1);
+      expect(merged[0].Employee_ID).toBe('EMP900');
+    });
+
+    it('does not mutate the people it was given', () => {
+      const people = [{ Employee_ID: 'EMP001', Department: 'Operations' }];
+      mergeManualEmployees(people, manual);
+
+      expect(people.length).toBe(1);
+    });
+
+    it('brings a new department into the compliance universe', () => {
+      // A department exists only as a name on a person, so adding an employee
+      // in a department nobody else is in is how that department appears.
+      const people = mergeManualEmployees([], manual);
+      const requirements = mergeManualCourses(
+        [],
+        [{ code: 'MAN001', name: 'Manual Course', mandatory: true, validityMonths: 12 }],
+        people,
+      );
+      const result = buildComplianceUniverse([], requirements, '2026-10-12', people);
+      const departments = new Set(result.universe.map(item => item.Department));
+
+      expect(departments.has('Inspection')).toBe(true);
+    });
+
+    it('reports a manual employee as missing the course, having no record', () => {
+      const people = mergeManualEmployees([], manual);
+      const requirements = mergeManualCourses(
+        [],
+        [{ code: 'MAN001', name: 'Manual Course', mandatory: true, validityMonths: 12 }],
+        people,
+      );
+      const result = buildComplianceUniverse([], requirements, '2026-10-12', people);
+      const row = result.universe.find(item => item.Employee_ID === 'EMP900');
+
+      expect(row.Course_Code).toBe('MAN001');
+      expect(row.isMissing).toBe(true);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ClipboardList } from 'lucide-react';
 import { DEMO_AS_OF_DATE, DEFAULT_COMPANY, DEFAULT_PROJECT } from './lib/constants.js';
 import { getRuntimeAsOfDate } from './lib/clock.js';
@@ -6,7 +6,9 @@ import { createI18n } from './lib/i18n.js';
 import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from './lib/complianceEngine.js';
 import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js';
 import { loadDemoDataFromPublic } from './lib/demoData.js';
-import { createCertificateGallery } from './lib/certificateGallery.js';
+import { createCertificateGallery, loadCertificatesFromDb, saveCertificateWithDb } from './lib/certificateGallery.js';
+import { initDb } from './lib/db/dbService.js';
+import { loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb } from './lib/dataService.js';
 import {
   readWorkbookFromFile, looksLikeMatrixWorkbook, readMatrixSheets,
   convertMatrixWorkbook, compareSourceStatus, toImportResult,
@@ -104,6 +106,80 @@ export default function App({
   // Where the loaded requirements come from. Only an approved HSE-DC-1.0
   // Requirements sheet is production data (AT-13).
   const [requirementsSource, setRequirementsSource] = useState(REQUIREMENTS_PROVENANCE.NONE);
+
+  // Initialize database and load persistent data (courses, certificates)
+  const [dbInitialized, setDbInitialized] = useState(false);
+  const [loadedCourses, setLoadedCourses] = useState(new Set()); // Track which courses were loaded from DB
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // Initialize local IndexedDB
+        await initDb();
+
+        // Load courses from database
+        const dbCourses = await loadCoursesFromDb();
+        if (dbCourses && dbCourses.length > 0) {
+          // Convert DB format to app format
+          const courses = dbCourses.map(c => ({
+            code: c.code,
+            name: c.name,
+            mandatory: c.mandatory ?? false,
+            validityMonths: c.validity_months ?? 12,
+            description: c.description || '',
+            createdAt: c.created_at,
+          }));
+          setManualCourses(courses);
+          // Track loaded courses by code so we know which ones to update vs insert
+          setLoadedCourses(new Set(courses.map(c => c.code.toUpperCase())));
+        }
+
+        // Load certificates from database and populate gallery
+        const dbCerts = await loadCertificatesFromDb();
+        if (dbCerts && dbCerts.length > 0) {
+          for (const cert of dbCerts) {
+            certificateGallery.set(cert.certificate_number, {
+              title: cert.title,
+              imageData: cert.image_data || null,
+              imageUrl: cert.image_url || null,
+              summary: cert.summary || '',
+              issuer: cert.issuer || '',
+              issuedDate: cert.issued_at || null,
+              expiryDate: cert.expires_at || null,
+            });
+          }
+        }
+
+        setDbInitialized(true);
+      } catch (err) {
+        console.warn('Failed to load from database:', err);
+        setDbInitialized(true); // Still mark as initialized even if load fails
+      }
+    })();
+  }, []); // Run once on mount
+
+  // Persist course changes to database
+  useEffect(() => {
+    if (!dbInitialized) return; // Don't save until DB is initialized
+
+    (async () => {
+      for (const course of manualCourses) {
+        const codeUpper = course.code.toUpperCase();
+        try {
+          if (loadedCourses.has(codeUpper)) {
+            // Course was loaded from DB - might be updated
+            await editCourseWithDb(course.code, course);
+          } else {
+            // New course - save it
+            await addCourseWithDb(course);
+            setLoadedCourses(prev => new Set([...prev, codeUpper]));
+          }
+        } catch (err) {
+          console.warn(`Failed to save course ${course.code}:`, err);
+        }
+      }
+    })();
+  }, [manualCourses, dbInitialized]);
 
   // Every banner is stored as data and rendered in the language on screen, so
   // switching the language rewrites it instead of leaving the old text.
@@ -543,7 +619,12 @@ export default function App({
             isNewCertificate={selectedCertificate.isNew}
             onClose={() => setSelectedCertificate(null)}
             onSave={(data) => {
+              // Save to in-memory gallery
               certificateGallery.set(data.certificateNumber, data);
+              // Save to database
+              saveCertificateWithDb(data).catch(err => {
+                console.warn('Failed to save certificate to database:', err);
+              });
               setSelectedCertificate(null);
             }}
           />

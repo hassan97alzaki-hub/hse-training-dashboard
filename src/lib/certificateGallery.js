@@ -237,3 +237,105 @@ export function validateImageUrl(url) {
     return { valid: false, error: 'Invalid URL format' };
   }
 }
+
+// ===== Database-aware async functions =====
+
+import { getDbService } from './db/dbService.js';
+
+/**
+ * Save certificate metadata to database.
+ * @param {object} metadata - {certificateNumber, title, imageData, imageUrl, summary, issuer, issuedDate, expiryDate}
+ * @returns {Promise<{success: boolean, cert?: object, error?: string}>}
+ */
+export async function saveCertificateWithDb(metadata) {
+  const db = getDbService();
+
+  // Validate
+  const validation = validateCertificateMetadata({
+    certificateNumber: metadata.certificateNumber,
+    ...metadata,
+  });
+
+  if (!validation.valid) {
+    return { success: false, error: validation.errors.join('; ') };
+  }
+
+  const certNumber = metadata.certificateNumber.trim();
+
+  // Check if exists
+  const existing = await db.certificates.getByNumber(certNumber);
+
+  const cert = {
+    id: existing?.id || `cert_${certNumber}_${Date.now()}`,
+    certificate_number: certNumber,
+    title: metadata.title.trim(),
+    image_data: metadata.imageData || null,
+    image_url: metadata.imageUrl || null,
+    summary: metadata.summary?.trim() || '',
+    issuer: metadata.issuer?.trim() || '',
+    issued_at: metadata.issuedDate || null,
+    expires_at: metadata.expiryDate || null,
+  };
+
+  try {
+    if (existing) {
+      await db.certificates.update(existing.id, cert);
+    } else {
+      await db.certificates.add(cert);
+    }
+    return { success: true, cert };
+  } catch (err) {
+    return { success: false, error: `Failed to save certificate: ${err.message}` };
+  }
+}
+
+/**
+ * Get certificate from database.
+ * @param {string} certificateNumber
+ * @returns {Promise<object|null>}
+ */
+export async function getCertificateWithDb(certificateNumber) {
+  const db = getDbService();
+  try {
+    return await db.certificates.getByNumber(certificateNumber.trim());
+  } catch (err) {
+    console.error('Failed to get certificate from DB:', err);
+    return null;
+  }
+}
+
+/**
+ * Delete certificate from database.
+ * @param {string} certificateNumber
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteCertificateWithDb(certificateNumber) {
+  const db = getDbService();
+
+  const existing = await db.certificates.getByNumber(certificateNumber.trim());
+  if (!existing) {
+    return { success: false, error: `Certificate "${certificateNumber}" not found` };
+  }
+
+  try {
+    await db.certificates.delete(existing.id);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Failed to delete certificate: ${err.message}` };
+  }
+}
+
+/**
+ * Load all certificates from database.
+ * @returns {Promise<array>}
+ */
+export async function loadCertificatesFromDb() {
+  const db = getDbService();
+  try {
+    const certs = await db.certificates.list();
+    return certs;
+  } catch (err) {
+    console.error('Failed to load certificates from DB:', err);
+    return [];
+  }
+}

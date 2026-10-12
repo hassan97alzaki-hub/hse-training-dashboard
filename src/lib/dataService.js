@@ -2,9 +2,10 @@
  * Data Service for managing courses, departments, and certificates.
  *
  * Provides functions to add, edit, delete courses and track certificate metadata.
- * Initial storage: in-memory state + optional localStorage.
- * Future: Supabase or self-hosted database.
+ * Supports both in-memory state and persistent database (Supabase/IndexedDB).
  */
+
+import { getDbService } from './db/dbService.js';
 
 // Course validation: Code must be 2-20 chars, alphanumeric + hyphen/underscore
 const COURSE_CODE_PATTERN = /^[A-Z0-9_-]{2,20}$/i;
@@ -212,4 +213,134 @@ export function getRequirementsByDepartment(requirements, department) {
     .filter(req => req.Department && req.Department === department)
     .map(req => req.Course_Code)
     .filter((code, idx, arr) => arr.indexOf(code) === idx); // unique
+}
+
+// ===== Database-aware async functions =====
+
+/**
+ * Add course and persist to database.
+ * @param {object} courseData - {code, name, mandatory, validityMonths, description}
+ * @returns {Promise<{success: boolean, course?: object, error?: string}>}
+ */
+export async function addCourseWithDb(courseData) {
+  const db = getDbService();
+
+  // Validate
+  const validation = validateCourse(courseData);
+  if (!validation.valid) {
+    return { success: false, error: validation.errors.join('; ') };
+  }
+
+  // Check for duplicate code
+  const existing = await db.courses.list();
+  const codeUpper = courseData.code.trim().toUpperCase();
+  const duplicate = existing.some(c => c.code && c.code.toUpperCase() === codeUpper);
+
+  if (duplicate) {
+    return { success: false, error: `Course code "${codeUpper}" already exists` };
+  }
+
+  // Create and save
+  const newCourse = {
+    id: `course_${codeUpper}_${Date.now()}`,
+    code: codeUpper,
+    name: courseData.name.trim(),
+    mandatory: courseData.mandatory ?? false,
+    validity_months: courseData.validityMonths ?? 12,
+    description: courseData.description?.trim() || '',
+  };
+
+  try {
+    await db.courses.add(newCourse);
+    return { success: true, course: newCourse };
+  } catch (err) {
+    return { success: false, error: `Failed to save course: ${err.message}` };
+  }
+}
+
+/**
+ * Edit course and update database.
+ * @param {string} originalCode - Original course code
+ * @param {object} updates - {code, name, mandatory, validityMonths, description}
+ * @returns {Promise<{success: boolean, course?: object, error?: string}>}
+ */
+export async function editCourseWithDb(originalCode, updates) {
+  const db = getDbService();
+
+  // Validate
+  const validation = validateCourse(updates);
+  if (!validation.valid) {
+    return { success: false, error: validation.errors.join('; ') };
+  }
+
+  // Find existing course
+  const existing = await db.courses.list();
+  const course = existing.find(c => c.code && c.code.toUpperCase() === originalCode.toUpperCase());
+
+  if (!course) {
+    return { success: false, error: `Course "${originalCode}" not found` };
+  }
+
+  // Check for code conflict
+  const newCodeUpper = updates.code.trim().toUpperCase();
+  const conflict = existing.some(
+    c => c.code && c.code.toUpperCase() === newCodeUpper && c.id !== course.id
+  );
+
+  if (conflict) {
+    return { success: false, error: `Course code "${newCodeUpper}" already exists` };
+  }
+
+  // Update in DB
+  const updated = {
+    code: newCodeUpper,
+    name: updates.name.trim(),
+    mandatory: updates.mandatory ?? course.mandatory,
+    validity_months: updates.validityMonths ?? course.validity_months,
+    description: updates.description?.trim() || '',
+  };
+
+  try {
+    await db.courses.update(course.id, updated);
+    return { success: true, course: { ...course, ...updated } };
+  } catch (err) {
+    return { success: false, error: `Failed to update course: ${err.message}` };
+  }
+}
+
+/**
+ * Delete course from database.
+ * @param {string} code - Course code
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteCourseWithDb(code) {
+  const db = getDbService();
+
+  const existing = await db.courses.list();
+  const course = existing.find(c => c.code && c.code.toUpperCase() === code.toUpperCase());
+
+  if (!course) {
+    return { success: false, error: `Course "${code}" not found` };
+  }
+
+  try {
+    await db.courses.delete(course.id);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Failed to delete course: ${err.message}` };
+  }
+}
+
+/**
+ * Load all courses from database.
+ * @returns {Promise<array>}
+ */
+export async function loadCoursesFromDb() {
+  const db = getDbService();
+  try {
+    return await db.courses.list();
+  } catch (err) {
+    console.error('Failed to load courses from DB:', err);
+    return [];
+  }
 }

@@ -370,9 +370,9 @@
         </div>
         <div>
           <strong>Storage</strong>
-          IndexedDB (browser)<br>
-          Supabase (optional SaaS)<br>
-          Data persists across sessions
+          Supabase Postgres (cloud)<br>
+          Browser database (self-hosted)<br>
+          One build, both modes
         </div>
         <div>
           <strong>Deployment</strong>
@@ -382,7 +382,7 @@
         </div>
         <div>
           <strong>Testing</strong>
-          Vitest (895+ tests)<br>
+          Vitest (961 tests)<br>
           100% coverage of core logic<br>
           Production-grade reliability
         </div>
@@ -398,7 +398,7 @@
           <div class="stat-label">Fully functional</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">932</div>
+          <div class="stat-number">961</div>
           <div class="stat-label">Tests passing</div>
         </div>
         <div class="stat-card">
@@ -415,8 +415,16 @@
         <li>✅ Manual courses and employees flow into filters, tables and reports</li>
         <li>✅ Certificate gallery with images/URLs</li>
         <li>✅ Email reminder preview (15-30 day window)</li>
-        <li>✅ Data persistence (IndexedDB)</li>
+        <li>✅ Data persistence (browser database)</li>
         <li>✅ Bilingual interface</li>
+      </ul>
+      <p><strong>Phase 2C — cloud backend (Oct 2026):</strong></p>
+      <ul>
+        <li>✅ Supabase Postgres backend, optional per deployment</li>
+        <li>✅ Accounts: sign up, sign in, password reset</li>
+        <li>✅ Row-level security — one account never reads another's data</li>
+        <li>✅ Same build runs cloud or self-hosted; two environment variables decide</li>
+        <li>⏳ Real reminder delivery — next, needs a mail provider + domain verification</li>
       </ul>
     </div>
 
@@ -438,7 +446,9 @@
         • View expiry reminders
       </p>
       <p style="margin-top: 30px; background: #ecfdf5; padding: 15px; border-radius: 4px; color: #065f46;">
-        <strong>No login required.</strong> Data saved locally in your browser.
+        <strong>No login required</strong> on this demo: it runs in local mode, so the data
+        stays in your browser and nothing is uploaded. The cloud mode of the same build asks
+        for a sign-in and keeps the data in your own account.
       </p>
     </div>
 
@@ -451,8 +461,8 @@
           <h4>☁️ SaaS (Cloud)</h4>
           <p><strong>Target:</strong> Mid-market oil & gas<br>
           <strong>$49–149/month</strong><br>
-          • Unlimited users<br>
-          • Cloud backup<br>
+          • Account per company, data isolated by row-level security<br>
+          • Same data from any device<br>
           • Email support<br>
           • Auto-updates
           </p>
@@ -461,8 +471,8 @@
           <h4>🏢 Self-Hosted</h4>
           <p><strong>Target:</strong> Enterprise<br>
           <strong>$5,000–15,000/year</strong><br>
-          • On-premise deployment<br>
-          • Full data control<br>
+          • On-premise deployment, no cloud backend<br>
+          • Data never leaves the device<br>
           • Custom integration<br>
           • Dedicated support
           </p>
@@ -479,11 +489,11 @@
       <div class="roadmap">
         <div class="phase">
           <div class="phase-circle">1</div>
-          <div class="phase-title">Phase 2B<br>(Current)<br>Core MVP</div>
+          <div class="phase-title">Phase 2B<br>(Done)<br>Core MVP</div>
         </div>
         <div class="phase">
           <div class="phase-circle">2</div>
-          <div class="phase-title">Phase 2C<br>(Q4 2026)<br>Supabase +<br>Real Email</div>
+          <div class="phase-title">Phase 2C<br>(Current)<br>Supabase + Accounts<br>done; email next</div>
         </div>
         <div class="phase">
           <div class="phase-circle">3</div>
@@ -631,7 +641,47 @@
       </div>
     </div>
 
-    <!-- SLIDE 15: FAQ -->
+    <!-- SLIDE 15: Cloud or local -->
+    <div class="slide">
+      <h2>Cloud or Local — One Build</h2>
+      <p style="margin-bottom: 18px;">نفس البناء يعمل بوضعين. متغيّران في البيئة يحدّدان الوضع:
+      <code>VITE_SUPABASE_URL</code> و <code>VITE_SUPABASE_ANON_KEY</code>.</p>
+      <div class="feature-grid">
+        <div class="feature-box">
+          <h4>🖥 الوضع المحلي (بلا متغيّرات)</h4>
+          <p>• لا تسجيل دخول<br>
+          • البيانات في قاعدة بيانات المتصفح<br>
+          • لا طلب يخرج من الجهاز<br>
+          • هذا وضع النسخة المنشورة للتجربة وللبيع self-hosted
+          </p>
+        </div>
+        <div class="feature-box">
+          <h4>☁️ الوضع السحابي (بالمتغيّرين)</h4>
+          <p>• تسجيل دخول إلزامي قبل أي بيانات<br>
+          • البيانات في Supabase Postgres<br>
+          • البيانات تتبع الحساب لا المتصفح<br>
+          • نفس البيانات من أي جهاز
+          </p>
+        </div>
+        <div class="feature-box">
+          <h4>🔒 عزل البيانات</h4>
+          <p>• كل جدول فيه <code>owner_id</code> افتراضيّه <code>auth.uid()</code><br>
+          • سياسات RLS تقارنه بالمستخدم الحالي<br>
+          • العميل لا يرسل العمود، فلا يستطيع ادّعاء مالك آخر<br>
+          • <strong>اختبار القبول:</strong> حسابان، والثاني لا يرى صفًا من الأول
+          </p>
+        </div>
+        <div class="feature-box">
+          <h4>⚠️ ما لم يكتمل بعد</h4>
+          <p>• الإرسال الفعلي للتذكير (يحتاج مزوّد بريد + توثيق SPF/DKIM)<br>
+          • ترحيل بيانات موجودة من المتصفح إلى الحساب (الآن: export ثم import)<br>
+          • عدة مستخدمين لشركة واحدة (<code>owner_id</code> اليوم مستخدم واحد)
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 16: FAQ -->
     <div class="slide">
       <h2>الأسئلة الشائعة (FAQ)</h2>
       <div style="font-size: 16px; line-height: 2;">
@@ -639,7 +689,13 @@
         A: لا. البيانات تُحفظ محلياً في متصفحك. لا يوجد حساب.<br>
         <br>
         <strong>Q: أين تُحفظ بياناتي؟</strong><br>
-        A: محلياً في IndexedDB (الجهاز). آمن وسريع.<br>
+        A: في الوضع المحلي: قاعدة بيانات المتصفح على جهازك، ولا شيء يُرفع. في الوضع السحابي: Supabase Postgres داخل حسابك.<br>
+        <br>
+        <strong>Q: هل يرى حساب آخر بياناتي في الوضع السحابي؟</strong><br>
+        A: لا. كل جدول فيه owner_id وسياسات RLS تقصر القراءة على صاحب الصف. العميل لا يرسل العمود أصلًا.<br>
+        <br>
+        <strong>Q: هل أحتاج Supabase لأستخدم اللوحة؟</strong><br>
+        A: لا. بلا متغيّرات البيئة تعمل محليًا كما كانت. Supabase اختياري لكل نشر.<br>
         <br>
         <strong>Q: هل يمكن تحديث تاريخ انتهاء الدورة بدون استيراد جديد؟</strong><br>
         A: الحالي: استيراد CSV جديد. الميزة قادمة في Q4 2026.<br>
@@ -677,7 +733,7 @@
       </div>
     </div>
 
-    <!-- SLIDE 16: Contact -->
+    <!-- SLIDE 17: Contact -->
     <div class="slide title">
       <h1>Let's Build Compliance</h1>
       <p class="subtitle">HSE Training Dashboard</p>

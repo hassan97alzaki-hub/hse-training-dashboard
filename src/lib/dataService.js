@@ -344,3 +344,145 @@ export async function loadCoursesFromDb() {
     return [];
   }
 }
+
+// ===== Employee Management =====
+
+/**
+ * Validate employee data
+ * @param {object} employee
+ * @returns {{valid: boolean, errors: string[]}}
+ */
+export function validateEmployee(employee) {
+  const errors = [];
+
+  if (!employee) {
+    errors.push('Employee data required');
+    return { valid: false, errors };
+  }
+
+  const { employeeId, name, department } = employee;
+
+  if (!employeeId || typeof employeeId !== 'string' || !employeeId.trim()) {
+    errors.push('Employee ID required (e.g., EMP001)');
+  }
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    errors.push('Employee name required');
+  }
+
+  if (!department || typeof department !== 'string' || !department.trim()) {
+    errors.push('Department required');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Add employee with database persistence
+ * @param {object} employeeData
+ * @returns {Promise<{success: boolean, employee?: object, error?: string}>}
+ */
+export async function addEmployeeWithDb(employeeData) {
+  const validation = validateEmployee(employeeData);
+  if (!validation.valid) {
+    return { success: false, error: validation.errors.join('; ') };
+  }
+
+  const empId = employeeData.employeeId.trim().toUpperCase();
+  const db = getDbService();
+
+  try {
+    // Check for duplicate
+    const existing = await db.employeeContacts?.getByEmployeeId?.(empId);
+    if (existing) {
+      return { success: false, error: `Employee ID "${empId}" already exists` };
+    }
+
+    // Store employee contact info if provided
+    if (employeeData.email || employeeData.phone) {
+      const contactId = `contact_${empId}_${Date.now()}`;
+      await db.employeeContacts.add({
+        id: contactId,
+        employee_id: empId,
+        email: employeeData.email || null,
+        phone: employeeData.phone || null,
+        channel: employeeData.email ? 'email' : 'sms',
+      });
+    }
+
+    const employee = {
+      employeeId: empId,
+      name: employeeData.name.trim(),
+      department: employeeData.department.trim(),
+      jobTitle: employeeData.jobTitle?.trim() || '',
+      email: employeeData.email?.trim() || null,
+      phone: employeeData.phone?.trim() || null,
+    };
+
+    return { success: true, employee };
+  } catch (err) {
+    return { success: false, error: `Failed to add employee: ${err.message}` };
+  }
+}
+
+/**
+ * Edit employee
+ * @param {string} originalId
+ * @param {object} updates
+ * @returns {Promise<{success: boolean, employee?: object, error?: string}>}
+ */
+export async function editEmployeeWithDb(originalId, updates) {
+  const validation = validateEmployee(updates);
+  if (!validation.valid) {
+    return { success: false, error: validation.errors.join('; ') };
+  }
+
+  const newId = updates.employeeId.trim().toUpperCase();
+  const db = getDbService();
+
+  try {
+    // Update contact info if email/phone provided
+    if (updates.email || updates.phone) {
+      const contact = await db.employeeContacts?.getByEmployeeId?.(originalId.toUpperCase());
+      if (contact) {
+        await db.employeeContacts.update(contact.id, {
+          email: updates.email || null,
+          phone: updates.phone || null,
+        });
+      }
+    }
+
+    const employee = {
+      employeeId: newId,
+      name: updates.name.trim(),
+      department: updates.department.trim(),
+      jobTitle: updates.jobTitle?.trim() || '',
+      email: updates.email?.trim() || null,
+      phone: updates.phone?.trim() || null,
+    };
+
+    return { success: true, employee };
+  } catch (err) {
+    return { success: false, error: `Failed to update employee: ${err.message}` };
+  }
+}
+
+/**
+ * Delete employee
+ * @param {string} employeeId
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteEmployeeWithDb(employeeId) {
+  const db = getDbService();
+  const empId = employeeId.trim().toUpperCase();
+
+  try {
+    const contact = await db.employeeContacts?.getByEmployeeId?.(empId);
+    if (contact) {
+      await db.employeeContacts.delete(contact.id);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Failed to delete employee: ${err.message}` };
+  }
+}

@@ -42,6 +42,7 @@ import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
 import TrialBanner from './components/TrialBanner.jsx';
 import TrialQuickStart from './components/TrialQuickStart.jsx';
 import { CourseManager } from './components/CourseManager.jsx';
+import { EmployeeManager } from './components/EmployeeManager.jsx';
 import { CertificateGallery } from './components/CertificateGallery.jsx';
 import { ReminderSender } from './components/ReminderSender.jsx';
 import Footer from './components/Footer.jsx';
@@ -80,6 +81,7 @@ export default function App({
   const [trainingRecords, setTrainingRecords] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [manualCourses, setManualCourses] = useState([]); // User-added courses (Phase 2B)
+  const [manualEmployees, setManualEmployees] = useState([]); // User-added employees (Phase 2B.5)
   const [certificateGallery] = useState(() => createCertificateGallery()); // Certificate metadata store
   const [selectedCertificate, setSelectedCertificate] = useState(null); // Cert modal: {number, isNew}
   const [lastImportResult, setLastImportResult] = useState(null);
@@ -150,6 +152,9 @@ export default function App({
           }
         }
 
+        // Load employees from contact data
+        // TODO: Phase 3 - integrate employee persistence into database like courses
+
         setDbInitialized(true);
       } catch (err) {
         console.warn('Failed to load from database:', err);
@@ -180,6 +185,8 @@ export default function App({
       }
     })();
   }, [manualCourses, dbInitialized]);
+
+  // TODO: Phase 3 - Persist employee changes to database (like courses)
 
   // Every banner is stored as data and rendered in the language on screen, so
   // switching the language rewrites it instead of leaving the old text.
@@ -662,6 +669,18 @@ export default function App({
               <CourseManager
                 courses={manualCourses}
                 onCoursesChange={setManualCourses}
+                disabled={false}
+              />
+            </div>
+
+            <div className="section">
+              <div className="section-header">
+                <span className="section-title">Employee Management</span>
+                <span className="badge-count">{manualEmployees.length}</span>
+              </div>
+              <EmployeeManager
+                employees={manualEmployees}
+                onEmployeesChange={setManualEmployees}
                 disabled={false}
               />
             </div>

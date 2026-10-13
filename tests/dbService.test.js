@@ -483,16 +483,65 @@ describe('the IndexedDB upgrade', () => {
 
 describe('the local and cloud surfaces agree', () => {
   // dataService.js must not know which backend answers, so the two services
-  // have to expose the same method names for the new stores.
-  const source = readFileSync(resolve(process.cwd(), 'src/lib/db/dbService.js'), 'utf8');
+  // have to expose the same method names for the new stores. Test behavior,
+  // not source text, to catch missing or misnamed methods.
 
-  it('initializes the three new method groups', () => {
-    expect(source).toContain('this._initRequirements()');
-    expect(source).toContain('this._initTrainingRecords()');
-    expect(source).toContain('this._initRequirementsApproval()');
+  it('exposes requirements with CRUD and listByCourse', async () => {
+    const local = new MemoryDb();
+    expect(typeof local.requirements.add).toBe('function');
+    expect(typeof local.requirements.get).toBe('function');
+    expect(typeof local.requirements.list).toBe('function');
+    expect(typeof local.requirements.update).toBe('function');
+    expect(typeof local.requirements.delete).toBe('function');
+    expect(typeof local.requirements.listByCourse).toBe('function');
+
+    const empty = await local.requirements.list();
+    expect(Array.isArray(empty)).toBe(true);
+    expect(empty).toEqual([]);
+
+    const emptyByCode = await local.requirements.listByCourse('H2S001');
+    expect(Array.isArray(emptyByCode)).toBe(true);
+    expect(emptyByCode).toEqual([]);
   });
 
-  it('exposes listByCourse and listByEmployee', () => {
+  it('exposes trainingRecords with CRUD and listByEmployee', async () => {
+    const local = new MemoryDb();
+    expect(typeof local.trainingRecords.add).toBe('function');
+    expect(typeof local.trainingRecords.get).toBe('function');
+    expect(typeof local.trainingRecords.list).toBe('function');
+    expect(typeof local.trainingRecords.update).toBe('function');
+    expect(typeof local.trainingRecords.delete).toBe('function');
+    expect(typeof local.trainingRecords.listByEmployee).toBe('function');
+
+    const empty = await local.trainingRecords.list();
+    expect(Array.isArray(empty)).toBe(true);
+    expect(empty).toEqual([]);
+
+    const emptyByEmp = await local.trainingRecords.listByEmployee('EMP001');
+    expect(Array.isArray(emptyByEmp)).toBe(true);
+    expect(emptyByEmp).toEqual([]);
+  });
+
+  it('exposes requirementsApproval with CRUD', async () => {
+    const local = new MemoryDb();
+    expect(typeof local.requirementsApproval.add).toBe('function');
+    expect(typeof local.requirementsApproval.get).toBe('function');
+    expect(typeof local.requirementsApproval.list).toBe('function');
+    expect(typeof local.requirementsApproval.update).toBe('function');
+    expect(typeof local.requirementsApproval.delete).toBe('function');
+
+    const empty = await local.requirementsApproval.list();
+    expect(Array.isArray(empty)).toBe(true);
+    expect(empty).toEqual([]);
+  });
+
+  it('supabase surface exposes the same methods', async () => {
+    // Use source text for Supabase since it cannot be instantiated without
+    // a real client or complex stub that mirrors IndexedDB patterns.
+    const source = readFileSync(resolve(process.cwd(), 'src/lib/db/supabaseDbService.js'), 'utf8');
+    expect(source).toContain('this.requirements');
+    expect(source).toContain('this.trainingRecords');
+    expect(source).toContain('this.requirementsApproval');
     expect(source).toContain('listByCourse');
     expect(source).toContain('listByEmployee');
   });

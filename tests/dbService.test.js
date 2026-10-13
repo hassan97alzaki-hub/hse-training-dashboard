@@ -483,66 +483,64 @@ describe('the IndexedDB upgrade', () => {
 
 describe('the local and cloud surfaces agree', () => {
   // dataService.js must not know which backend answers, so the two services
-  // have to expose the same method names for the new stores. Test behavior,
-  // not source text, to catch missing or misnamed methods.
+  // have to expose the same method names for the new stores. If a method is
+  // missing or misnamed on one side, exactly one deployment breaks while every
+  // test on the other passes.
+  //
+  // This block uses source-text assertions rather than instantiation because
+  // a real IndexedDB does not exist in this jsdom suite. MemoryDb is a
+  // parallel reimplementation, not a wrapper, so testing it here would say
+  // nothing about src/lib/db/dbService.js. The next reader should not repeat
+  // the mistake of writing behavioural tests against MemoryDb for this block.
 
-  it('exposes requirements with CRUD and listByCourse', async () => {
-    const local = new MemoryDb();
-    expect(typeof local.requirements.add).toBe('function');
-    expect(typeof local.requirements.get).toBe('function');
-    expect(typeof local.requirements.list).toBe('function');
-    expect(typeof local.requirements.update).toBe('function');
-    expect(typeof local.requirements.delete).toBe('function');
-    expect(typeof local.requirements.listByCourse).toBe('function');
+  const localSrc = readFileSync(resolve(process.cwd(), 'src/lib/db/dbService.js'), 'utf8');
+  const supabaseSrc = readFileSync(resolve(process.cwd(), 'src/lib/db/supabaseDbService.js'), 'utf8');
 
-    const empty = await local.requirements.list();
-    expect(Array.isArray(empty)).toBe(true);
-    expect(empty).toEqual([]);
-
-    const emptyByCode = await local.requirements.listByCourse('H2S001');
-    expect(Array.isArray(emptyByCode)).toBe(true);
-    expect(emptyByCode).toEqual([]);
+  it('local init() calls all three new _init* methods', () => {
+    expect(localSrc).toContain('this._initRequirements()');
+    expect(localSrc).toContain('this._initTrainingRecords()');
+    expect(localSrc).toContain('this._initRequirementsApproval()');
   });
 
-  it('exposes trainingRecords with CRUD and listByEmployee', async () => {
-    const local = new MemoryDb();
-    expect(typeof local.trainingRecords.add).toBe('function');
-    expect(typeof local.trainingRecords.get).toBe('function');
-    expect(typeof local.trainingRecords.list).toBe('function');
-    expect(typeof local.trainingRecords.update).toBe('function');
-    expect(typeof local.trainingRecords.delete).toBe('function');
-    expect(typeof local.trainingRecords.listByEmployee).toBe('function');
-
-    const empty = await local.trainingRecords.list();
-    expect(Array.isArray(empty)).toBe(true);
-    expect(empty).toEqual([]);
-
-    const emptyByEmp = await local.trainingRecords.listByEmployee('EMP001');
-    expect(Array.isArray(emptyByEmp)).toBe(true);
-    expect(emptyByEmp).toEqual([]);
+  it('local _initRequirements assigns every expected method key', () => {
+    // Match on object-literal key syntax so a bare name in a comment cannot satisfy this.
+    const block = localSrc.slice(localSrc.indexOf('_initRequirements()'));
+    expect(block).toMatch(/add\s*:/);
+    expect(block).toMatch(/get\s*:/);
+    expect(block).toMatch(/list\s*:/);
+    expect(block).toMatch(/listByCourse\s*:/);
+    expect(block).toMatch(/update\s*:/);
+    expect(block).toMatch(/delete\s*:/);
   });
 
-  it('exposes requirementsApproval with CRUD', async () => {
-    const local = new MemoryDb();
-    expect(typeof local.requirementsApproval.add).toBe('function');
-    expect(typeof local.requirementsApproval.get).toBe('function');
-    expect(typeof local.requirementsApproval.list).toBe('function');
-    expect(typeof local.requirementsApproval.update).toBe('function');
-    expect(typeof local.requirementsApproval.delete).toBe('function');
-
-    const empty = await local.requirementsApproval.list();
-    expect(Array.isArray(empty)).toBe(true);
-    expect(empty).toEqual([]);
+  it('local _initTrainingRecords assigns every expected method key', () => {
+    const block = localSrc.slice(localSrc.indexOf('_initTrainingRecords()'));
+    expect(block).toMatch(/add\s*:/);
+    expect(block).toMatch(/get\s*:/);
+    expect(block).toMatch(/list\s*:/);
+    expect(block).toMatch(/listByEmployee\s*:/);
+    expect(block).toMatch(/update\s*:/);
+    expect(block).toMatch(/delete\s*:/);
   });
 
-  it('supabase surface exposes the same methods', async () => {
-    // Use source text for Supabase since it cannot be instantiated without
-    // a real client or complex stub that mirrors IndexedDB patterns.
-    const source = readFileSync(resolve(process.cwd(), 'src/lib/db/supabaseDbService.js'), 'utf8');
-    expect(source).toContain('this.requirements');
-    expect(source).toContain('this.trainingRecords');
-    expect(source).toContain('this.requirementsApproval');
-    expect(source).toContain('listByCourse');
-    expect(source).toContain('listByEmployee');
+  it('local _initRequirementsApproval assigns every expected method key', () => {
+    const block = localSrc.slice(localSrc.indexOf('_initRequirementsApproval()'));
+    expect(block).toMatch(/add\s*:/);
+    expect(block).toMatch(/get\s*:/);
+    expect(block).toMatch(/list\s*:/);
+    expect(block).toMatch(/update\s*:/);
+    expect(block).toMatch(/delete\s*:/);
+  });
+
+  it('supabase wires the three new tables via _table(...)', () => {
+    expect(supabaseSrc).toContain("this._table('requirements'");
+    expect(supabaseSrc).toContain("this._table('training_records'");
+    expect(supabaseSrc).toContain("this._table('requirements_approval'");
+  });
+
+  it('supabase assigns the two named lookups by expression', () => {
+    // Match full assignment expressions so a comment with the bare name cannot pass.
+    expect(supabaseSrc).toContain('this.requirements.listByCourse =');
+    expect(supabaseSrc).toContain('this.trainingRecords.listByEmployee =');
   });
 });

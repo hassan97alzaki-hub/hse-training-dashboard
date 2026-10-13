@@ -382,10 +382,20 @@ describe('the IndexedDB upgrade', () => {
   });
 
   it('creates every store behind an existence guard', () => {
-    const creates = source.match(/db\.createObjectStore\('([a-z_]+)'/g) ?? [];
-    const guards = source.match(/db\.objectStoreNames\.contains\('([a-z_]+)'\)/g) ?? [];
-    expect(creates).toHaveLength(9);
-    expect(guards).toHaveLength(creates.length);
+    const createMatches = source.match(/db\.createObjectStore\('([a-z_]+)'/g) ?? [];
+    expect(createMatches).toHaveLength(9);
+
+    // Extract store names from createObjectStore calls
+    const storeNames = new Set();
+    for (const match of createMatches) {
+      const name = match.match(/db\.createObjectStore\('([a-z_]+)'/)[1];
+      storeNames.add(name);
+    }
+
+    // For each store, verify it has a contains guard
+    for (const storeName of storeNames) {
+      expect(source).toContain(`db.objectStoreNames.contains('${storeName}')`);
+    }
   });
 
   it('never deletes a store', () => {

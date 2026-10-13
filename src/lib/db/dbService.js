@@ -91,9 +91,6 @@ class LocalDbService {
     this.employees = {};
     this.employeeContacts = {};
     this.remindersSent = {};
-    this.requirements = {};
-    this.trainingRecords = {};
-    this.requirementsApproval = {};
   }
 
   async init() {

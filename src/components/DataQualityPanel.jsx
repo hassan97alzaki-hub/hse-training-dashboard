@@ -83,7 +83,7 @@ export default function DataQualityPanel({ importResult, unconfiguredEmployees, 
             <span className="badge-count" style={{ background: 'var(--warning)' }}>{unregisteredCourses.length}</span>
           </div>
           {unregisteredCourses.map((code, i) => (
-            <div key={i} className="dq-issue">Course code: {code}</div>
+            <div key={i} className="dq-issue">{t('dqUnregisteredRow')} {code}</div>
           ))}
         </div>
       )}

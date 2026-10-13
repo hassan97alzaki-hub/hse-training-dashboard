@@ -88,3 +88,40 @@ CREATE INDEX IF NOT EXISTS idx_employee_contacts_id ON employee_contacts(employe
 CREATE INDEX IF NOT EXISTS idx_reminders_employee ON reminders_sent(employee_id);
 CREATE INDEX IF NOT EXISTS idx_reminders_course ON reminders_sent(course_code);
 CREATE INDEX IF NOT EXISTS idx_reminders_sent_at ON reminders_sent(sent_at);
+
+-- Requirements matrix: one row per role per course. An empty job_title means
+-- every job title in that department.
+CREATE TABLE IF NOT EXISTS requirements (
+  id TEXT PRIMARY KEY,
+  department TEXT NOT NULL,
+  job_title TEXT NOT NULL DEFAULT '',
+  course_code TEXT NOT NULL,
+  mandatory BOOLEAN NOT NULL DEFAULT TRUE,
+  validity_months INTEGER,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (department, job_title, course_code)
+);
+
+-- One row per completion. No unique key: a renewal is a second legitimate row.
+CREATE TABLE IF NOT EXISTS training_records (
+  id TEXT PRIMARY KEY,
+  employee_id TEXT NOT NULL,
+  course_code TEXT NOT NULL,
+  completion_status TEXT NOT NULL DEFAULT 'Completed',
+  issue_date DATE,
+  expiry_date DATE,
+  certificate_number TEXT,
+  source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- One row only: the approval state of this installation's matrix.
+CREATE TABLE IF NOT EXISTS requirements_approval (
+  id TEXT PRIMARY KEY,
+  status TEXT NOT NULL DEFAULT 'draft',
+  approved_by TEXT,
+  approved_at TIMESTAMP,
+  revision INTEGER NOT NULL DEFAULT 1
+);

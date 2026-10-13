@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { readSupabaseConfig } from '../src/lib/supabaseClient.js';
@@ -228,10 +228,21 @@ describe('the migration', () => {
   let sql;
 
   beforeEach(() => {
-    sql = readFileSync(resolve(process.cwd(), 'supabase/migrations/0001_init.sql'), 'utf8');
+    // Every migration, concatenated. Reading only 0001 would let a later
+    // migration define a table that escapes all of the checks below.
+    const dir = resolve(process.cwd(), 'supabase/migrations');
+    sql = readdirSync(dir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()
+      .map((f) => readFileSync(resolve(dir, f), 'utf8'))
+      .join('\n');
   });
 
-  const TABLES = ['courses', 'certificates', 'departments', 'employees', 'employee_contacts', 'reminders_sent'];
+  const TABLES = [
+    'courses', 'certificates', 'departments', 'employees',
+    'employee_contacts', 'reminders_sent',
+    'requirements', 'training_records', 'requirements_approval',
+  ];
 
   it('creates every table the service uses', () => {
     for (const table of TABLES) {
@@ -257,6 +268,10 @@ describe('the migration', () => {
     expect(sql).toContain('UNIQUE (owner_id, certificate_number)');
     expect(sql).toContain('UNIQUE (owner_id, name_key)');
     expect(sql).toContain('UNIQUE (owner_id, employee_id)');
+  });
+
+  it('scopes the requirements key to the account', () => {
+    expect(sql).toContain('UNIQUE (owner_id, department, job_title, course_code)');
   });
 
   it('grants nothing to an unauthenticated request', () => {

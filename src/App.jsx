@@ -929,6 +929,15 @@ export default function App({
                 inactiveUniverse={displayInactiveUniverse}
                 filters={filters} t={t} lang={lang} showInactive={showInactive}
                 onCertificateClick={(certNumber) => setSelectedCertificate({ number: certNumber, isNew: false })}
+                onRecordEdit={(item) => setSessionForm({
+                  prefill: {
+                    employeeId: item.Employee_ID,
+                    courseCode: item.Course_Code,
+                    issueDate: item.Issue_Date ?? '',
+                    expiryDate: item.Expiry_Date ?? '',
+                    certificateNumber: item.Certificate_Number ?? '',
+                  },
+                })}
               />
             </div>
 

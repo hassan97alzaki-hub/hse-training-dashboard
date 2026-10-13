@@ -17,6 +17,7 @@ export default function ComplianceTable({
   lang,
   showInactive,
   onCertificateClick,
+  onRecordEdit,
 }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -69,12 +70,13 @@ export default function ComplianceTable({
               <th>{t('employmentStatus')}</th>
               <th>{t('issueDate')}</th>
               <th>{t('certificate')}</th>
+              {onRecordEdit && <th>{t('editRecord')}</th>}
             </tr>
           </thead>
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={12} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                <td colSpan={onRecordEdit ? 13 : 12} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                     <SearchX size={28} style={{ opacity: 0.5 }} />
                     <span>{t('noResults')}</span>
@@ -133,6 +135,26 @@ export default function ComplianceTable({
                       </button>
                     ) : '—'}
                   </td>
+                  {onRecordEdit && (
+                    <td>
+                      <button
+                        type="button"
+                        data-testid={`edit-record-${item.Employee_ID}-${item.Course_Code}`}
+                        title={t('editRecord')}
+                        onClick={() => onRecordEdit(item)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2563eb',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: 'inherit',
+                        }}
+                      >
+                        ✎
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}

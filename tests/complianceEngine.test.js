@@ -340,8 +340,8 @@ describe('a course scoped to one role', () => {
   // This is the 9797 — JSA case: a course added in the interface used to be
   // broadcast to every role, so everybody was MISSING it.
   const people = [
-    { Employee_ID: 'EMP001', Name: 'A', Department: 'Operations', Job_Title: 'Operator' },
-    { Employee_ID: 'EMP002', Name: 'B', Department: 'Maintenance', Job_Title: 'Technician' },
+    { Employee_ID: 'EMP001', Name: 'A', Department: 'Operations', Job_Title: 'Operator', Employment_Status: 'Active' },
+    { Employee_ID: 'EMP002', Name: 'B', Department: 'Maintenance', Job_Title: 'Technician', Employment_Status: 'Active' },
   ];
   const requirements = [
     { Department: 'Operations', Job_Title: 'Operator', Course_Code: 'JSA', Course_Name: 'JSA', Mandatory: true, Validity_Months: 12 },

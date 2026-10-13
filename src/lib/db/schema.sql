@@ -118,6 +118,9 @@ CREATE TABLE IF NOT EXISTS training_records (
 );
 
 -- One row only: the approval state of this installation's matrix.
+-- Note: uses id as key (not owner_id like Supabase). Supabase version uses owner_id
+-- as primary key with auth.uid() because it enforces one row per account; IndexedDB
+-- backend has no auth, so it uses a single fixed-id row per installation instead.
 CREATE TABLE IF NOT EXISTS requirements_approval (
   id TEXT PRIMARY KEY,
   status TEXT NOT NULL DEFAULT 'draft',

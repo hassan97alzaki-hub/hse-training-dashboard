@@ -19,6 +19,7 @@ import {
 } from './lib/matrixWorkbook.js';
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
 import { defaultBatchId, defaultApprovedAt } from './lib/localBatch.js';
+import { findUnregisteredCourses } from './lib/requirementsService.js';
 import {
   REQUIREMENTS_PROVENANCE, resolveRequirementsProvenance,
 } from './lib/contract/requirementsProvenance.js';
@@ -371,6 +372,11 @@ export default function App({
   const displayPriorityActions = useMemo(
     () => projectForDisplay(priorityActions, displayLookups, lang),
     [priorityActions, displayLookups, lang],
+  );
+
+  const unregisteredCourses = useMemo(
+    () => findUnregisteredCourses(managedRequirements, manualCourses),
+    [managedRequirements, manualCourses],
   );
 
   const filterOptions = useMemo(() => {
@@ -820,6 +826,7 @@ export default function App({
                 unconfiguredEmployees={complianceResult?.unconfiguredEmployees || []}
                 duplicates={complianceResult?.duplicates || []}
                 configWarnings={complianceResult?.configWarnings || []}
+                unregisteredCourses={unregisteredCourses}
                 t={t}
               />
             </div>

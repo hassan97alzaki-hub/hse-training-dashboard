@@ -216,6 +216,7 @@ const translations = {
     dqInvalidTitle: 'Invalid Data',
     dqDuplicateTitle: 'Duplicate Records',
     dqConfigTitle: 'Missing Configuration',
+    dqUnregisteredTitle: 'Unregistered Courses',
     dqAllClearTitle: 'No Data Quality Issues',
     dqAllClearBody: 'All imported records passed validation and every active employee has configured requirements.',
 
@@ -599,6 +600,7 @@ const translations = {
     dqInvalidTitle: 'بيانات غير صالحة',
     dqDuplicateTitle: 'سجلات مكررة',
     dqConfigTitle: 'تهيئة مفقودة',
+    dqUnregisteredTitle: 'دورات غير مسجلة',
     dqAllClearTitle: 'لا توجد مشكلات في جودة البيانات',
     dqAllClearBody: 'اجتازت جميع السجلات المستوردة التحقق، ولدى كل موظف نشط متطلبات مُهيأة.',
 

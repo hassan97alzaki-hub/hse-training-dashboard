@@ -1,6 +1,6 @@
 import { AlertCircle, Copy, ClipboardX, ShieldCheck } from 'lucide-react';
 
-export default function DataQualityPanel({ importResult, unconfiguredEmployees, duplicates, configWarnings, t }) {
+export default function DataQualityPanel({ importResult, unconfiguredEmployees, duplicates, configWarnings, unregisteredCourses, t }) {
   const invalidRows = importResult?.invalidRecords || [];
   const importErrors = importResult?.errors || [];
   const importWarnings = importResult?.warnings || [];
@@ -9,6 +9,7 @@ export default function DataQualityPanel({ importResult, unconfiguredEmployees, 
     invalidRows.length > 0 ||
     duplicates.length > 0 ||
     configWarnings.length > 0 ||
+    (unregisteredCourses ?? []).length > 0 ||
     importErrors.length > 0;
 
   if (!hasIssues) {
@@ -70,6 +71,19 @@ export default function DataQualityPanel({ importResult, unconfiguredEmployees, 
           </div>
           {configWarnings.map((w, i) => (
             <div key={i} className="dq-issue">{w}</div>
+          ))}
+        </div>
+      )}
+
+      {(unregisteredCourses ?? []).length > 0 && (
+        <div className="dq-card" style={{ '--dq-accent': 'var(--warning)' }}>
+          <div className="dq-card-header">
+            <ClipboardX size={16} />
+            {t('dqUnregisteredTitle')}
+            <span className="badge-count" style={{ background: 'var(--warning)' }}>{unregisteredCourses.length}</span>
+          </div>
+          {unregisteredCourses.map((code, i) => (
+            <div key={i} className="dq-issue">Course code: {code}</div>
           ))}
         </div>
       )}

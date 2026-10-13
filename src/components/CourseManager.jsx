@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { createI18n } from '../lib/i18n.js';
 import {
   addCourse, editCourse, deleteCourse, isValidCourseCode, validateCourse, exportCoursesAsCSV,
 } from '../lib/dataService.js';
-
-const t = createI18n('en').t;
+import { saveRequirementsForCourse } from '../lib/requirementsService.js';
+import { RoleScopePicker } from './RoleScopePicker.jsx';
 
 /**
  * CourseManager Component
@@ -18,7 +17,9 @@ const t = createI18n('en').t;
  *
  * State: managed by parent (App.jsx)
  */
-export function CourseManager({ courses, onCoursesChange, disabled = false }) {
+export function CourseManager({
+  courses, onCoursesChange, people = [], onRequirementsSaved, t, disabled = false,
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [formData, setFormData] = useState({
@@ -27,6 +28,7 @@ export function CourseManager({ courses, onCoursesChange, disabled = false }) {
     mandatory: false,
     validityMonths: 12,
     description: '',
+    appliesTo: [],
   });
   const [error, setError] = useState('');
 
@@ -47,6 +49,7 @@ export function CourseManager({ courses, onCoursesChange, disabled = false }) {
       mandatory: false,
       validityMonths: 12,
       description: '',
+      appliesTo: [],
     });
     setShowForm(true);
   };
@@ -60,12 +63,13 @@ export function CourseManager({ courses, onCoursesChange, disabled = false }) {
       mandatory: course.mandatory,
       validityMonths: course.validityMonths,
       description: course.description,
+      appliesTo: course.appliesTo ?? [],
     });
     setEditingIndex(index);
     setShowForm(true);
   };
 
-  const handleSaveCourse = () => {
+  const handleSaveCourse = async () => {
     setError('');
 
     if (editingIndex !== null) {
@@ -93,6 +97,13 @@ export function CourseManager({ courses, onCoursesChange, disabled = false }) {
       onCoursesChange([...courses, result.course]);
     }
 
+    const saved = await saveRequirementsForCourse(formData.code, formData.appliesTo);
+    if (!saved.success) {
+      setError(saved.error);
+      return;
+    }
+    onRequirementsSaved?.();
+
     setShowForm(false);
     setFormData({
       code: '',
@@ -100,6 +111,7 @@ export function CourseManager({ courses, onCoursesChange, disabled = false }) {
       mandatory: false,
       validityMonths: 12,
       description: '',
+      appliesTo: [],
     });
   };
 
@@ -212,6 +224,16 @@ export function CourseManager({ courses, onCoursesChange, disabled = false }) {
               style={styles.textarea}
             />
           </label>
+
+          <div style={styles.label}>
+            <label>{t('appliesTo')}</label>
+            <RoleScopePicker
+              people={people}
+              value={formData.appliesTo}
+              onChange={(appliesTo) => setFormData(prev => ({ ...prev, appliesTo }))}
+              t={t}
+            />
+          </div>
 
           <div style={styles.formActions}>
             <button

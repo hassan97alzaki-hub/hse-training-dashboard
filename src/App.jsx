@@ -699,6 +699,9 @@ export default function App({
           onClose={() => setDrawerOpen(false)}
           courses={manualCourses}
           onCoursesChange={setManualCourses}
+          people={mergedPeople}
+          onRequirementsSaved={async () => setManagedRequirements(await loadRequirementsFromDb())}
+          t={t}
           employees={manualEmployees}
           onEmployeesChange={setManualEmployees}
           departments={departments}

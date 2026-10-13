@@ -27,6 +27,9 @@ export function ManagementDrawer({
   onClose,
   courses = [],
   onCoursesChange,
+  people = [],
+  onRequirementsSaved,
+  t,
   employees = [],
   onEmployeesChange,
   departments = [],
@@ -91,6 +94,9 @@ export function ManagementDrawer({
             <CourseManager
               courses={courses}
               onCoursesChange={onCoursesChange}
+              people={people}
+              onRequirementsSaved={onRequirementsSaved}
+              t={t}
               disabled={false}
             />
           )}

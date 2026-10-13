@@ -70,7 +70,7 @@ describe('requirements provenance', () => {
   });
 
   it('marks every non-approved provenance as test data', () => {
-    expect(TEST_PROVENANCES).toEqual(['derived', 'demo', 'legacy']);
+    expect(TEST_PROVENANCES).toEqual(['draft', 'derived', 'demo', 'legacy']);
     for (const provenance of TEST_PROVENANCES) expect(isTestRequirements(provenance)).toBe(true);
     expect(isTestRequirements(REQUIREMENTS_PROVENANCE.APPROVED)).toBe(false);
     expect(isTestRequirements(REQUIREMENTS_PROVENANCE.NONE)).toBe(false);

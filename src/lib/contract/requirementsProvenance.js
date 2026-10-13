@@ -13,6 +13,8 @@
 export const REQUIREMENTS_PROVENANCE = Object.freeze({
   NONE: 'none',
   APPROVED: 'approved',
+  MANAGED: 'managed',   // a matrix built in the interface, internally approved
+  DRAFT: 'draft',       // a matrix built in the interface, before approval
   DERIVED: 'derived',
   DEMO: 'demo',
   LEGACY: 'legacy',
@@ -20,6 +22,7 @@ export const REQUIREMENTS_PROVENANCE = Object.freeze({
 
 /** Provenances that do not carry approved production requirements. */
 export const TEST_PROVENANCES = Object.freeze([
+  REQUIREMENTS_PROVENANCE.DRAFT,
   REQUIREMENTS_PROVENANCE.DERIVED,
   REQUIREMENTS_PROVENANCE.DEMO,
   REQUIREMENTS_PROVENANCE.LEGACY,
@@ -56,6 +59,10 @@ export function isTestRequirements(provenance) {
 /** The i18n key that explains this provenance. */
 export function provenanceMessageKey(provenance) {
   switch (provenance) {
+    case REQUIREMENTS_PROVENANCE.DRAFT:
+      return 'trqDraft';
+    case REQUIREMENTS_PROVENANCE.MANAGED:
+      return 'trqManaged';
     case REQUIREMENTS_PROVENANCE.DERIVED:
       return 'trqDerived';
     case REQUIREMENTS_PROVENANCE.DEMO:

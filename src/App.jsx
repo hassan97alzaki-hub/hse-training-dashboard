@@ -19,7 +19,7 @@ import {
 } from './lib/matrixWorkbook.js';
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
 import { defaultBatchId, defaultApprovedAt } from './lib/localBatch.js';
-import { findUnregisteredCourses } from './lib/requirementsService.js';
+import { findUnregisteredCourses, loadRequirementsFromDb } from './lib/requirementsService.js';
 import {
   REQUIREMENTS_PROVENANCE, resolveRequirementsProvenance,
 } from './lib/contract/requirementsProvenance.js';
@@ -82,7 +82,10 @@ export default function App({
   );
   const [projectName, setProjectName] = useState(DEFAULT_PROJECT);
 
-  const [trainingRecords, setTrainingRecords] = useState([]);
+  // The records an import brought in. The records entered by hand live in
+  // manualRecords; `trainingRecords` below is the two of them together.
+  const [importedRecords, setImportedRecords] = useState([]);
+  const [manualRecords, setManualRecords] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [manualCourses, setManualCourses] = useState([]); // User-added courses (Phase 2B)
   const [manualEmployees, setManualEmployees] = useState([]); // User-added employees (Phase 2B.5)
@@ -175,6 +178,12 @@ export default function App({
         const dbDepartments = await loadDepartmentsFromDb();
         if (dbDepartments && dbDepartments.length > 0) {
           setRegisteredDepartments(dbDepartments);
+        }
+
+        // Load the requirements matrix built through the interface
+        const dbRequirements = await loadRequirementsFromDb();
+        if (dbRequirements.length > 0) {
+          setManagedRequirements(dbRequirements);
         }
 
         setDbInitialized(true);
@@ -275,13 +284,23 @@ export default function App({
     [requirements, requirementsSource],
   );
 
+  // What the engine reports on: the imported records plus the ones entered by
+  // hand. No deduplication — selectBestRecord picks the record with the latest
+  // valid expiry and DataQualityPanel reports the duplicate, which is what the
+  // user needs to see.
+  const trainingRecords = useMemo(
+    () => [...importedRecords, ...manualRecords],
+    [importedRecords, manualRecords],
+  );
+
   // The people the engine reports on: the imported ones plus anybody added
   // through the interface. Without a master list the engine derives its people
-  // from the training records, so those records are the list to merge into.
-  // See mergeManualEmployees.
+  // from the *imported* records only: a record entered by hand carries an employee
+  // ID and a course code, so deriving a person from it would invent an
+  // employee with no name, department or job title.
   const mergedPeople = useMemo(
-    () => mergeManualEmployees(employeeMaster ?? trainingRecords, manualEmployees),
-    [employeeMaster, trainingRecords, manualEmployees],
+    () => mergeManualEmployees(employeeMaster ?? importedRecords, manualEmployees),
+    [employeeMaster, importedRecords, manualEmployees],
   );
 
   // The department list shown in the drawer: the registered ones plus the ones
@@ -413,7 +432,7 @@ export default function App({
       const { trainingResult, reqResult } = await loadDemoDataFromPublic();
       if (trainingResult.success) {
         setEmployeeMaster(null);
-        setTrainingRecords(trainingResult.validRecords);
+        setImportedRecords(trainingResult.validRecords);
         setSourceFileName(trainingResult.sourceFileName);
         setLastImportResult(trainingResult);
       }
@@ -486,7 +505,7 @@ export default function App({
       if (result.success) {
         setLastImportResult(result);
         setEmployeeMaster(null);
-        setTrainingRecords(result.validRecords);
+        setImportedRecords(result.validRecords);
         setSourceFileName(result.sourceFileName);
         showKind(BANNER_KIND.IMPORT_SUCCESS, result.importSummary.invalid > 0 ? 'warning' : 'success', {
           validRecords: result.importSummary.valid,
@@ -515,7 +534,7 @@ export default function App({
     const result = toImportResult(conversion, fileName);
     setLastImportResult(result);
     setEmployeeMaster(conversion.employees);
-    setTrainingRecords(result.validRecords);
+    setImportedRecords(result.validRecords);
     setRequirements(conversion.requirements);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.DERIVED);
     setSourceFileName(fileName);
@@ -554,7 +573,7 @@ export default function App({
       setApprovedState(result.state);
       setDisplayLookups(result.view.prepared.lookups);
       setEmployeeMaster(result.view.prepared.employees);
-      setTrainingRecords(result.view.prepared.records);
+      setImportedRecords(result.view.prepared.records);
       setRequirements(result.view.prepared.requirements);
       setRequirementsSource(REQUIREMENTS_PROVENANCE.APPROVED);
       setSourceFileName(productionPreview.fileName);
@@ -637,7 +656,7 @@ export default function App({
   }
 
   function handleReset() {
-    setTrainingRecords([]); setRequirements([]); setManualCourses([]); setLastImportResult(null);
+    setImportedRecords([]); setRequirements([]); setManualCourses([]); setLastImportResult(null);
     certificateGallery.clear();
     setSelectedCertificate(null);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.NONE);

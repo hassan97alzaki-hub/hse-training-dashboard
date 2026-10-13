@@ -332,3 +332,33 @@ describe('Individual employee status cases', () => {
   it('EMP0009/H2S001 — EXPIRING_90 (67 days)', () => expect(get('EMP0009', 'H2S001').Status).toBe(STATUS.EXPIRING_90));
   it('EMP0010/CS001 — MISSING (no record)', () => expect(get('EMP0010', 'CS001').Status).toBe(STATUS.MISSING));
 });
+
+// ============================================================
+// Role-scoped course requirements
+// ============================================================
+describe('a course scoped to one role', () => {
+  // This is the 9797 — JSA case: a course added in the interface used to be
+  // broadcast to every role, so everybody was MISSING it.
+  const people = [
+    { Employee_ID: 'EMP001', Name: 'A', Department: 'Operations', Job_Title: 'Operator' },
+    { Employee_ID: 'EMP002', Name: 'B', Department: 'Maintenance', Job_Title: 'Technician' },
+  ];
+  const requirements = [
+    { Department: 'Operations', Job_Title: 'Operator', Course_Code: 'JSA', Course_Name: 'JSA', Mandatory: true, Validity_Months: 12 },
+  ];
+
+  it('is missing for the scoped role only', () => {
+    const result = buildComplianceUniverse([], requirements, '2026-10-13', people);
+    const missing = result.universe.filter(item => item.isMissing);
+
+    expect(missing).toHaveLength(1);
+    expect(missing[0].Employee_ID).toBe('EMP001');
+  });
+
+  it('generates nothing at all for a role it was not scoped to', () => {
+    const result = buildComplianceUniverse([], requirements, '2026-10-13', people);
+    const maintenance = result.universe.filter(item => item.Department === 'Maintenance');
+
+    expect(maintenance.map(item => item.Course_Code)).not.toContain('JSA');
+  });
+});

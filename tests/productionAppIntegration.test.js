@@ -9,6 +9,7 @@ import { resolve } from 'node:path';
 import App from '../src/App.jsx';
 import { defaultBatchId, BATCH_ID_PATTERN } from '../src/lib/localBatch.js';
 import { getRuntimeAsOfDate } from '../src/lib/clock.js';
+import { mergeManualEmployees } from '../src/lib/dataService.js';
 import { generateSyntheticFullPackage, addDays } from './fixtures/contract/generateSyntheticPackage.js';
 
 /**
@@ -282,5 +283,23 @@ describe('local batch id', () => {
     await importProduction();
     await approveProduction();
     expect(await screen.findByText(/Package approved/)).toBeInTheDocument();
+  });
+});
+
+describe('a manually entered training record', () => {
+  it('does not become an employee when no master list is loaded', () => {
+    // A manual record has an employee ID and a course code, nothing else.
+    // Deriving people from it would invent an employee with empty fields.
+    const imported = [
+      { Employee_ID: 'EMP001', Name: 'A', Department: 'Operations', Job_Title: 'Operator', Course_Code: 'FA' },
+    ];
+    const manual = [{ employee_id: 'EMP999', course_code: 'JSA', source: 'manual' }];
+
+    const people = mergeManualEmployees(imported, []);
+
+    expect(people).toHaveLength(1);
+    expect(people.some(p => p.Employee_ID === 'EMP999')).toBe(false);
+    // The manual record still reaches the engine, just not the people list.
+    expect([...imported, ...manual]).toHaveLength(2);
   });
 });

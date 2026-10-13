@@ -80,16 +80,20 @@ export function getDbService() {
 class LocalDbService {
   constructor() {
     this.dbName = 'hse-training-db';
-    // Version 2 added the employees store, version 3 the departments store.
-    // Raising this number is what runs onupgradeneeded for a browser that
-    // already holds an older database.
-    this.version = 3;
+    // Version 2 added the employees store, version 3 the departments store,
+    // version 4 the requirements matrix and the training records. Raising this
+    // number is what runs onupgradeneeded for a browser that already holds an
+    // older database. onupgradeneeded only ever creates, so nothing is lost.
+    this.version = 4;
     this.courses = {};
     this.certificates = {};
     this.departments = {};
     this.employees = {};
     this.employeeContacts = {};
     this.remindersSent = {};
+    this.requirements = {};
+    this.trainingRecords = {};
+    this.requirementsApproval = {};
   }
 
   async init() {
@@ -134,6 +138,22 @@ class LocalDbService {
           const reminderStore = db.createObjectStore('reminders_sent', { keyPath: 'id' });
           reminderStore.createIndex('employee_id', 'employee_id');
           reminderStore.createIndex('sent_at', 'sent_at');
+        }
+
+        if (!db.objectStoreNames.contains('requirements')) {
+          const requirementStore = db.createObjectStore('requirements', { keyPath: 'id' });
+          requirementStore.createIndex('course_code', 'course_code');
+          requirementStore.createIndex('department', 'department');
+        }
+
+        if (!db.objectStoreNames.contains('training_records')) {
+          const recordStore = db.createObjectStore('training_records', { keyPath: 'id' });
+          recordStore.createIndex('employee_id', 'employee_id');
+          recordStore.createIndex('course_code', 'course_code');
+        }
+
+        if (!db.objectStoreNames.contains('requirements_approval')) {
+          db.createObjectStore('requirements_approval', { keyPath: 'id' });
         }
       };
     });

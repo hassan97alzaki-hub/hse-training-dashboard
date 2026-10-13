@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // Simple in-memory DB for testing (no IndexedDB dependency)
 class MemoryDb {
@@ -367,5 +369,32 @@ describe('dbService (Local/In-Memory for Testing)', () => {
       expect(coursesList.length).toBe(1);
       expect(certsList.length).toBe(1);
     });
+  });
+});
+
+describe('the IndexedDB upgrade', () => {
+  // The suite has no real IndexedDB, so this asserts the shape of the upgrade
+  // code: an existing browser database must be extended, never rebuilt.
+  const source = readFileSync(resolve(process.cwd(), 'src/lib/db/dbService.js'), 'utf8');
+
+  it('declares version 4', () => {
+    expect(source).toMatch(/this\.version\s*=\s*4/);
+  });
+
+  it('creates every store behind an existence guard', () => {
+    const creates = source.match(/db\.createObjectStore\('([a-z_]+)'/g) ?? [];
+    const guards = source.match(/db\.objectStoreNames\.contains\('([a-z_]+)'\)/g) ?? [];
+    expect(creates).toHaveLength(9);
+    expect(guards).toHaveLength(creates.length);
+  });
+
+  it('never deletes a store', () => {
+    expect(source).not.toContain('deleteObjectStore');
+  });
+
+  it('creates the three new stores', () => {
+    for (const store of ['requirements', 'training_records', 'requirements_approval']) {
+      expect(source, store).toContain(`db.createObjectStore('${store}'`);
+    }
   });
 });

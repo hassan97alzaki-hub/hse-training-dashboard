@@ -120,7 +120,7 @@ One row per account.
 
 ```sql
 CREATE TABLE IF NOT EXISTS public.requirements_approval (
-  owner_id UUID PRIMARY KEY DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL DEFAULT auth.uid() PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'managed')),
   approved_by TEXT,
   approved_at TIMESTAMPTZ,
@@ -130,6 +130,13 @@ CREATE TABLE IF NOT EXISTS public.requirements_approval (
 
 `revision` increments on any edit after approval, and the status returns to
 `draft`, so an edited matrix can never be read as an approved one.
+
+`owner_id` is the primary key here, written as
+`owner_id UUID NOT NULL DEFAULT auth.uid() PRIMARY KEY` rather than
+`owner_id UUID PRIMARY KEY DEFAULT auth.uid()`. The two are equivalent to
+Postgres, but the migration test counts occurrences of the exact string
+`owner_id UUID NOT NULL DEFAULT auth.uid()` and expects one per table, so the
+spelling has to stay uniform across all nine tables.
 
 All three tables get the same protection as the existing six: `ENABLE ROW LEVEL
 SECURITY` plus four policies `TO authenticated USING (owner_id = auth.uid())`,
@@ -226,19 +233,27 @@ It becomes:
 
 ```js
 const mergedRequirements = useMemo(
-  () => mergeRequirements(requirements, managedRequirements),
-  [requirements, managedRequirements],
+  () => mergeRequirements(requirements, managedRequirements, mergedPeople, manualCourses),
+  [requirements, managedRequirements, mergedPeople, manualCourses],
 );
 ```
 
-`mergeRequirements(importedRows, managedRows)` is a new pure function in
-`src/lib/dataService.js`. It merges the manual matrix rows with the imported
-rows and expands `job_title: ''` into one row per job title present in that
-department before the result reaches the engine, because
-`complianceEngine.js:148` compares `r.Job_Title === emp.Job_Title` by
-equality. The engine itself is not touched. The difference from the old
-broadcast is that expansion is confined to a named department rather than every
-role.
+`mergeRequirements(importedRows, managedRows, people, courses)` is a new pure
+function in `src/lib/dataService.js`. It merges the manual matrix rows with the
+imported rows and does two translations the engine needs:
+
+- Expands `job_title: ''` into one row per job title present in that
+  department, because `complianceEngine.js:148` compares
+  `r.Job_Title === emp.Job_Title` by equality. `people` is the source of the
+  job titles in a department. The difference from the old broadcast is that
+  expansion is confined to a named department rather than every role.
+- Maps the stored snake_case columns (`department`, `job_title`,
+  `course_code`, `mandatory`, `validity_months`) to the PascalCase keys the
+  engine reads, and fills `Course_Name` and the fallback `Validity_Months`
+  from the `courses` catalogue, because the `requirements` table does not
+  store a course name.
+
+The engine itself is not touched.
 
 `mergeManualCourses` and its test are removed. A manual course no longer
 generates a requirement by itself; only `appliesTo` does. A course with no
@@ -333,9 +348,9 @@ Test first, then code. Pure modules before components.
 | `tests/dataService.test.js` (existing) | `mergeRequirements` expands `job_title: ''` to the job titles of that department only; leaves other departments alone; imported and manual rows coexist; no duplicate when a row matches |
 | `tests/requirementsService.test.js` (new) | `saveRequirementsForCourse` writes only the difference; unselecting a role deletes its row; `addTrainingRecords` computes `expiry_date` from `validity_months` and honours a manual override |
 | `tests/complianceEngine.test.js` (existing) | Regression: a course scoped to `Operations/Operator` generates `MISSING` for them only, not for Maintenance — the case that produced `9797` |
-| `tests/supabaseBackend.test.js` (existing) | The six migration assertions extend to nine tables; RLS on `requirements`, `training_records`, `requirements_approval`; `owner_id` is never sent by the client |
+| `tests/supabaseBackend.test.js` (existing) | The six migration assertions extend to nine tables; RLS on `requirements`, `training_records`, `requirements_approval`; `owner_id` is never sent by the client. The `describe('the migration')` block currently reads only `0001_init.sql` (line 231) and must read every file in `supabase/migrations/` concatenated, so a later migration cannot escape the checks |
 | `tests/productionAppIntegration.test.js` (existing) | A manually entered training record does not become an employee when no employee master is loaded |
-| `tests/dbService.test.js` (existing) | The IndexedDB upgrade from version `3` to `4` creates the two new stores and preserves existing data |
+| `tests/dbService.test.js` (existing) | `LocalDbService` declares version `4`; every store in `onupgradeneeded` is created behind a `objectStoreNames.contains` guard and nothing calls `deleteObjectStore`, so an existing browser database is extended rather than rebuilt. This is a source-text assertion: the suite runs in jsdom with a `MemoryDb` stand-in and has no real IndexedDB to upgrade |
 
 One manual test is not replaceable by unit tests: the full path in the browser.
 Add a course, scope it to `Operations/Operator`, confirm `MISSING` disappears
@@ -345,7 +360,7 @@ for the other six, record a batch, reload, confirm persistence.
 
 | Risk | Mitigation |
 | --- | --- |
-| The IndexedDB upgrade loses data for an existing user | `onupgradeneeded` creates and never deletes; the upgrade test is required before merge |
+| The IndexedDB upgrade loses data for an existing user | `onupgradeneeded` creates and never deletes. The unit suite can only assert this from the source text, so the manual browser test must be run against a browser profile that already holds a version `3` database |
 | A large matrix slows `mergeRequirements` on every keystroke | The function sits in a `useMemo` keyed only on `[requirements, managedRequirements]`; `tests/contractScale500.test.js` already measures 500 employees |
 | `MANAGED` is read as a formal approval during an inspection | The report prints the approver and the date explicitly and never uses the words `HSE-DC-1.0` |
 

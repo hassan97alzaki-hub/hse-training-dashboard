@@ -222,18 +222,31 @@ export async function loadApproval() {
 
 /**
  * Store the approval state. One row per installation, so this overwrites.
- * The local backend's `add` uses `put` for exactly this reason.
+ *
+ * The Supabase table `requirements_approval` has no `id` column — it keys on
+ * `owner_id` (filled by DEFAULT auth.uid()), so we upsert directly to avoid a
+ * PK-conflict on the second save. The local backend keys on a fixed `id` and
+ * its add() uses IndexedDB put() (upsert semantics).
  */
 export async function saveApproval(state) {
   try {
     const db = getDbService();
-    await db.requirementsApproval.add({
-      id: 'approval',
+    const row = {
       status: state.status,
       approved_by: state.approvedBy,
       approved_at: state.approvedAt,
       revision: state.revision,
-    });
+    };
+    if (db.client) {
+      // Supabase: upsert on owner_id, which DEFAULT auth.uid() fills.
+      const { error } = await db.client
+        .from('requirements_approval')
+        .upsert(row, { onConflict: 'owner_id' });
+      if (error) throw error;
+    } else {
+      // Local/IndexedDB: fixed id, put() semantics.
+      await db.requirementsApproval.add({ id: 'approval', ...row });
+    }
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };

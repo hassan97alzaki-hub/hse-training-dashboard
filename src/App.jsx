@@ -695,7 +695,7 @@ export default function App({
   }
 
   function handleReset() {
-    setImportedRecords([]); setManualRecords([]); setRequirements([]); setManualCourses([]); setLastImportResult(null);
+    setImportedRecords([]); setManualRecords([]); setRequirements([]); setManualCourses([]); setManagedRequirements([]); setApproval(createApproval()); setLastImportResult(null);
     certificateGallery.clear();
     setSelectedCertificate(null);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.NONE);

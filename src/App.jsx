@@ -19,7 +19,12 @@ import {
 } from './lib/matrixWorkbook.js';
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
 import { defaultBatchId, defaultApprovedAt } from './lib/localBatch.js';
-import { findUnregisteredCourses, loadRequirementsFromDb } from './lib/requirementsService.js';
+import {
+  findUnregisteredCourses, loadRequirementsFromDb, loadApproval, saveApproval,
+} from './lib/requirementsService.js';
+import {
+  createApproval, approve, markEdited, provenanceForApproval,
+} from './lib/contract/requirementsApproval.js';
 import {
   REQUIREMENTS_PROVENANCE, resolveRequirementsProvenance,
 } from './lib/contract/requirementsProvenance.js';
@@ -92,6 +97,8 @@ export default function App({
   // The requirements matrix built in the interface. Loaded from the database
   // in the effect below; the imported matrix stays in `requirements`.
   const [managedRequirements, setManagedRequirements] = useState([]);
+  // The approval state of the hand-built matrix
+  const [approval, setApproval] = useState(() => createApproval());
   const [certificateGallery] = useState(() => createCertificateGallery()); // Certificate metadata store
   const [selectedCertificate, setSelectedCertificate] = useState(null); // Cert modal: {number, isNew}
   const [drawerOpen, setDrawerOpen] = useState(false); // Side drawer: courses/employees management
@@ -186,6 +193,9 @@ export default function App({
           setManagedRequirements(dbRequirements);
         }
 
+        // Load the approval state
+        setApproval(await loadApproval());
+
         setDbInitialized(true);
       } catch (err) {
         console.warn('Failed to load from database:', err);
@@ -278,11 +288,14 @@ export default function App({
   const visibleImportBanner = useMemo(() => renderImportBanner(importBanner, t), [importBanner, t]);
 
   // A derived row wins over the declared source, so test data can never be
-  // shown as approved.
-  const requirementsProvenance = useMemo(
-    () => resolveRequirementsProvenance(requirements, requirementsSource),
-    [requirements, requirementsSource],
-  );
+  // shown as approved. When there is no imported matrix but there are managed
+  // rows, the declaration comes from the approval state.
+  const requirementsProvenance = useMemo(() => {
+    const declared = requirements.length === 0 && managedRequirements.length > 0
+      ? provenanceForApproval(approval)
+      : requirementsSource;
+    return resolveRequirementsProvenance(mergedRequirements, declared);
+  }, [requirements, managedRequirements, mergedRequirements, approval, requirementsSource]);
 
   // What the engine reports on: the imported records plus the ones entered by
   // hand. No deduplication — selectBestRecord picks the record with the latest
@@ -326,6 +339,15 @@ export default function App({
     }
     return result;
   }, [mergedPeople]);
+
+  // A matrix built in the interface is a draft until a named person approves
+  // it. Any later edit returns it to draft; see requirementsApproval.js.
+  const handleApproveHandBuiltMatrix = useCallback(async (approvedBy) => {
+    const next = approve(approval, { approvedBy, approvedAt: new Date().toISOString() });
+    const saved = await saveApproval(next);
+    if (saved.success) setApproval(next);
+    return saved;
+  }, [approval]);
 
   // The matrix the engine reads: the imported rows plus the rows built in the
   // interface. See mergeRequirements.
@@ -687,7 +709,28 @@ export default function App({
       <main className="main-content">
         <TrialBanner state={trial} t={t} />
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginBottom: 12 }}>
+          {approval.status === 'draft' && managedRequirements.length > 0 && (
+            <button
+              onClick={() => {
+                const approvedBy = window.prompt(t('approveMatrix'));
+                if (approvedBy) {
+                  handleApproveHandBuiltMatrix(approvedBy);
+                }
+              }}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#22c55e',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {t('approveMatrix')}
+            </button>
+          )}
           <ManagementDrawerButton
             onClick={() => setDrawerOpen(true)}
             count={manualCourses.length + manualEmployees.length}
@@ -700,7 +743,14 @@ export default function App({
           courses={manualCourses}
           onCoursesChange={setManualCourses}
           people={mergedPeople}
-          onRequirementsSaved={async () => setManagedRequirements(await loadRequirementsFromDb())}
+          onRequirementsSaved={async () => {
+            const edited = markEdited(approval);
+            if (edited !== approval) {
+              await saveApproval(edited);
+              setApproval(edited);
+            }
+            setManagedRequirements(await loadRequirementsFromDb());
+          }}
           t={t}
           employees={manualEmployees}
           onEmployeesChange={setManualEmployees}

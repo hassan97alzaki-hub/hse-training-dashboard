@@ -11,6 +11,7 @@
  */
 
 import { getDbService } from './db/dbService.js';
+import { createApproval } from './contract/requirementsApproval.js';
 
 /** "Operations|Operator" — the key the engine's equality comparison implies. */
 function roleKey(department, jobTitle) {
@@ -199,4 +200,42 @@ export function findUnregisteredCourses(rows = [], courses = []) {
     if (!known.has(row.course_code.toUpperCase())) unknown.add(row.course_code);
   }
   return Array.from(unknown);
+}
+
+/** The stored approval state, or a fresh draft when there is none. */
+export async function loadApproval() {
+  try {
+    const db = getDbService();
+    const [row] = (await db.requirementsApproval.list()) ?? [];
+    if (!row) return createApproval();
+    return {
+      status: row.status ?? 'draft',
+      approvedBy: row.approved_by ?? null,
+      approvedAt: row.approved_at ?? null,
+      revision: row.revision ?? 1,
+    };
+  } catch (err) {
+    console.warn('Failed to load the approval state:', err.message);
+    return createApproval();
+  }
+}
+
+/**
+ * Store the approval state. One row per installation, so this overwrites.
+ * The local backend's `add` uses `put` for exactly this reason.
+ */
+export async function saveApproval(state) {
+  try {
+    const db = getDbService();
+    await db.requirementsApproval.add({
+      id: 'approval',
+      status: state.status,
+      approved_by: state.approvedBy,
+      approved_at: state.approvedAt,
+      revision: state.revision,
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 }

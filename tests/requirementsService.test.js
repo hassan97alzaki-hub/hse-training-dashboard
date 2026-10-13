@@ -12,6 +12,8 @@ const {
   replaceRequirements,
   computeExpiryDate,
   findUnregisteredCourses,
+  loadApproval,
+  saveApproval,
 } = await import('../src/lib/requirementsService.js');
 
 /** A minimal stand-in for the two stores the service touches. */
@@ -222,5 +224,45 @@ describe('findUnregisteredCourses', () => {
   it('names each unknown code once', () => {
     const rows = [{ course_code: 'GHOST' }, { course_code: 'GHOST' }];
     expect(findUnregisteredCourses(rows, [])).toEqual(['GHOST']);
+  });
+});
+
+describe('the approval state', () => {
+  it('starts as an unapproved draft when nothing is stored', async () => {
+    globalThis.__testDb = { requirementsApproval: { list: async () => [] } };
+    const state = await loadApproval();
+
+    expect(state.status).toBe('draft');
+    expect(state.revision).toBe(1);
+  });
+
+  it('reads back what was stored', async () => {
+    const rows = [{
+      id: 'approval', status: 'managed', approved_by: 'Hassan Ali',
+      approved_at: '2026-10-13T09:00:00.000Z', revision: 2,
+    }];
+    globalThis.__testDb = { requirementsApproval: { list: async () => rows } };
+    const state = await loadApproval();
+
+    expect(state).toEqual({
+      status: 'managed',
+      approvedBy: 'Hassan Ali',
+      approvedAt: '2026-10-13T09:00:00.000Z',
+      revision: 2,
+    });
+  });
+
+  it('stores the state in snake_case, the way the table spells it', async () => {
+    const written = [];
+    globalThis.__testDb = {
+      requirementsApproval: { list: async () => [], add: async (row) => { written.push(row); } },
+    };
+    await saveApproval({
+      status: 'managed', approvedBy: 'Hassan Ali',
+      approvedAt: '2026-10-13T09:00:00.000Z', revision: 1,
+    });
+
+    expect(written[0].approved_by).toBe('Hassan Ali');
+    expect(written[0].status).toBe('managed');
   });
 });

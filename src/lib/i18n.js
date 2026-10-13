@@ -361,6 +361,34 @@ const translations = {
     trqConsequence: 'Treat every number on this page as a technical demonstration. Do not present it as a compliance result and do not base a decision on it.',
     trqAction: 'To obtain an approved result, import an HSE-DC-1.0 package whose Requirements sheet carries an approval reference, an approving role and a version date.',
 
+    // Requirements matrix
+    appliesTo: 'Applies to',
+    appliesToHint: 'Pick the departments and job titles that must take this course. A department with no job title selected covers every job title in it, including ones added later.',
+    selectAll: 'Select all',
+    employeeCount: 'employees',
+    requiredCount: 'employees will be required to take this course',
+    noRolesSelected: 'This course is in the catalogue and required of nobody.',
+    trqDraft: 'This requirements matrix was built in the interface and has not been approved yet. Approve it before using the dashboard as a compliance result.',
+    trqManaged: 'This requirements matrix was built in the interface and approved internally. It is not an approved HSE-DC-1.0 sheet.',
+    approveMatrix: 'Approve this matrix',
+    approvedBy: 'Internally approved by {name} on {date}',
+    approvalPending: 'Draft — not approved',
+
+    // Recording a completion
+    recordTraining: 'Record training',
+    completionDate: 'Completion date',
+    expiryDateLabel: 'Expiry date',
+    certificateNumberLabel: 'Certificate number',
+    attendees: 'Attendees',
+    showAllEmployees: 'Show all employees',
+    saveRecords: 'Save records',
+    editRecord: 'Edit this record',
+
+    // Replacing the matrix with an import
+    importReplaceTitle: 'Replace the requirements matrix?',
+    importReplaceBody: '{removed} rows from your matrix will be removed and {added} rows from the file will be added. Your training records are not affected.',
+    importReplaceConfirm: 'Replace',
+
     // Trial Mode (optional build)
     trialRegionLabel: 'Trial status',
     trialHeadlineBefore: 'Free 7-day trial — not started yet',
@@ -745,6 +773,34 @@ const translations = {
     trqLegacy: 'حُمّلت هذه المتطلبات من ملف CSV قديم لا من حزمة متطلبات HSE-DC-1.0 معتمدة، فتاريخ نسختها ومرجع اعتمادها غير معروفين.',
     trqConsequence: 'اعتبر كل رقم في هذه الصفحة عرضاً تقنياً. لا تقدّمه كنتيجة امتثال ولا تبنِ عليه قراراً.',
     trqAction: 'للحصول على نتيجة معتمدة، استورد حزمة HSE-DC-1.0 تحمل ورقة Requirements بمرجع اعتماد ودور معتمد وتاريخ نسخة.',
+
+    // مصفوفة المتطلبات
+    appliesTo: 'ينطبق على',
+    appliesToHint: 'اختر الأقسام والمسميات الوظيفية الملزمة بهذه الدورة. القسم الذي لا يُحدَّد له مسمى وظيفي يشمل كل المسميات فيه، بما يُضاف لاحقاً.',
+    selectAll: 'تحديد الكل',
+    employeeCount: 'موظف',
+    requiredCount: 'موظف ملزمون بهذه الدورة',
+    noRolesSelected: 'هذه الدورة في الكتالوج وغير ملزمة لأحد.',
+    trqDraft: 'مصفوفة المتطلبات هذه أُنشئت من الواجهة ولم تُعتمد بعد. اعتمدها قبل استخدام اللوحة كنتيجة امتثال.',
+    trqManaged: 'مصفوفة المتطلبات هذه أُنشئت من الواجهة واعتُمدت داخلياً. وهي ليست ورقة HSE-DC-1.0 معتمدة.',
+    approveMatrix: 'اعتماد المصفوفة',
+    approvedBy: 'اعتُمدت داخلياً بواسطة {name} في {date}',
+    approvalPending: 'مسودة — غير معتمدة',
+
+    // تسجيل إنجاز الدورة
+    recordTraining: 'تسجيل تدريب',
+    completionDate: 'تاريخ الإنجاز',
+    expiryDateLabel: 'تاريخ الانتهاء',
+    certificateNumberLabel: 'رقم الشهادة',
+    attendees: 'الحاضرون',
+    showAllEmployees: 'عرض جميع الموظفين',
+    saveRecords: 'حفظ السجلات',
+    editRecord: 'تحرير هذا السجل',
+
+    // استبدال المصفوفة باستيراد
+    importReplaceTitle: 'استبدال مصفوفة المتطلبات؟',
+    importReplaceBody: 'سيُحذف {removed} صفاً من مصفوفتك ويُضاف {added} صفاً من الملف. سجلات التدريب لا تتأثر.',
+    importReplaceConfirm: 'استبدال',
 
     // الوضع التجريبي (بناء اختياري)
     trialRegionLabel: 'حالة التجربة',

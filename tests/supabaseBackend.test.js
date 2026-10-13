@@ -206,6 +206,41 @@ describe('the gate in a build with no backend', () => {
   });
 });
 
+describe('the requirements tables', () => {
+  it('exposes the three new stores', async () => {
+    const db = await new SupabaseDbService(fakeClient({})).init();
+    for (const group of ['requirements', 'trainingRecords', 'requirementsApproval']) {
+      expect(db[group], group).toBeTruthy();
+      expect(typeof db[group].add, group).toBe('function');
+      expect(typeof db[group].list, group).toBe('function');
+    }
+  });
+
+  it('never sends owner_id, so the database fills it in', async () => {
+    const client = fakeClient({
+      'requirements.single': { data: { id: 'req_1' }, error: null },
+    });
+    const db = await new SupabaseDbService(client).init();
+    await db.requirements.add({
+      id: 'req_1', owner_id: 'forged', department: 'Operations',
+      job_title: 'Operator', course_code: 'H2S', mandatory: true,
+    });
+    const inserted = client.calls.find((c) => c.op === 'insert');
+    expect(inserted.row).not.toHaveProperty('owner_id');
+    expect(inserted.row.department).toBe('Operations');
+  });
+
+  it('lists the requirements of one course', async () => {
+    const client = fakeClient({
+      'requirements.list': { data: [], error: null },
+    });
+    const db = await new SupabaseDbService(client).init();
+    await db.requirements.listByCourse('H2S');
+    const filtered = client.calls.find((c) => c.filters && c.filters.some(f => f[0] === 'course_code'));
+    expect(filtered.filters).toEqual([['course_code', 'H2S']]);
+  });
+});
+
 describe('the privacy statement', () => {
   it('has a cloud wording in both languages, so the local-only claim is never shown untruthfully', async () => {
     const { createI18n } = await import('../src/lib/i18n.js');

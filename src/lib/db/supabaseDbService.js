@@ -4,12 +4,15 @@
  * Same surface as the local service in dbService.js, so dataService.js does
  * not know which backend it talks to:
  *
- *   courses:          add, get, list, update, delete
- *   certificates:     add, get, getByNumber, list, update, delete
- *   departments:      add, getByNameKey, list, delete
- *   employees:        add, get, getByEmployeeId, list, update, delete
- *   employeeContacts: add, getByEmployeeId, list, update, delete
- *   remindersSent:    add, list, listByEmployee
+ *   courses:            add, get, list, update, delete
+ *   certificates:       add, get, getByNumber, list, update, delete
+ *   departments:        add, getByNameKey, list, delete
+ *   employees:          add, get, getByEmployeeId, list, update, delete
+ *   employeeContacts:   add, getByEmployeeId, list, update, delete
+ *   remindersSent:      add, list, listByEmployee
+ *   requirements:       add, get, list, update, delete, listByCourse
+ *   trainingRecords:    add, get, list, update, delete, listByEmployee
+ *   requirementsApproval: add, get, list, update, delete
  *
  * owner_id is never sent from here. The column defaults to auth.uid() and
  * row-level security rejects anything else, so a row always belongs to the
@@ -42,6 +45,9 @@ export class SupabaseDbService {
     this.employees = {};
     this.employeeContacts = {};
     this.remindersSent = {};
+    this.requirements = {};
+    this.trainingRecords = {};
+    this.requirementsApproval = {};
   }
 
   async init() {
@@ -51,6 +57,9 @@ export class SupabaseDbService {
     this.employees = this._table('employees', { uniqueColumn: 'employee_id' });
     this.employeeContacts = this._table('employee_contacts', { uniqueColumn: 'employee_id' });
     this.remindersSent = this._table('reminders_sent', { uniqueColumn: null });
+    this.requirements = this._table('requirements', { uniqueColumn: 'course_code' });
+    this.trainingRecords = this._table('training_records', { uniqueColumn: 'id' });
+    this.requirementsApproval = this._table('requirements_approval', { uniqueColumn: 'owner_id' });
 
     // The named lookups each service exposes, kept for call-site readability.
     this.certificates.getByNumber = (value) =>
@@ -63,6 +72,10 @@ export class SupabaseDbService {
       this._getByColumn('employee_contacts', 'employee_id', value);
     this.remindersSent.listByEmployee = async (employeeId) =>
       unwrap(await this.client.from('reminders_sent').select('*').eq('employee_id', employeeId)) ?? [];
+    this.requirements.listByCourse = async (courseCode) =>
+      unwrap(await this.client.from('requirements').select('*').eq('course_code', courseCode)) ?? [];
+    this.trainingRecords.listByEmployee = async (employeeId) =>
+      unwrap(await this.client.from('training_records').select('*').eq('employee_id', employeeId)) ?? [];
 
     return this;
   }

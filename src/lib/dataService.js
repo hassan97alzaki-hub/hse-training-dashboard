@@ -217,58 +217,78 @@ export function getRequirementsByDepartment(requirements, department) {
 }
 
 /**
- * Merge manually added courses into a requirements matrix.
+ * Merge the requirements matrix built in the interface into the imported one.
  *
- * A manual course applies to everyone, so it is added once per
- * Department + Job_Title pair. The compliance engine matches a requirement on
- * both fields, so a row with an empty Job_Title would never apply to any
- * employee. Roles are collected from the matrix itself and from the loaded
- * people, which is what makes a manual course take effect even before a
- * requirements matrix is imported.
+ * Two translations the compliance engine needs:
  *
- * Existing rows are never changed: a manual course whose code already exists
- * for a role is skipped, so the imported matrix always wins.
+ * - A stored row with an empty `job_title` means every job title in that
+ *   department. The engine compares `r.Job_Title === emp.Job_Title` by
+ *   equality (complianceEngine.js:148), so the row is expanded into one row
+ *   per job title present in that department. `people` is where those job
+ *   titles come from. The expansion is confined to the named department.
+ * - Stored rows are snake_case; the engine reads PascalCase. `Course_Name` and
+ *   a fallback `Validity_Months` come from the courses catalogue, because the
+ *   requirements table does not store a course name.
  *
- * @param {array} requirements - Requirements matrix rows
- * @param {array} manualCourses - [{code, name, mandatory, validityMonths, description}]
- * @param {array} people - Employees or training records with Department/Job_Title
- * @returns {array} Requirements matrix with the manual courses added
+ * An imported row wins: a managed row for the same role and course is
+ * skipped, so an approved HSE-DC-1.0 sheet is never overridden by hand-entry.
+ *
+ * Pure function. The engine itself is not touched.
+ *
+ * @param {array} importedRows - requirements from an import, already PascalCase
+ * @param {array} managedRows - rows from the requirements table (snake_case)
+ * @param {array} people - employees or records carrying Department/Job_Title
+ * @param {array} courses - catalogue: [{code, name, mandatory, validityMonths, description}]
+ * @returns {array} requirements rows the compliance engine can read
  */
-export function mergeManualCourses(requirements, manualCourses, people = []) {
-  const base = requirements || [];
-  if (!manualCourses || manualCourses.length === 0) return base;
+export function mergeRequirements(importedRows, managedRows, people = [], courses = []) {
+  const imported = Array.isArray(importedRows) ? importedRows : [];
+  const managed = Array.isArray(managedRows) ? managedRows : [];
+  if (managed.length === 0) return imported;
 
-  const merged = [...base];
+  const merged = [...imported];
 
-  const roles = new Map(); // "Department|Job_Title" → {Department, Job_Title}
-  const addRole = (department, jobTitle) => {
-    if (!department) return;
-    const key = `${department}|${jobTitle ?? ''}`;
-    if (!roles.has(key)) roles.set(key, { Department: department, Job_Title: jobTitle ?? '' });
-  };
+  // Department → the job titles actually present in it.
+  const titlesByDepartment = new Map();
+  for (const person of people ?? []) {
+    if (!person?.Department) continue;
+    const titles = titlesByDepartment.get(person.Department) ?? new Set();
+    if (person.Job_Title) titles.add(person.Job_Title);
+    titlesByDepartment.set(person.Department, titles);
+  }
 
-  for (const req of base) addRole(req.Department, req.Job_Title);
-  for (const person of people || []) addRole(person.Department, person.Job_Title);
+  const catalogue = new Map(
+    (courses ?? [])
+      .filter(course => course?.code)
+      .map(course => [course.code.toUpperCase(), course]),
+  );
 
-  for (const course of manualCourses) {
-    if (!course?.code) continue;
-    const codeUpper = course.code.toUpperCase();
-    for (const role of roles.values()) {
-      const exists = merged.some(
-        req => req.Department === role.Department
-          && (req.Job_Title ?? '') === role.Job_Title
-          && req.Course_Code
-          && req.Course_Code.toUpperCase() === codeUpper,
-      );
-      if (exists) continue;
+  const has = (department, jobTitle, codeUpper) => merged.some(
+    row => row.Department === department
+      && (row.Job_Title ?? '') === jobTitle
+      && row.Course_Code
+      && row.Course_Code.toUpperCase() === codeUpper,
+  );
+
+  for (const row of managed) {
+    if (!row?.department || !row?.course_code) continue;
+    const codeUpper = row.course_code.toUpperCase();
+    const course = catalogue.get(codeUpper);
+
+    const targets = row.job_title
+      ? [row.job_title]
+      : Array.from(titlesByDepartment.get(row.department) ?? []);
+
+    for (const jobTitle of targets) {
+      if (has(row.department, jobTitle, codeUpper)) continue;
       merged.push({
-        Department: role.Department,
-        Job_Title: role.Job_Title,
-        Course_Code: course.code,
-        Course_Name: course.name,
-        Mandatory: Boolean(course.mandatory),
-        Validity_Months: course.validityMonths ?? 12,
-        Description: course.description || '',
+        Department: row.department,
+        Job_Title: jobTitle,
+        Course_Code: row.course_code,
+        Course_Name: course?.name ?? row.course_code,
+        Mandatory: Boolean(row.mandatory),
+        Validity_Months: row.validity_months ?? course?.validityMonths ?? 12,
+        Description: course?.description || '',
       });
     }
   }

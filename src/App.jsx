@@ -9,7 +9,7 @@ import { loadDemoDataFromPublic } from './lib/demoData.js';
 import { createCertificateGallery, loadCertificatesFromDb, saveCertificateWithDb } from './lib/certificateGallery.js';
 import { initDb } from './lib/db/dbService.js';
 import {
-  loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeManualCourses,
+  loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeRequirements,
   loadEmployeesFromDb, addEmployeeWithDb, editEmployeeWithDb, deleteEmployeeWithDb, mergeManualEmployees,
   loadDepartmentsFromDb, addDepartmentWithDb, deleteDepartmentWithDb, listDepartments,
 } from './lib/dataService.js';
@@ -85,6 +85,9 @@ export default function App({
   const [requirements, setRequirements] = useState([]);
   const [manualCourses, setManualCourses] = useState([]); // User-added courses (Phase 2B)
   const [manualEmployees, setManualEmployees] = useState([]); // User-added employees (Phase 2B.5)
+  // The requirements matrix built in the interface. Loaded from the database
+  // in the effect below; the imported matrix stays in `requirements`.
+  const [managedRequirements, setManagedRequirements] = useState([]);
   const [certificateGallery] = useState(() => createCertificateGallery()); // Certificate metadata store
   const [selectedCertificate, setSelectedCertificate] = useState(null); // Cert modal: {number, isNew}
   const [drawerOpen, setDrawerOpen] = useState(false); // Side drawer: courses/employees management
@@ -304,11 +307,11 @@ export default function App({
     return result;
   }, [mergedPeople]);
 
-  // Manual courses become requirement rows so they reach the compliance
-  // universe, the filters and the reports. See mergeManualCourses.
+  // The matrix the engine reads: the imported rows plus the rows built in the
+  // interface. See mergeRequirements.
   const mergedRequirements = useMemo(
-    () => mergeManualCourses(requirements, manualCourses, mergedPeople),
-    [requirements, manualCourses, mergedPeople],
+    () => mergeRequirements(requirements, managedRequirements, mergedPeople, manualCourses),
+    [requirements, managedRequirements, mergedPeople, manualCourses],
   );
 
   const complianceResult = useMemo(() => {

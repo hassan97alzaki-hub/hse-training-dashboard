@@ -7,7 +7,7 @@ import {
   deleteCourse,
   exportCoursesAsCSV,
   getRequirementsByDepartment,
-  mergeManualCourses,
+  mergeRequirements,
   mergeManualEmployees,
   departmentKey,
   validateDepartment,
@@ -301,127 +301,127 @@ describe('dataService.js', () => {
     });
   });
 
-  describe('mergeManualCourses', () => {
-    const manual = [{
-      code: 'MAN001', name: 'Manual Course', mandatory: true,
-      validityMonths: 24, description: 'Added in the app',
-    }];
+  describe('mergeRequirements', () => {
+    const people = [
+      { Employee_ID: 'EMP001', Department: 'Operations', Job_Title: 'Operator' },
+      { Employee_ID: 'EMP002', Department: 'Operations', Job_Title: 'Supervisor' },
+      { Employee_ID: 'EMP003', Department: 'Maintenance', Job_Title: 'Technician' },
+    ];
+    const courses = [
+      { code: 'H2S', name: 'H2S Awareness', mandatory: true, validityMonths: 24 },
+    ];
 
-    it('returns the requirements unchanged when there are no manual courses', () => {
-      const requirements = [{ Department: 'Operations', Job_Title: 'Supervisor', Course_Code: 'H2S001' }];
-
-      expect(mergeManualCourses(requirements, [])).toBe(requirements);
-      expect(mergeManualCourses(requirements, null)).toBe(requirements);
+    it('returns the imported rows untouched when there is no managed matrix', () => {
+      const imported = [{ Department: 'Operations', Job_Title: 'Operator', Course_Code: 'FA' }];
+      expect(mergeRequirements(imported, [], people, courses)).toEqual(imported);
     });
 
-    it('adds a manual course to every role in the matrix', () => {
-      const requirements = [
-        { Department: 'Operations', Job_Title: 'Supervisor', Course_Code: 'H2S001' },
-        { Department: 'Operations', Job_Title: 'Technician', Course_Code: 'H2S001' },
-      ];
-      const merged = mergeManualCourses(requirements, manual);
-      const added = merged.filter(r => r.Course_Code === 'MAN001');
-
-      expect(added.length).toBe(2);
-      expect(added.map(r => r.Job_Title).sort()).toEqual(['Supervisor', 'Technician']);
-    });
-
-    it('never gives a manual course an empty Job_Title, which would match nobody', () => {
-      const requirements = [{ Department: 'Operations', Job_Title: 'Supervisor', Course_Code: 'H2S001' }];
-      const merged = mergeManualCourses(requirements, manual);
-
-      for (const row of merged.filter(r => r.Course_Code === 'MAN001')) {
-        expect(row.Job_Title).toBeTruthy();
-      }
-    });
-
-    it('takes roles from the loaded people when the matrix is empty', () => {
-      const people = [
-        { Employee_ID: 'E1', Department: 'Operations', Job_Title: 'Supervisor' },
-        { Employee_ID: 'E2', Department: 'Maintenance', Job_Title: 'Technician' },
-      ];
-      const merged = mergeManualCourses([], manual, people);
-
-      expect(merged.length).toBe(2);
-      expect(merged.map(r => r.Department).sort()).toEqual(['Maintenance', 'Operations']);
-    });
-
-    it('produces one row per role even when several people share a role', () => {
-      const people = [
-        { Employee_ID: 'E1', Department: 'Operations', Job_Title: 'Supervisor' },
-        { Employee_ID: 'E2', Department: 'Operations', Job_Title: 'Supervisor' },
-      ];
-      const merged = mergeManualCourses([], manual, people);
-
-      expect(merged.length).toBe(1);
-    });
-
-    it('carries the course fields in the shape the compliance engine reads', () => {
-      const people = [{ Employee_ID: 'E1', Department: 'Operations', Job_Title: 'Supervisor' }];
-      const [row] = mergeManualCourses([], manual, people);
-
-      expect(row).toEqual({
-        Department: 'Operations',
-        Job_Title: 'Supervisor',
-        Course_Code: 'MAN001',
-        Course_Name: 'Manual Course',
-        Mandatory: true,
-        Validity_Months: 24,
-        Description: 'Added in the app',
-      });
-    });
-
-    it('defaults validity to 12 months and mandatory to false', () => {
-      const people = [{ Employee_ID: 'E1', Department: 'Operations', Job_Title: 'Supervisor' }];
-      const [row] = mergeManualCourses([], [{ code: 'MAN002', name: 'Optional' }], people);
-
-      expect(row.Validity_Months).toBe(12);
-      expect(row.Mandatory).toBe(false);
-    });
-
-    it('keeps the imported row when the matrix already has that course for the role', () => {
-      const requirements = [{
-        Department: 'Operations', Job_Title: 'Supervisor',
-        Course_Code: 'man001', Course_Name: 'From the matrix', Mandatory: false,
+    it('scopes a course to the one role it was assigned to', () => {
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: 'Operator',
+        course_code: 'H2S', mandatory: true, validity_months: null,
       }];
-      const merged = mergeManualCourses(requirements, manual);
+      const merged = mergeRequirements([], managed, people, courses);
 
-      expect(merged.length).toBe(1);
-      expect(merged[0].Course_Name).toBe('From the matrix');
-    });
-
-    it('still adds the course to the roles that do not have it', () => {
-      const requirements = [
-        { Department: 'Operations', Job_Title: 'Supervisor', Course_Code: 'MAN001' },
-        { Department: 'Operations', Job_Title: 'Technician', Course_Code: 'H2S001' },
-      ];
-      const merged = mergeManualCourses(requirements, manual);
-      const added = merged.filter(r => r.Course_Code === 'MAN001');
-
-      expect(added.length).toBe(2);
-      expect(added.some(r => r.Job_Title === 'Technician')).toBe(true);
-    });
-
-    it('does not mutate the requirements it was given', () => {
-      const requirements = [{ Department: 'Operations', Job_Title: 'Supervisor', Course_Code: 'H2S001' }];
-      mergeManualCourses(requirements, manual);
-
-      expect(requirements.length).toBe(1);
-    });
-
-    it('ignores people without a department', () => {
-      const people = [
-        { Employee_ID: 'E1', Department: '', Job_Title: 'Supervisor' },
-        { Employee_ID: 'E2', Department: 'Operations', Job_Title: 'Supervisor' },
-      ];
-      const merged = mergeManualCourses([], manual, people);
-
-      expect(merged.length).toBe(1);
+      expect(merged).toHaveLength(1);
       expect(merged[0].Department).toBe('Operations');
+      expect(merged[0].Job_Title).toBe('Operator');
+      expect(merged[0].Course_Code).toBe('H2S');
     });
 
-    it('returns an empty matrix when there is no role to attach the course to', () => {
-      expect(mergeManualCourses([], manual, [])).toEqual([]);
+    it('expands an empty job title to that department only', () => {
+      // This is the fix for the 9797 bug: a department-wide row must not reach
+      // Maintenance.
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: '',
+        course_code: 'H2S', mandatory: true, validity_months: null,
+      }];
+      const merged = mergeRequirements([], managed, people, courses);
+      const titles = merged.map(r => r.Job_Title).sort();
+
+      expect(titles).toEqual(['Operator', 'Supervisor']);
+      expect(merged.every(r => r.Department === 'Operations')).toBe(true);
+      expect(merged.some(r => r.Department === 'Maintenance')).toBe(false);
+    });
+
+    it('fills the course name and validity from the catalogue', () => {
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: 'Operator',
+        course_code: 'H2S', mandatory: true, validity_months: null,
+      }];
+      const [row] = mergeRequirements([], managed, people, courses);
+
+      expect(row.Course_Name).toBe('H2S Awareness');
+      expect(row.Validity_Months).toBe(24);
+    });
+
+    it('lets the row override the catalogue validity', () => {
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: 'Operator',
+        course_code: 'H2S', mandatory: true, validity_months: 6,
+      }];
+      const [row] = mergeRequirements([], managed, people, courses);
+
+      expect(row.Validity_Months).toBe(6);
+    });
+
+    it('keeps the imported row when both sources name the same role and course', () => {
+      const imported = [{
+        Department: 'Operations', Job_Title: 'Operator',
+        Course_Code: 'H2S', Course_Name: 'From the approved sheet', Mandatory: true,
+      }];
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: 'Operator',
+        course_code: 'H2S', mandatory: false, validity_months: 6,
+      }];
+      const merged = mergeRequirements(imported, managed, people, courses);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].Course_Name).toBe('From the approved sheet');
+    });
+
+    it('matches a course code case-insensitively when deduplicating', () => {
+      const imported = [{ Department: 'Operations', Job_Title: 'Operator', Course_Code: 'h2s' }];
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: 'Operator',
+        course_code: 'H2S', mandatory: true, validity_months: null,
+      }];
+      expect(mergeRequirements(imported, managed, people, courses)).toHaveLength(1);
+    });
+
+    it('drops a department-wide row when nobody works in that department', () => {
+      const managed = [{
+        id: 'req_1', department: 'Inspection', job_title: '',
+        course_code: 'H2S', mandatory: true, validity_months: null,
+      }];
+      expect(mergeRequirements([], managed, people, courses)).toEqual([]);
+    });
+
+    it('keeps a named role even when nobody holds it yet', () => {
+      // A requirement for a role that has no employee is not an error: it is a
+      // requirement waiting for a hire. Only the empty-job_title expansion
+      // depends on the people.
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: 'Night Operator',
+        course_code: 'H2S', mandatory: true, validity_months: null,
+      }];
+      expect(mergeRequirements([], managed, people, courses)).toHaveLength(1);
+    });
+
+    it('does not mutate the arrays it was given', () => {
+      const imported = [{ Department: 'Operations', Job_Title: 'Operator', Course_Code: 'FA' }];
+      const managed = [{
+        id: 'req_1', department: 'Operations', job_title: 'Operator',
+        course_code: 'H2S', mandatory: true, validity_months: null,
+      }];
+      mergeRequirements(imported, managed, people, courses);
+
+      expect(imported).toHaveLength(1);
+      expect(managed).toHaveLength(1);
+    });
+
+    it('survives null arguments', () => {
+      expect(mergeRequirements(null, null, null, null)).toEqual([]);
     });
   });
 
@@ -505,10 +505,14 @@ describe('dataService.js', () => {
       // A department exists only as a name on a person, so adding an employee
       // in a department nobody else is in is how that department appears.
       const people = mergeManualEmployees([], manual);
-      const requirements = mergeManualCourses(
+      const requirements = mergeRequirements(
         [],
-        [{ code: 'MAN001', name: 'Manual Course', mandatory: true, validityMonths: 12 }],
+        [{
+          id: 'req_man', department: 'Inspection', job_title: '',
+          course_code: 'MAN001', mandatory: true, validity_months: 12,
+        }],
         people,
+        [{ code: 'MAN001', name: 'Manual Course', mandatory: true, validityMonths: 12 }],
       );
       const result = buildComplianceUniverse([], requirements, '2026-10-12', people);
       const departments = new Set(result.universe.map(item => item.Department));
@@ -518,10 +522,14 @@ describe('dataService.js', () => {
 
     it('reports a manual employee as missing the course, having no record', () => {
       const people = mergeManualEmployees([], manual);
-      const requirements = mergeManualCourses(
+      const requirements = mergeRequirements(
         [],
-        [{ code: 'MAN001', name: 'Manual Course', mandatory: true, validityMonths: 12 }],
+        [{
+          id: 'req_man', department: 'Inspection', job_title: '',
+          course_code: 'MAN001', mandatory: true, validity_months: 12,
+        }],
         people,
+        [{ code: 'MAN001', name: 'Manual Course', mandatory: true, validityMonths: 12 }],
       );
       const result = buildComplianceUniverse([], requirements, '2026-10-12', people);
       const row = result.universe.find(item => item.Employee_ID === 'EMP900');

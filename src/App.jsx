@@ -53,6 +53,7 @@ import TrialBanner from './components/TrialBanner.jsx';
 import TrialQuickStart from './components/TrialQuickStart.jsx';
 import { ManagementDrawer, ManagementDrawerButton } from './components/ManagementDrawer.jsx';
 import { CertificateGallery } from './components/CertificateGallery.jsx';
+import { TrainingSessionForm } from './components/TrainingSessionForm.jsx';
 import { ReminderSender } from './components/ReminderSender.jsx';
 import Footer from './components/Footer.jsx';
 
@@ -102,6 +103,7 @@ export default function App({
   const [certificateGallery] = useState(() => createCertificateGallery()); // Certificate metadata store
   const [selectedCertificate, setSelectedCertificate] = useState(null); // Cert modal: {number, isNew}
   const [drawerOpen, setDrawerOpen] = useState(false); // Side drawer: courses/employees management
+  const [sessionForm, setSessionForm] = useState(null); // null, or { prefill: object|null }
   const [lastImportResult, setLastImportResult] = useState(null);
   const [importBanner, setImportBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -746,6 +748,20 @@ export default function App({
               {t('approveMatrix')}
             </button>
           )}
+          <button
+            onClick={() => setSessionForm({ prefill: null })}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            {t('recordTraining')}
+          </button>
           <ManagementDrawerButton
             onClick={() => setDrawerOpen(true)}
             count={manualCourses.length + manualEmployees.length}
@@ -773,6 +789,28 @@ export default function App({
           onDepartmentAdd={handleDepartmentAdd}
           onDepartmentDelete={handleDepartmentDelete}
         />
+
+        {sessionForm !== null && (
+          <TrainingSessionForm
+            courses={manualCourses}
+            people={mergedPeople}
+            requirements={mergedRequirements}
+            prefill={sessionForm.prefill}
+            t={t}
+            onSaved={(records) => setManualRecords(prev => [
+              ...prev,
+              ...records.map(r => ({
+                Employee_ID: r.employee_id,
+                Course_Code: r.course_code,
+                Completion_Status: r.completion_status ?? 'Completed',
+                Issue_Date: r.issue_date ?? null,
+                Expiry_Date: r.expiry_date ?? null,
+                Certificate_Number: r.certificate_number ?? null,
+              })),
+            ])}
+            onClose={() => setSessionForm(null)}
+          />
+        )}
 
         <ImportPanel
           t={t}

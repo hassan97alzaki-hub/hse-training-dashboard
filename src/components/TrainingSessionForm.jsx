@@ -67,6 +67,7 @@ export function TrainingSessionForm({
 
   const handleSave = async () => {
     setError('');
+    if (selected.size === 0) return;
     const result = await addTrainingRecords({
       courseCode, issueDate, expiryDate, certificateNumber,
       employeeIds: Array.from(selected),

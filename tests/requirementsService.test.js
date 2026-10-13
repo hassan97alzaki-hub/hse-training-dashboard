@@ -195,6 +195,24 @@ describe('replaceRequirements', () => {
   });
 });
 
+describe('importing over a hand-built matrix', () => {
+  it('replaces the requirements and leaves the completions alone', async () => {
+    globalThis.__testDb = fakeDb([
+      { id: 'req_mine', department: 'Operations', job_title: 'Operator', course_code: 'JSA' },
+    ]);
+    await globalThis.__testDb.trainingRecords.add({ id: 'rec_1', employee_id: 'EMP001' });
+
+    const result = await replaceRequirements([
+      { department: 'Operations', job_title: 'Operator', course_code: 'H2S' },
+    ]);
+
+    expect(result.removed).toBe(1);
+    expect(result.added).toBe(1);
+    expect(globalThis.__testDb._requirements.has('req_mine')).toBe(false);
+    expect(globalThis.__testDb._trainingRecords.has('rec_1')).toBe(true);
+  });
+});
+
 describe('loadRequirementsFromDb', () => {
   it('returns the stored rows unchanged, snake_case and all', async () => {
     globalThis.__testDb = fakeDb([

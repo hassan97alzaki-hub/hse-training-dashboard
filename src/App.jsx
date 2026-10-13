@@ -20,7 +20,7 @@ import {
 import { exportComplianceCSV, exportPriorityActionsCSV, exportManagementPDF } from './lib/exportService.js';
 import { defaultBatchId, defaultApprovedAt } from './lib/localBatch.js';
 import {
-  findUnregisteredCourses, loadRequirementsFromDb, loadApproval, saveApproval,
+  findUnregisteredCourses, loadRequirementsFromDb, loadApproval, saveApproval, replaceRequirements,
 } from './lib/requirementsService.js';
 import {
   createApproval, approve, markEdited, provenanceForApproval,
@@ -633,6 +633,21 @@ export default function App({
     try {
       const result = await importRequirementsFile(file);
       if (result.success) {
+        // If there's a hand-built matrix, ask for confirmation before replacing it
+        if (managedRequirements.length > 0) {
+          const confirmed = window.confirm(
+            t('importReplaceBody')
+              .replace('{removed}', managedRequirements.length)
+              .replace('{added}', result.validRecords.length),
+          );
+          if (!confirmed) {
+            setIsLoading(false);
+            return;
+          }
+          // Clear the managed matrix from the database
+          await replaceRequirements([]);
+          setManagedRequirements([]);
+        }
         setRequirements(result.validRecords);
         setRequirementsSource(REQUIREMENTS_PROVENANCE.LEGACY);
         showKind(BANNER_KIND.REQUIREMENTS_LOADED, 'success', {

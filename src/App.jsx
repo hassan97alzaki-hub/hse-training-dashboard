@@ -287,16 +287,6 @@ export default function App({
   // switching the language rewrites it instead of leaving the old text.
   const visibleImportBanner = useMemo(() => renderImportBanner(importBanner, t), [importBanner, t]);
 
-  // A derived row wins over the declared source, so test data can never be
-  // shown as approved. When there is no imported matrix but there are managed
-  // rows, the declaration comes from the approval state.
-  const requirementsProvenance = useMemo(() => {
-    const declared = requirements.length === 0 && managedRequirements.length > 0
-      ? provenanceForApproval(approval)
-      : requirementsSource;
-    return resolveRequirementsProvenance(mergedRequirements, declared);
-  }, [requirements, managedRequirements, mergedRequirements, approval, requirementsSource]);
-
   // What the engine reports on: the imported records plus the ones entered by
   // hand. No deduplication — selectBestRecord picks the record with the latest
   // valid expiry and DataQualityPanel reports the duplicate, which is what the
@@ -355,6 +345,16 @@ export default function App({
     () => mergeRequirements(requirements, managedRequirements, mergedPeople, manualCourses),
     [requirements, managedRequirements, mergedPeople, manualCourses],
   );
+
+  // A derived row wins over the declared source, so test data can never be
+  // shown as approved. When there is no imported matrix but there are managed
+  // rows, the declaration comes from the approval state.
+  const requirementsProvenance = useMemo(() => {
+    const declared = requirements.length === 0 && managedRequirements.length > 0
+      ? provenanceForApproval(approval)
+      : requirementsSource;
+    return resolveRequirementsProvenance(mergedRequirements, declared);
+  }, [requirements, managedRequirements, mergedRequirements, approval, requirementsSource]);
 
   const complianceResult = useMemo(() => {
     if (mergedPeople.length === 0) return null;

@@ -10,6 +10,9 @@ class MemoryDb {
       certificates: new Map(),
       employee_contacts: new Map(),
       reminders_sent: new Map(),
+      requirements: new Map(),
+      training_records: new Map(),
+      requirements_approval: new Map(),
     };
     this._initMethods();
   }
@@ -95,6 +98,75 @@ class MemoryDb {
             r => r.employee_id === eid
           )
         ),
+    };
+
+    this.requirements = {
+      add: (data) => {
+        this.stores.requirements.set(data.id, data);
+        return Promise.resolve(data);
+      },
+      get: (id) => Promise.resolve(this.stores.requirements.get(id) || null),
+      list: () => Promise.resolve(Array.from(this.stores.requirements.values())),
+      listByCourse: (courseCode) =>
+        Promise.resolve(
+          Array.from(this.stores.requirements.values()).filter(
+            r => r.course_code === courseCode
+          )
+        ),
+      update: (id, data) => {
+        const existing = this.stores.requirements.get(id);
+        const updated = { ...existing, ...data, id };
+        this.stores.requirements.set(id, updated);
+        return Promise.resolve(updated);
+      },
+      delete: (id) => {
+        this.stores.requirements.delete(id);
+        return Promise.resolve();
+      },
+    };
+
+    this.trainingRecords = {
+      add: (data) => {
+        this.stores.training_records.set(data.id, data);
+        return Promise.resolve(data);
+      },
+      get: (id) => Promise.resolve(this.stores.training_records.get(id) || null),
+      list: () => Promise.resolve(Array.from(this.stores.training_records.values())),
+      listByEmployee: (employeeId) =>
+        Promise.resolve(
+          Array.from(this.stores.training_records.values()).filter(
+            r => r.employee_id === employeeId
+          )
+        ),
+      update: (id, data) => {
+        const existing = this.stores.training_records.get(id);
+        const updated = { ...existing, ...data, id };
+        this.stores.training_records.set(id, updated);
+        return Promise.resolve(updated);
+      },
+      delete: (id) => {
+        this.stores.training_records.delete(id);
+        return Promise.resolve();
+      },
+    };
+
+    this.requirementsApproval = {
+      add: (data) => {
+        this.stores.requirements_approval.set(data.id, data);
+        return Promise.resolve(data);
+      },
+      get: (id) => Promise.resolve(this.stores.requirements_approval.get(id) || null),
+      list: () => Promise.resolve(Array.from(this.stores.requirements_approval.values())),
+      update: (id, data) => {
+        const existing = this.stores.requirements_approval.get(id);
+        const updated = { ...existing, ...data, id };
+        this.stores.requirements_approval.set(id, updated);
+        return Promise.resolve(updated);
+      },
+      delete: (id) => {
+        this.stores.requirements_approval.delete(id);
+        return Promise.resolve();
+      },
     };
   }
 }
@@ -406,5 +478,22 @@ describe('the IndexedDB upgrade', () => {
     for (const store of ['requirements', 'training_records', 'requirements_approval']) {
       expect(source, store).toContain(`db.createObjectStore('${store}'`);
     }
+  });
+});
+
+describe('the local and cloud surfaces agree', () => {
+  // dataService.js must not know which backend answers, so the two services
+  // have to expose the same method names for the new stores.
+  const source = readFileSync(resolve(process.cwd(), 'src/lib/db/dbService.js'), 'utf8');
+
+  it('initializes the three new method groups', () => {
+    expect(source).toContain('this._initRequirements()');
+    expect(source).toContain('this._initTrainingRecords()');
+    expect(source).toContain('this._initRequirementsApproval()');
+  });
+
+  it('exposes listByCourse and listByEmployee', () => {
+    expect(source).toContain('listByCourse');
+    expect(source).toContain('listByEmployee');
   });
 });

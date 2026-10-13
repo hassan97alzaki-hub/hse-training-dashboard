@@ -162,6 +162,9 @@ class LocalDbService {
     this._initEmployees();
     this._initEmployeeContacts();
     this._initRemindersSent();
+    this._initRequirements();
+    this._initTrainingRecords();
+    this._initRequirementsApproval();
   }
 
   _getDb() {
@@ -508,6 +511,178 @@ class LocalDbService {
           const request = index.getAll(employeeId);
           request.onerror = () => reject(request.error);
           request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+    };
+  }
+
+  _initRequirements() {
+    this.requirements = {
+      add: async (data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements', 'readwrite');
+          const request = tx.objectStore('requirements')
+            .add({ ...data, created_at: new Date().toISOString() });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      get: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements', 'readonly');
+          const request = tx.objectStore('requirements').get(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || null);
+        });
+      },
+      list: async () => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements', 'readonly');
+          const request = tx.objectStore('requirements').getAll();
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+      listByCourse: async (courseCode) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements', 'readonly');
+          const request = tx.objectStore('requirements').index('course_code').getAll(courseCode);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+      update: async (id, data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements', 'readwrite');
+          const request = tx.objectStore('requirements')
+            .put({ ...data, id, updated_at: new Date().toISOString() });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      delete: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements', 'readwrite');
+          const request = tx.objectStore('requirements').delete(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve();
+        });
+      },
+    };
+  }
+
+  _initTrainingRecords() {
+    this.trainingRecords = {
+      add: async (data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('training_records', 'readwrite');
+          const request = tx.objectStore('training_records')
+            .add({ ...data, created_at: new Date().toISOString() });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      get: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('training_records', 'readonly');
+          const request = tx.objectStore('training_records').get(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || null);
+        });
+      },
+      list: async () => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('training_records', 'readonly');
+          const request = tx.objectStore('training_records').getAll();
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+      listByEmployee: async (employeeId) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('training_records', 'readonly');
+          const request = tx.objectStore('training_records').index('employee_id').getAll(employeeId);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+      update: async (id, data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('training_records', 'readwrite');
+          const request = tx.objectStore('training_records')
+            .put({ ...data, id, updated_at: new Date().toISOString() });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      delete: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('training_records', 'readwrite');
+          const request = tx.objectStore('training_records').delete(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve();
+        });
+      },
+    };
+  }
+
+  _initRequirementsApproval() {
+    this.requirementsApproval = {
+      add: async (data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements_approval', 'readwrite');
+          const request = tx.objectStore('requirements_approval').put({ ...data });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      get: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements_approval', 'readonly');
+          const request = tx.objectStore('requirements_approval').get(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || null);
+        });
+      },
+      list: async () => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements_approval', 'readonly');
+          const request = tx.objectStore('requirements_approval').getAll();
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      },
+      update: async (id, data) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements_approval', 'readwrite');
+          const request = tx.objectStore('requirements_approval').put({ ...data, id });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(data);
+        });
+      },
+      delete: async (id) => {
+        const db = await this._getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('requirements_approval', 'readwrite');
+          const request = tx.objectStore('requirements_approval').delete(id);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve();
         });
       },
     };

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   addCourse, editCourse, deleteCourse, isValidCourseCode, validateCourse, exportCoursesAsCSV,
 } from '../lib/dataService.js';
-import { saveRequirementsForCourse } from '../lib/requirementsService.js';
+import { saveRequirementsForCourse, loadRequirementsFromDb } from '../lib/requirementsService.js';
 import { RoleScopePicker } from './RoleScopePicker.jsx';
 
 /**
@@ -54,16 +54,30 @@ export function CourseManager({
     setShowForm(true);
   };
 
-  const handleEditCourse = (index) => {
+  const handleEditCourse = async (index) => {
     setError('');
     const course = courses[index];
+    // Load the persisted scope from DB so the picker reflects what was saved.
+    let appliesTo = course.appliesTo ?? [];
+    try {
+      const allReqs = await loadRequirementsFromDb();
+      const courseReqs = allReqs.filter(
+        r => r.course_code && r.course_code.toUpperCase() === course.code.toUpperCase(),
+      );
+      if (courseReqs.length > 0) {
+        appliesTo = courseReqs.map(r => ({
+          department: r.department,
+          jobTitle: r.job_title ?? '',
+        }));
+      }
+    } catch { /* fall back to in-memory */ }
     setFormData({
       code: course.code,
       name: course.name,
       mandatory: course.mandatory,
       validityMonths: course.validityMonths,
       description: course.description,
-      appliesTo: course.appliesTo ?? [],
+      appliesTo,
     });
     setEditingIndex(index);
     setShowForm(true);
@@ -117,7 +131,7 @@ export function CourseManager({
 
   const handleDeleteCourse = (index) => {
     const course = courses[index];
-    if (!window.confirm(`Delete course "${course.code}"? This cannot be undone.`)) {
+    if (!window.confirm(t('cmDeleteConfirm').replace('{code}', course.code))) {
       return;
     }
 
@@ -146,14 +160,14 @@ export function CourseManager({
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h3 style={styles.title}>Courses</h3>
-        <p style={styles.subtitle}>{courses.length} course(s)</p>
+        <h3 style={styles.title}>{t('cmCourses')}</h3>
+        <p style={styles.subtitle}>{t('cmCourseCount').replace('{count}', courses.length)}</p>
       </div>
 
       {showForm && (
         <div style={styles.form}>
           <h4 style={styles.formTitle}>
-            {editingIndex !== null ? 'Edit Course' : 'Add New Course'}
+            {editingIndex !== null ? t('cmEditCourse') : t('cmAddNewCourse')}
           </h4>
 
           {error && (
@@ -162,7 +176,7 @@ export function CourseManager({
 
           <div style={styles.formGrid}>
             <label style={styles.label}>
-              Course Code *
+              {t('cmCourseCode')} *
               <input
                 type="text"
                 name="code"
@@ -173,12 +187,12 @@ export function CourseManager({
                 style={styles.input}
               />
               {!isValidCourseCode(formData.code) && formData.code && (
-                <span style={styles.fieldHint}>2–20 alphanumeric, -, _</span>
+                <span style={styles.fieldHint}>{t('cmCodeHint')}</span>
               )}
             </label>
 
             <label style={styles.label}>
-              Course Name *
+              {t('cmCourseName')} *
               <input
                 type="text"
                 name="name"
@@ -190,7 +204,7 @@ export function CourseManager({
             </label>
 
             <label style={styles.label}>
-              Validity (months)
+              {t('cmValidity')}
               <input
                 type="number"
                 name="validityMonths"
@@ -199,7 +213,7 @@ export function CourseManager({
                 min="0"
                 style={styles.input}
               />
-              <span style={styles.fieldHint}>0 = no expiry (one-time training)</span>
+              <span style={styles.fieldHint}>{t('cmValidityHint')}</span>
             </label>
 
             <label style={styles.checkboxLabel}>
@@ -209,17 +223,17 @@ export function CourseManager({
                 checked={formData.mandatory}
                 onChange={handleInputChange}
               />
-              Mandatory
+              {t('cmMandatory')}
             </label>
           </div>
 
           <label style={styles.label}>
-            Description
+            {t('cmDescription')}
             <textarea
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              placeholder="Optional details about the course"
+              placeholder={t('cmDescriptionPlaceholder')}
               rows="3"
               style={styles.textarea}
             />
@@ -241,30 +255,30 @@ export function CourseManager({
               style={{ ...styles.btn, ...styles.btnPrimary }}
               disabled={disabled}
             >
-              {editingIndex !== null ? 'Update' : 'Add Course'}
+              {editingIndex !== null ? t('cmUpdate') : t('cmAddCourse')}
             </button>
             <button
               onClick={handleCancel}
               style={{ ...styles.btn, ...styles.btnGhost }}
               disabled={disabled}
             >
-              Cancel
+              {t('cmCancel')}
             </button>
           </div>
         </div>
       )}
 
       {courses.length === 0 ? (
-        <p style={styles.empty}>No courses yet. Add one to get started.</p>
+        <p style={styles.empty}>{t('cmNoCourses')}</p>
       ) : (
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={styles.th}>Code</th>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Type</th>
-              <th style={styles.th}>Validity</th>
-              <th style={styles.th}>Actions</th>
+              <th style={styles.th}>{t('cmCode')}</th>
+              <th style={styles.th}>{t('cmName')}</th>
+              <th style={styles.th}>{t('cmType')}</th>
+              <th style={styles.th}>{t('cmValidity')}</th>
+              <th style={styles.th}>{t('cmActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -272,9 +286,9 @@ export function CourseManager({
               <tr key={`${course.code}-${idx}`} style={styles.tableRow}>
                 <td style={styles.td}><code style={styles.code}>{course.code}</code></td>
                 <td style={styles.td}>{course.name}</td>
-                <td style={styles.td}>{course.mandatory ? 'Mandatory' : 'Optional'}</td>
+                <td style={styles.td}>{course.mandatory ? t('cmMandatory') : t('cmOptional')}</td>
                 <td style={styles.td}>
-                  {course.validityMonths === 0 ? 'One-time' : `${course.validityMonths}m`}
+                  {course.validityMonths === 0 ? t('cmOneTime') : `${course.validityMonths}m`}
                 </td>
                 <td style={styles.td}>
                   <button
@@ -282,14 +296,14 @@ export function CourseManager({
                     style={{ ...styles.btnSmall, ...styles.btnGhost }}
                     disabled={disabled}
                   >
-                    Edit
+                    {t('cmEdit')}
                   </button>
                   <button
                     onClick={() => handleDeleteCourse(idx)}
                     style={{ ...styles.btnSmall, ...styles.btnDanger }}
                     disabled={disabled}
                   >
-                    Delete
+                    {t('cmDelete')}
                   </button>
                 </td>
               </tr>
@@ -305,7 +319,7 @@ export function CourseManager({
             style={{ ...styles.btn, ...styles.btnPrimary }}
             disabled={disabled}
           >
-            + Add Course
+            {t('cmAddCourse')}
           </button>
         )}
         {courses.length > 0 && (
@@ -314,7 +328,7 @@ export function CourseManager({
             style={{ ...styles.btn, ...styles.btnSecondary }}
             disabled={disabled}
           >
-            Export as CSV
+            {t('cmExportCSV')}
           </button>
         )}
       </div>

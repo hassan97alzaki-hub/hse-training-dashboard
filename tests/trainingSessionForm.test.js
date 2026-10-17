@@ -79,7 +79,7 @@ describe('TrainingSessionForm', () => {
     fireEvent.change(screen.getByTestId('course-select'), { target: { value: 'H2S' } });
     fireEvent.change(screen.getByTestId('issue-date'), { target: { value: '2026-10-13' } });
     fireEvent.click(screen.getByTestId('attendee-EMP001'));
-    fireEvent.click(screen.getByText(t('saveRecords')));
+    fireEvent.click(screen.getByText((content) => content.startsWith(t('saveRecords'))));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(onSaved.mock.calls[0][0]).toHaveLength(1);
@@ -89,7 +89,7 @@ describe('TrainingSessionForm', () => {
     const onSaved = vi.fn();
     renderForm({ onSaved });
     fireEvent.change(screen.getByTestId('course-select'), { target: { value: 'H2S' } });
-    fireEvent.click(screen.getByText(t('saveRecords')));
+    fireEvent.click(screen.getByText((content) => content.startsWith(t('saveRecords'))));
 
     expect(onSaved).not.toHaveBeenCalled();
   });

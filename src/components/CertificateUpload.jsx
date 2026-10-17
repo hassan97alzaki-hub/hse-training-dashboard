@@ -16,7 +16,7 @@ import { fileToBase64, validateImageFile, validateImageUrl } from '../lib/certif
  * - onSave: callback with certificate data
  * - onCancel: callback to close form
  */
-export function CertificateUpload({ certificate = null, onSave, onCancel }) {
+export function CertificateUpload({ certificate = null, onSave, onCancel, t = (key) => key }) {
   const [formData, setFormData] = useState({
     certificateNumber: certificate?.certificateNumber || '',
     title: certificate?.title || '',
@@ -132,7 +132,7 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
     <div style={styles.modal}>
       <div style={styles.content}>
         <h3 style={styles.title}>
-          {certificate ? 'Edit Certificate' : 'Add New Certificate'}
+          {certificate ? t('editCertificate') : t('addNewCertificate')}
         </h3>
 
         {error && (
@@ -141,7 +141,7 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
 
         <div style={styles.formGrid}>
           <label style={styles.label}>
-            Certificate Number *
+            {t('certificateNumberRequired')}
             <input
               type="text"
               name="certificateNumber"
@@ -154,7 +154,7 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
           </label>
 
           <label style={styles.label}>
-            Title *
+            {t('titleRequired')}
             <input
               type="text"
               name="title"
@@ -166,7 +166,7 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
           </label>
 
           <label style={styles.label}>
-            Issuer
+            {t('issuer')}
             <input
               type="text"
               name="issuer"
@@ -211,7 +211,7 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
               checked={uploadMode === 'upload'}
               onChange={() => setUploadMode('upload')}
             />
-            Upload Image (JPEG/PNG, max 2 MB)
+            {t('uploadImage')}
           </label>
           <label style={styles.radioLabel}>
             <input
@@ -219,14 +219,14 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
               checked={uploadMode === 'url'}
               onChange={() => setUploadMode('url')}
             />
-            External URL
+            {t('externalUrl')}
           </label>
         </div>
 
         {uploadMode === 'upload' ? (
           <div>
             <label style={styles.label}>
-              Certificate Image *
+              {t('certificateImage')}
               <input
                 type="file"
                 accept="image/jpeg,image/png"
@@ -244,7 +244,7 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
           </div>
         ) : (
           <label style={styles.label}>
-            Image URL *
+            {t('imageUrl')}
             <input
               type="url"
               name="imageUrl"
@@ -259,12 +259,12 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
         <div style={styles.divider} />
 
         <label style={styles.label}>
-          Summary ({formData.summary.length}/200)
+          {t('summaryCount').replace('{count}', formData.summary.length)}
           <textarea
             name="summary"
             value={formData.summary}
             onChange={handleInputChange}
-            placeholder="Brief summary of certificate (optional)"
+            placeholder={t('summaryPlaceholder')}
             rows="3"
             maxLength="200"
             style={styles.textarea}
@@ -277,13 +277,13 @@ export function CertificateUpload({ certificate = null, onSave, onCancel }) {
             style={{ ...styles.btn, ...styles.btnPrimary }}
             disabled={isLoading}
           >
-            {certificate ? 'Update' : 'Add Certificate'}
+            {certificate ? t('update') : t('addCertificate')}
           </button>
           <button
             onClick={onCancel}
             style={{ ...styles.btn, ...styles.btnGhost }}
           >
-            Cancel
+            {t('cancel')}
           </button>
         </div>
       </div>

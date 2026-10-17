@@ -26,6 +26,7 @@ export function CertificateGallery({
   onClose,
   onSave,
   isNewCertificate = false,
+  t = (key) => key,
 }) {
   const [showEditForm, setShowEditForm] = useState(isNewCertificate);
   const [activeTab, setActiveTab] = useState(certificate?.imageData ? 'local' : 'url');
@@ -41,6 +42,7 @@ export function CertificateGallery({
         certificate={certificate}
         onSave={handleSave}
         onCancel={() => setShowEditForm(false)}
+        t={t}
       />
     );
   }
@@ -53,12 +55,12 @@ export function CertificateGallery({
             <X size={20} />
           </button>
           <div style={styles.emptyState}>
-            <p>No certificate data found.</p>
+            <p>{t('noCertificateData')}</p>
             <button
               onClick={() => setShowEditForm(true)}
               style={{ ...styles.btn, ...styles.btnPrimary }}
             >
-              Add Certificate Data
+              {t('addCertificateData')}
             </button>
           </div>
         </div>
@@ -89,25 +91,25 @@ export function CertificateGallery({
         <h3 style={styles.title}>{certificate.title}</h3>
 
         {certificate.issuer && (
-          <p style={styles.issuer}>Issued by: {certificate.issuer}</p>
+          <p style={styles.issuer}>{t('issuedBy')} {certificate.issuer}</p>
         )}
 
         <div style={styles.metadata}>
           {certificate.issuedDate && (
             <div style={styles.metadataItem}>
-              <strong>Issued:</strong> {certificate.issuedDate}
+              <strong>{t('issued')}</strong> {certificate.issuedDate}
             </div>
           )}
           {certificate.expiryDate && (
             <div style={styles.metadataItem}>
-              <strong>Expires:</strong> {certificate.expiryDate}
+              <strong>{t('expires')}</strong> {certificate.expiryDate}
             </div>
           )}
         </div>
 
         {certificate.summary && (
           <div style={styles.summary}>
-            <strong>Summary:</strong>
+            <strong>{t('summary')}</strong>
             <p>{certificate.summary}</p>
           </div>
         )}
@@ -122,7 +124,7 @@ export function CertificateGallery({
               }}
               onClick={() => setActiveTab('local')}
             >
-              Local Image
+              {t('localImage')}
             </button>
             <button
               style={{
@@ -132,7 +134,7 @@ export function CertificateGallery({
               }}
               onClick={() => setActiveTab('url')}
             >
-              External Link
+              {t('externalLink')}
             </button>
           </div>
         )}
@@ -148,7 +150,7 @@ export function CertificateGallery({
               onClick={downloadImage}
               style={{ ...styles.btn, ...styles.btnSecondary, marginTop: '12px' }}
             >
-              <Download size={16} /> Download
+              <Download size={16} /> {t('download')}
             </button>
           </div>
         )}
@@ -163,12 +165,12 @@ export function CertificateGallery({
             >
               {certificate.imageUrl}
             </a>
-            <p style={styles.hint}>Click above to open in a new window</p>
+            <p style={styles.hint}>{t('clickToOpen')}</p>
           </div>
         )}
 
         {!hasLocalImage && !hasExternalUrl && (
-          <p style={styles.empty}>No image or URL available.</p>
+          <p style={styles.empty}>{t('noImageAvailable')}</p>
         )}
 
         <div style={styles.actions}>
@@ -176,13 +178,13 @@ export function CertificateGallery({
             onClick={() => setShowEditForm(true)}
             style={{ ...styles.btn, ...styles.btnPrimary }}
           >
-            {certificate.imageData || certificate.imageUrl ? 'Edit' : 'Add Image'}
+            {certificate.imageData || certificate.imageUrl ? t('edit') : t('addImage')}
           </button>
           <button
             onClick={onClose}
             style={{ ...styles.btn, ...styles.btnGhost }}
           >
-            Close
+            {t('close')}
           </button>
         </div>
       </div>

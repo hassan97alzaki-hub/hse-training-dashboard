@@ -16,7 +16,7 @@ import { validateDepartment } from '../lib/dataService.js';
  * - onAdd: (name) => Promise<{success, error}>
  * - onDelete: (name) => Promise<{success, error}>
  */
-export function DepartmentManager({ departments = [], onAdd, onDelete, disabled = false }) {
+export function DepartmentManager({ departments = [], onAdd, onDelete, disabled = false, t = (key) => key }) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -71,7 +71,7 @@ export function DepartmentManager({ departments = [], onAdd, onDelete, disabled 
           disabled={disabled || busy}
           style={{ ...styles.btn, ...styles.btnPrimary }}
         >
-          + Add
+          {t('dmAdd')}
         </button>
       </div>
 
@@ -79,16 +79,16 @@ export function DepartmentManager({ departments = [], onAdd, onDelete, disabled 
 
       {departments.length === 0 ? (
         <div style={styles.empty}>
-          <p>No departments yet. Add one above, then assign employees to it.</p>
+          <p>{t('dmNoDepartments')}</p>
         </div>
       ) : (
         <table style={styles.table}>
           <thead>
             <tr style={styles.tableHeader}>
-              <th style={styles.th}>Department</th>
-              <th style={styles.th}>Employees</th>
-              <th style={styles.th}>Source</th>
-              <th style={styles.th}>Actions</th>
+              <th style={styles.th}>{t('dmDepartment')}</th>
+              <th style={styles.th}>{t('dmEmployees')}</th>
+              <th style={styles.th}>{t('dmSource')}</th>
+              <th style={styles.th}>{t('dmActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -98,7 +98,7 @@ export function DepartmentManager({ departments = [], onAdd, onDelete, disabled 
                 <td style={styles.td}>{department.employeeCount}</td>
                 <td style={styles.td}>
                   <span style={department.registered ? styles.tagRegistered : styles.tagImported}>
-                    {department.registered ? 'Registered' : 'From import'}
+                    {department.registered ? t('dmRegistered') : t('dmFromImport')}
                   </span>
                 </td>
                 <td style={styles.td}>
@@ -108,7 +108,7 @@ export function DepartmentManager({ departments = [], onAdd, onDelete, disabled 
                       disabled={disabled || busy}
                       style={{ ...styles.actionBtn, ...styles.deleteBtn }}
                     >
-                      Delete
+                      {t('dmDelete')}
                     </button>
                   ) : (
                     <span style={styles.textMuted}>—</span>
@@ -120,10 +120,7 @@ export function DepartmentManager({ departments = [], onAdd, onDelete, disabled 
         </table>
       )}
 
-      <p style={styles.hint}>
-        A department from an import cannot be deleted here. A registered department
-        can only be deleted once no employee is in it.
-      </p>
+      <p style={styles.hint}>{t('dmDeleteHint')}</p>
     </div>
   );
 }

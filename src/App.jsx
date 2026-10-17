@@ -765,6 +765,7 @@ export default function App({
           <ManagementDrawerButton
             onClick={() => setDrawerOpen(true)}
             count={manualCourses.length + manualEmployees.length}
+            t={t}
           />
         </div>
 
@@ -854,6 +855,7 @@ export default function App({
             certificateNumber={selectedCertificate.number}
             isNewCertificate={selectedCertificate.isNew}
             onClose={() => setSelectedCertificate(null)}
+            t={t}
             onSave={(data) => {
               // Save to in-memory gallery
               certificateGallery.set(data.certificateNumber, data);
@@ -1000,10 +1002,10 @@ export default function App({
 
             <div className="section">
               <div className="section-header">
-                <span className="section-title">Send Training Reminders</span>
+                <span className="section-title">{t('sendTrainingReminders')}</span>
               </div>
               <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
-                Notify employees about training certificates expiring in the next 15–30 days.
+                {t('sendRemindersDescription')}
               </p>
               <ReminderSender
                 universe={complianceResult?.universe || []}

@@ -24,6 +24,7 @@ export function EmployeeManager({
   onEmployeesChange,
   disabled = false,
   departments = [],
+  t = (key) => key,
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -160,11 +161,11 @@ export function EmployeeManager({
       <div style={styles.modal}>
         <div style={styles.modalContent}>
           <h3 style={styles.modalTitle}>
-            {editingIndex !== null ? 'Edit Employee' : 'Add Employee'}
+            {editingIndex !== null ? t('emEditEmployee') : t('emAddEmployee')}
           </h3>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Employee ID *</label>
+            <label style={styles.label}>{t('emEmployeeIdRequired')}</label>
             <input
               type="text"
               name="employeeId"
@@ -177,7 +178,7 @@ export function EmployeeManager({
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Name *</label>
+            <label style={styles.label}>{t('emNameRequired')}</label>
             <input
               type="text"
               name="name"
@@ -189,10 +190,10 @@ export function EmployeeManager({
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Department *</label>
+            <label style={styles.label}>{t('emDepartmentRequired')}</label>
             {departments.length === 0 ? (
               <p style={styles.inlineNote}>
-                No departments yet. Add one in the Departments tab first.
+                {t('emNoDepartments')}
               </p>
             ) : (
               <select
@@ -201,7 +202,7 @@ export function EmployeeManager({
                 onChange={handleInputChange}
                 style={styles.input}
               >
-                <option value="">Select a department…</option>
+                <option value="">{t('emSelectDepartment')}</option>
                 {/* An employee may already sit in a department that is no
                     longer offered. Keep that value selectable so editing the
                     employee does not silently move them. */}
@@ -216,7 +217,7 @@ export function EmployeeManager({
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Job Title</label>
+            <label style={styles.label}>{t('emJobTitle')}</label>
             <input
               type="text"
               name="jobTitle"
@@ -228,7 +229,7 @@ export function EmployeeManager({
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Email</label>
+            <label style={styles.label}>{t('emEmail')}</label>
             <input
               type="email"
               name="email"
@@ -240,7 +241,7 @@ export function EmployeeManager({
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Phone</label>
+            <label style={styles.label}>{t('emPhone')}</label>
             <input
               type="tel"
               name="phone"
@@ -255,10 +256,10 @@ export function EmployeeManager({
 
           <div style={styles.buttonGroup}>
             <button onClick={handleSaveEmployee} style={{ ...styles.btn, ...styles.btnPrimary }}>
-              {editingIndex !== null ? 'Update' : 'Add'}
+              {editingIndex !== null ? t('emUpdate') : t('emAdd')}
             </button>
             <button onClick={handleCancel} style={{ ...styles.btn, ...styles.btnGhost }}>
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>
@@ -270,26 +271,26 @@ export function EmployeeManager({
     <div style={styles.container}>
       <div style={styles.header}>
         <h4 style={styles.title}>
-          Employees
+          {t('emEmployees')}
           <span style={styles.count}>{employees.length}</span>
         </h4>
       </div>
 
       {employees.length === 0 ? (
         <div style={styles.empty}>
-          <p>No manually-added employees yet.</p>
+          <p>{t('emNoEmployees')}</p>
         </div>
       ) : (
         <div style={styles.tableWrap}>
           <table style={styles.table}>
             <thead>
               <tr style={styles.tableHeader}>
-                <th style={styles.th}>ID</th>
-                <th style={styles.th}>Name</th>
-                <th style={styles.th}>Department</th>
-                <th style={styles.th}>Job Title</th>
-                <th style={styles.th}>Email</th>
-                <th style={styles.th}>Actions</th>
+                <th style={styles.th}>{t('emId')}</th>
+                <th style={styles.th}>{t('emName')}</th>
+                <th style={styles.th}>{t('emDept')}</th>
+                <th style={styles.th}>{t('emJobTitle')}</th>
+                <th style={styles.th}>{t('emEmail')}</th>
+                <th style={styles.th}>{t('emActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -327,14 +328,14 @@ export function EmployeeManager({
         <button
           onClick={handleAddEmployee}
           disabled={disabled || departments.length === 0}
-          title={departments.length === 0 ? 'Add a department first' : undefined}
+          title={departments.length === 0 ? t('emAddDeptFirst') : undefined}
           style={{ ...styles.btn, ...styles.btnPrimary }}
         >
-          + Add Employee
+          {t('emAddEmployeeBtn')}
         </button>
         {employees.length > 0 && (
           <button onClick={handleExportCSV} style={{ ...styles.btn, ...styles.btnGhost }}>
-            Export as CSV
+            {t('emExportCSV')}
           </button>
         )}
       </div>

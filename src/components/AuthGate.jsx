@@ -25,7 +25,7 @@ import {
  * Props:
  * - children: (session) => node, or a node
  */
-export function AuthGate({ children }) {
+export function AuthGate({ children, t = (key) => key }) {
   const required = authRequired();
   const [state, setState] = useState(required ? AUTH_STATE.LOADING : AUTH_STATE.NOT_REQUIRED);
   const [session, setSession] = useState(null);
@@ -53,11 +53,11 @@ export function AuthGate({ children }) {
   }, [required]);
 
   if (state === AUTH_STATE.LOADING) {
-    return <div style={styles.center}>Loading…</div>;
+    return <div style={styles.center}>{t('loading')}</div>;
   }
 
   if (state === AUTH_STATE.SIGNED_OUT) {
-    return <SignInForm />;
+    return <SignInForm t={t} />;
   }
 
   return typeof children === 'function' ? children(session) : children;
@@ -66,7 +66,7 @@ export function AuthGate({ children }) {
 /**
  * Sign-in, registration and password reset in one form.
  */
-export function SignInForm() {
+export function SignInForm({ t = (key) => key }) {
   const [mode, setMode] = useState('signin'); // signin | signup | reset
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -93,29 +93,29 @@ export function SignInForm() {
     }
 
     if (mode === 'signup' && result.needsConfirmation) {
-      setNotice(`Confirm your address. A message is on its way to ${email}.`);
+      setNotice(t('confirmEmail').replace('{email}', email));
       return;
     }
     if (mode === 'reset') {
-      setNotice(`A reset link is on its way to ${email}.`);
+      setNotice(t('resetLinkSent').replace('{email}', email));
     }
     // On a successful sign-in the auth listener in AuthGate swaps the view.
   }, [mode, email, password]);
 
-  const title = mode === 'signin' ? 'Sign in'
-    : mode === 'signup' ? 'Create an account'
-      : 'Reset your password';
+  const title = mode === 'signin' ? t('signIn')
+    : mode === 'signup' ? t('createAccount')
+      : t('resetPassword');
 
   return (
     <div style={styles.center}>
       <form onSubmit={submit} style={styles.card}>
-        <h1 style={styles.title}>HSE Training Dashboard</h1>
+        <h1 style={styles.title}>{t('authTitle')}</h1>
         <h2 style={styles.subtitle}>{title}</h2>
 
         {error && <div style={styles.error}>{error}</div>}
         {notice && <div style={styles.notice}>{notice}</div>}
 
-        <label style={styles.label} htmlFor="auth-email">Email address</label>
+        <label style={styles.label} htmlFor="auth-email">{t('emailAddress')}</label>
         <input
           id="auth-email"
           type="email"
@@ -129,7 +129,7 @@ export function SignInForm() {
 
         {mode !== 'reset' && (
           <>
-            <label style={styles.label} htmlFor="auth-password">Password</label>
+            <label style={styles.label} htmlFor="auth-password">{t('password')}</label>
             <input
               id="auth-password"
               type="password"
@@ -141,36 +141,34 @@ export function SignInForm() {
               disabled={busy}
             />
             {mode === 'signup' && (
-              <p style={styles.hint}>At least 8 characters.</p>
+              <p style={styles.hint}>{t('passwordHint')}</p>
             )}
           </>
         )}
 
         <button type="submit" style={styles.primaryBtn} disabled={busy}>
-          {busy ? 'Working…' : title}
+          {busy ? t('working') : title}
         </button>
 
         <div style={styles.links}>
           {mode !== 'signin' && (
             <button type="button" style={styles.linkBtn} onClick={() => setMode('signin')}>
-              Sign in instead
+              {t('signInInstead')}
             </button>
           )}
           {mode !== 'signup' && (
             <button type="button" style={styles.linkBtn} onClick={() => setMode('signup')}>
-              Create an account
+              {t('createAccount')}
             </button>
           )}
           {mode !== 'reset' && (
             <button type="button" style={styles.linkBtn} onClick={() => setMode('reset')}>
-              Forgot your password?
+              {t('forgotPassword')}
             </button>
           )}
         </div>
 
-        <p style={styles.footnote}>
-          Your training data belongs to this account. Only this account can read it.
-        </p>
+        <p style={styles.footnote}>{t('authPrivacy')}</p>
       </form>
     </div>
   );

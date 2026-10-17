@@ -113,9 +113,9 @@ export default function Filters({ filters, options, t, onChange, onClear }) {
                 <label className="filter-label">{t('filterEmploymentStatus')}</label>
                 <select className="filter-select" value={filters.employmentStatus} onChange={e => onChange('employmentStatus', e.target.value)}>
                   <option value="">{t('allEmploymentStatuses')}</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Left">Left</option>
+                  <option value="Active">{t('empStatusActive')}</option>
+                  <option value="Inactive">{t('empStatusInactive')}</option>
+                  <option value="Left">{t('empStatusLeft')}</option>
                 </select>
               </div>
             </div>

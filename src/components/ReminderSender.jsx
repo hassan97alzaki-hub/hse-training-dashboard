@@ -39,7 +39,7 @@ export function ReminderSender({
     const generated = generateReminders(universe, contactMap);
 
     if (generated.length === 0) {
-      setError('No training certificates expiring in the next 15–30 days.');
+      setError(t('rsNoExpiring'));
       setReminders(null);
       return;
     }
@@ -100,10 +100,10 @@ export function ReminderSender({
         <div style={styles.successBanner}>
           <Mail size={20} />
           <div>
-            <div style={styles.successTitle}>Reminders Sent</div>
+            <div style={styles.successTitle}>{t('rsRemindersSent')}</div>
             <div style={styles.successText}>
-              {sent.sent} email(s) queued for sending
-              {sent.skipped > 0 && ` (${sent.skipped} without email address)`}
+              {t('rsEmailsQueued').replace('{count}', sent.sent)}
+              {sent.skipped > 0 && ` (${t('rsWithoutEmail').replace('{count}', sent.skipped)})`}
             </div>
             <div style={styles.successTime}>{sent.timestamp}</div>
           </div>
@@ -112,7 +112,7 @@ export function ReminderSender({
           onClick={handleReset}
           style={{ ...styles.btn, ...styles.btnPrimary }}
         >
-          Send More Reminders
+          {t('rsSendMore')}
         </button>
       </div>
     );
@@ -123,12 +123,12 @@ export function ReminderSender({
       <div style={styles.container}>
         <div style={styles.empty}>
           <Mail size={32} style={{ opacity: 0.5, marginBottom: 12 }} />
-          <p>Send reminders to employees with training certificates expiring in 15–30 days.</p>
+          <p>{t('rsSendDescription')}</p>
           <button
             onClick={handleGenerateReminders}
             style={{ ...styles.btn, ...styles.btnPrimary }}
           >
-            Generate Reminder List
+            {t('rsGenerateList')}
           </button>
         </div>
 
@@ -148,17 +148,17 @@ export function ReminderSender({
     <div style={styles.container}>
       <div style={styles.preview}>
         <h4 style={styles.previewTitle}>
-          Reminders to Send ({reminders.length})
+          {t('rsRemindersToSend').replace('{count}', reminders.length)}
         </h4>
 
         <div style={styles.summary}>
           <div style={styles.summaryItem}>
             <strong>{counts.email}</strong>
-            <span>Email recipients</span>
+            <span>{t('rsEmailRecipients')}</span>
           </div>
           <div style={styles.summaryItem}>
             <strong>{counts.sms}</strong>
-            <span>Phone numbers</span>
+            <span>{t('rsPhoneNumbers')}</span>
           </div>
         </div>
 
@@ -166,11 +166,11 @@ export function ReminderSender({
           <table style={styles.table}>
             <thead>
               <tr style={styles.tableHeader}>
-                <th style={styles.th}>Employee</th>
-                <th style={styles.th}>Course</th>
-                <th style={styles.th}>Expires</th>
-                <th style={styles.th}>Days</th>
-                <th style={styles.th}>Email</th>
+                <th style={styles.th}>{t('rsEmployee')}</th>
+                <th style={styles.th}>{t('rsCourse')}</th>
+                <th style={styles.th}>{t('rsExpires')}</th>
+                <th style={styles.th}>{t('rsDays')}</th>
+                <th style={styles.th}>{t('rsEmail')}</th>
               </tr>
             </thead>
             <tbody>
@@ -194,7 +194,7 @@ export function ReminderSender({
         {reminders.filter(r => !r.email).length > 0 && (
           <div style={styles.warning}>
             <AlertCircle size={16} />
-            <span>{reminders.filter(r => !r.email).length} employee(s) lack email address. SMS/contact info needed.</span>
+            <span>{t('rsNoEmail').replace('{count}', reminders.filter(r => !r.email).length)}</span>
           </div>
         )}
       </div>
@@ -205,13 +205,13 @@ export function ReminderSender({
           disabled={isSending}
           style={{ ...styles.btn, ...styles.btnPrimary }}
         >
-          {isSending ? 'Sending...' : `Send ${counts.email} Reminders`}
+          {isSending ? t('rsSending') : t('rsSendReminders').replace('{count}', counts.email)}
         </button>
         <button
           onClick={handleReset}
           style={{ ...styles.btn, ...styles.btnGhost }}
         >
-          Cancel
+          {t('rsCancel')}
         </button>
       </div>
 

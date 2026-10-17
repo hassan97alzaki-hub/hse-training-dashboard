@@ -15,7 +15,7 @@ import { signOut, accountEmail } from '../lib/auth.js';
  * Props:
  * - session: Supabase session or null
  */
-export function AccountBar({ session }) {
+export function AccountBar({ session, t }) {
   const [busy, setBusy] = useState(false);
   const email = accountEmail(session);
 
@@ -30,12 +30,12 @@ export function AccountBar({ session }) {
   return (
     <div style={styles.bar}>
       <span style={styles.email}>
-        Signed in as <strong>{email}</strong>
+        {t('signedInAs')} <strong>{email}</strong>
       </span>
-      <span style={styles.note}>Reminders are sent from this address.</span>
+      <span style={styles.note}>{t('remindersSentFrom')}</span>
       <button onClick={handleSignOut} disabled={busy} style={styles.btn}>
         <LogOut size={14} />
-        {busy ? 'Signing out…' : 'Sign out'}
+        {busy ? t('signingOut') : t('signOut')}
       </button>
     </div>
   );

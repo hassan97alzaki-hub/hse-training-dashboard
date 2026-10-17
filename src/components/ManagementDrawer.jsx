@@ -59,8 +59,8 @@ export function ManagementDrawer({
         aria-label="Data management"
       >
         <header style={styles.header}>
-          <h3 style={styles.title}>Manage Data</h3>
-          <button onClick={onClose} style={styles.closeBtn} aria-label="Close">
+          <h3 style={styles.title}>{t('mdManageData')}</h3>
+          <button onClick={onClose} style={styles.closeBtn} aria-label={t('mdClose')}>
             <X size={18} />
           </button>
         </header>
@@ -70,21 +70,21 @@ export function ManagementDrawer({
             onClick={() => setTab('courses')}
             style={{ ...styles.tab, ...(tab === 'courses' ? styles.tabActive : {}) }}
           >
-            Courses
+            {t('mdCourses')}
             <span style={styles.tabCount}>{courses.length}</span>
           </button>
           <button
             onClick={() => setTab('departments')}
             style={{ ...styles.tab, ...(tab === 'departments' ? styles.tabActive : {}) }}
           >
-            Departments
+            {t('mdDepartments')}
             <span style={styles.tabCount}>{departments.length}</span>
           </button>
           <button
             onClick={() => setTab('employees')}
             style={{ ...styles.tab, ...(tab === 'employees' ? styles.tabActive : {}) }}
           >
-            Employees
+            {t('mdEmployees')}
             <span style={styles.tabCount}>{employees.length}</span>
           </button>
         </nav>
@@ -106,6 +106,7 @@ export function ManagementDrawer({
               onAdd={onDepartmentAdd}
               onDelete={onDepartmentDelete}
               disabled={false}
+              t={t}
             />
           )}
           {tab === 'employees' && (
@@ -114,6 +115,7 @@ export function ManagementDrawer({
               onEmployeesChange={onEmployeesChange}
               departments={departments.map(d => d.name)}
               disabled={false}
+              t={t}
             />
           )}
         </div>
@@ -125,11 +127,11 @@ export function ManagementDrawer({
 /**
  * Trigger button for the drawer. Place in the toolbar.
  */
-export function ManagementDrawerButton({ onClick, count = 0 }) {
+export function ManagementDrawerButton({ onClick, count = 0, t }) {
   return (
     <button onClick={onClick} style={styles.trigger}>
       <Settings size={16} />
-      <span>Manage Data</span>
+      <span>{t('mdManageData')}</span>
       {count > 0 && <span style={styles.triggerBadge}>{count}</span>}
     </button>
   );

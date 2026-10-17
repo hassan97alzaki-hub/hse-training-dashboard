@@ -39,7 +39,7 @@ export default function DataQualityPanel({ importResult, unconfiguredEmployees, 
             </div>
           ))}
           {invalidRows.length > 10 && (
-            <div className="dq-issue">…and {invalidRows.length - 10} more invalid rows</div>
+            <div className="dq-issue">{t('dqMoreInvalid').replace('{count}', invalidRows.length - 10)}</div>
           )}
         </div>
       )}
@@ -57,7 +57,7 @@ export default function DataQualityPanel({ importResult, unconfiguredEmployees, 
             </div>
           ))}
           {duplicates.length > 8 && (
-            <div className="dq-issue">…and {duplicates.length - 8} more duplicate groups</div>
+            <div className="dq-issue">{t('dqMoreDuplicates').replace('{count}', duplicates.length - 8)}</div>
           )}
         </div>
       )}

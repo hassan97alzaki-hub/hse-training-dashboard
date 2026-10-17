@@ -21,8 +21,8 @@ vi.mock('../src/lib/requirementsService.js', async (importOriginal) => {
 
 const courses = [{ code: 'H2S', name: 'H2S Awareness', validityMonths: 24 }];
 const people = [
-  { Employee_ID: 'EMP001', Name: 'A', Department: 'Operations', Job_Title: 'Operator' },
-  { Employee_ID: 'EMP002', Name: 'B', Department: 'Maintenance', Job_Title: 'Technician' },
+  { Employee_ID: 'EMP001', Employee_Name: 'A', Department: 'Operations', Job_Title: 'Operator' },
+  { Employee_ID: 'EMP002', Employee_Name: 'B', Department: 'Maintenance', Job_Title: 'Technician' },
 ];
 const requirements = [
   { Department: 'Operations', Job_Title: 'Operator', Course_Code: 'H2S', Mandatory: true },

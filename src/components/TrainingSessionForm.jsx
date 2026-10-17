@@ -38,11 +38,20 @@ export function TrainingSessionForm({
   const course = courses.find(c => c?.code === courseCode);
 
   const attendees = useMemo(() => {
-    if (showAll || !courseCode) return people;
-    const roles = requirements.filter(r => r.Course_Code === courseCode);
-    return people.filter(person => roles.some(
-      role => role.Department === person.Department && role.Job_Title === person.Job_Title,
-    ));
+    const base = showAll || !courseCode
+      ? people
+      : (() => {
+          const roles = requirements.filter(r => r.Course_Code === courseCode);
+          return people.filter(person => roles.some(
+            role => role.Department === person.Department && role.Job_Title === person.Job_Title,
+          ));
+        })();
+    const seen = new Set();
+    return base.filter(person => {
+      if (!person.Employee_ID || seen.has(person.Employee_ID)) return false;
+      seen.add(person.Employee_ID);
+      return true;
+    });
   }, [people, requirements, courseCode, showAll]);
 
   const handleIssueDate = (value) => {
@@ -111,16 +120,28 @@ export function TrainingSessionForm({
       />
 
       <h4>{t('attendees')}</h4>
-      {attendees.map(person => (
-        <label key={person.Employee_ID}>
-          <input
-            type="checkbox"
-            data-testid={`attendee-${person.Employee_ID}`}
-            checked={selected.has(person.Employee_ID)}
-            onChange={() => toggle(person.Employee_ID)}
-          />
-          <span>{`${person.Employee_ID} — ${person.Name}`}</span>
-        </label>
+      {Object.entries(
+        attendees.reduce((groups, person) => {
+          const dept = person.Department || '—';
+          if (!groups[dept]) groups[dept] = [];
+          groups[dept].push(person);
+          return groups;
+        }, {}),
+      ).map(([dept, members]) => (
+        <div key={dept} style={{ marginBottom: '8px' }}>
+          <strong style={{ display: 'block', margin: '6px 0 2px' }}>{dept}</strong>
+          {members.map(person => (
+            <label key={person.Employee_ID} style={{ display: 'block', paddingLeft: '12px' }}>
+              <input
+                type="checkbox"
+                data-testid={`attendee-${person.Employee_ID}`}
+                checked={selected.has(person.Employee_ID)}
+                onChange={() => toggle(person.Employee_ID)}
+              />
+              <span>{`${person.Employee_ID} — ${person.Employee_Name} (${person.Job_Title || '—'})`}</span>
+            </label>
+          ))}
+        </div>
       ))}
       {!showAll && <button type="button" onClick={() => setShowAll(true)}>{t('showAllEmployees')}</button>}
 

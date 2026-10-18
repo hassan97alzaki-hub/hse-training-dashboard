@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HSE Training Dashboard — Track Safety Compliance Effortlessly</title>
+  <meta name="description" content="Free HSE training compliance dashboard. Track certifications, expiry dates, and workforce readiness. Built for safety professionals in oil & gas, construction, and manufacturing.">
+  <meta name="keywords" content="HSE training, safety compliance, training tracker, certification management, نظام متابعة تدريب السلامة, إدارة شهادات التدريب">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta property="og:title" content="HSE Training Dashboard">
+  <meta property="og:description" content="Track safety training compliance across your workforce. Free, bilingual (EN/AR), works offline.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://hse-training-dashboard.vercel.app">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://hse-training-dashboard.vercel.app">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e17;
+      --bg-card: #121826;
+      --border: #232b3d;
+      --text: #f3f5f9;
+      --text-sec: #9aa5ba;
+      --text-muted: #66708a;
+      --brand: #5b7cfa;
+      --brand-hover: #4763e0;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --critical: #ef4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a { color: var(--brand); text-decoration: none; }
+
+    /* ── Nav ── */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 14, 23, 0.9);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--text);
+    }
+    .nav-logo img { width: 28px; height: 28px; }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .lang-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-sec);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: border-color 0.2s;
+    }
+    .lang-toggle:hover { border-color: var(--brand); color: var(--text); }
+
+    /* ── CTA button ── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--brand);
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      text-decoration: none;
+    }
+    .btn-primary:hover { background: var(--brand-hover); transform: translateY(-1px); }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--text);
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.2s;
+      text-decoration: none;
+    }
+    .btn-secondary:hover { border-color: var(--brand); }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 80px 24px 60px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(91, 124, 250, 0.12);
+      color: var(--brand);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      border: 1px solid rgba(91, 124, 250, 0.2);
+    }
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--brand), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--text-sec);
+      max-width: 580px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+    .hero-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Features ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: var(--brand); transform: translateY(-2px); }
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 22px;
+    }
+    .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--text-sec); line-height: 1.6; }
+
+    /* ── Stats ── */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat-value {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--brand), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── How it works ── */
+    .how {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 80px 24px;
+      text-align: center;
+    }
+    .how h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 48px;
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 32px;
+      text-align: center;
+    }
+    .step-num {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(91, 124, 250, 0.14);
+      color: var(--brand);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+    .step h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .step p { font-size: 13px; color: var(--text-sec); }
+
+    /* ── CTA section ── */
+    .cta-section {
+      text-align: center;
+      padding: 80px 24px;
+      background: linear-gradient(180deg, transparent, rgba(91, 124, 250, 0.04));
+    }
+    .cta-section h2 { font-size: 28px; font-weight: 800; margin-bottom: 16px; }
+    .cta-section p { color: var(--text-sec); margin-bottom: 32px; font-size: 16px; }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .footer a { color: var(--text-sec); }
+
+    /* ── RTL ── */
+    [dir="rtl"] { font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif; }
+    [dir="rtl"] .hero { direction: rtl; }
+    [dir="rtl"] .feature-card { text-align: right; }
+    [dir="rtl"] .step { direction: rtl; }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      .nav { padding: 12px 16px; }
+      .nav-logo span { display: none; }
+      .hero { padding: 48px 16px 40px; }
+      .hero h1 { font-size: 28px; }
+      .hero p { font-size: 15px; }
+      .btn-primary, .btn-secondary { padding: 10px 18px; font-size: 14px; }
+      .features { padding: 24px 16px 48px; }
+      .stats { gap: 24px; padding: 24px 16px; }
+      .stat-value { font-size: 28px; }
+      .how { padding: 48px 16px; }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="nav-logo">
+      <img src="/favicon.svg" alt="Logo" width="28" height="28">
+      <span data-en="HSE Training Dashboard" data-ar="لوحة متابعة التدريب HSE">HSE Training Dashboard</span>
+    </div>
+    <div class="nav-actions">
+      <button class="lang-toggle" onclick="toggleLang()" id="langBtn">العربية</button>
+      <a href="/app/" class="btn-primary" data-en="Open Dashboard" data-ar="افتح لوحة المتابعة">Open Dashboard</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge" data-en="Free &amp; Open Source" data-ar="مجاني ومفتوح المصدر">Free &amp; Open Source</div>
+    <h1>
+      <span data-en="Track Safety Training" data-ar="تابع تدريب السلامة">Track Safety Training</span><br>
+      <span class="gradient" data-en="Compliance Made Simple" data-ar="الامتثال صار سهل">Compliance Made Simple</span>
+    </h1>
+    <p data-en="Monitor certifications, catch expiring trainings before they lapse, and keep your workforce 100% compliant. Built by HSE professionals, for HSE professionals."
+       data-ar="تابع الشهادات، اكتشف التدريبات المنتهية قبل انتهائها، وحافظ على امتثال القوى العاملة 100%. مبني بأيدي متخصصي السلامة، لمتخصصي السلامة.">
+      Monitor certifications, catch expiring trainings before they lapse, and keep your workforce 100% compliant. Built by HSE professionals, for HSE professionals.
+    </p>
+    <div class="hero-buttons">
+      <a href="/app/" class="btn-primary" data-en="Try It Now — Free" data-ar="جرّبه الآن — مجاناً">Try It Now — Free</a>
+      <a href="#features" class="btn-secondary" data-en="See Features" data-ar="اكتشف المميزات">See Features</a>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="stats">
+    <div class="stat">
+      <div class="stat-value">9</div>
+      <div class="stat-label" data-en="Compliance Statuses Tracked" data-ar="حالات امتثال متابَعة">Compliance Statuses Tracked</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">EN/AR</div>
+      <div class="stat-label" data-en="Bilingual Interface" data-ar="واجهة ثنائية اللغة">Bilingual Interface</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">100%</div>
+      <div class="stat-label" data-en="Works Offline" data-ar="يعمل بدون إنترنت">Works Offline</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">0</div>
+      <div class="stat-label" data-en="Cost — Forever Free" data-ar="التكلفة — مجاني للأبد">Cost — Forever Free</div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(34,197,94,0.12);">📊</div>
+      <h3 data-en="Executive Dashboard" data-ar="لوحة القيادة التنفيذية">Executive Dashboard</h3>
+      <p data-en="At-a-glance compliance rates, expiry forecasts, and department breakdowns. Know your workforce status in seconds."
+         data-ar="نسب الامتثال، توقعات الانتهاء، وتفاصيل الأقسام في لمحة واحدة. اعرف حالة القوى العاملة في ثوانٍ.">
+        At-a-glance compliance rates, expiry forecasts, and department breakdowns. Know your workforce status in seconds.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(239,68,68,0.12);">🔔</div>
+      <h3 data-en="Priority Actions" data-ar="الإجراءات ذات الأولوية">Priority Actions</h3>
+      <p data-en="Auto-prioritized list of expiring and missing certifications. Critical items surface first so nothing slips through."
+         data-ar="قائمة مرتبة تلقائياً بالشهادات المنتهية والمفقودة. العناصر الحرجة تظهر أولاً حتى لا يفوتك شيء.">
+        Auto-prioritized list of expiring and missing certifications. Critical items surface first so nothing slips through.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(245,158,11,0.12);">📋</div>
+      <h3 data-en="Full Compliance Table" data-ar="جدول الامتثال الكامل">Full Compliance Table</h3>
+      <p data-en="Filter by department, status, course, or employee. Search, sort, and paginate through every training record."
+         data-ar="فلتر حسب القسم، الحالة، الدورة، أو الموظف. بحث وترتيب وتصفح كل سجلات التدريب.">
+        Filter by department, status, course, or employee. Search, sort, and paginate through every training record.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(91,124,250,0.12);">📥</div>
+      <h3 data-en="Excel Import / Export" data-ar="استيراد / تصدير Excel">Excel Import / Export</h3>
+      <p data-en="Upload your existing training spreadsheet and see results instantly. Export compliance reports for audits and management."
+         data-ar="ارفع ملف التدريب الحالي وشاهد النتائج فوراً. صدّر تقارير الامتثال للتدقيق والإدارة.">
+        Upload your existing training spreadsheet and see results instantly. Export compliance reports for audits and management.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(96,165,250,0.12);">🌍</div>
+      <h3 data-en="Arabic + English" data-ar="عربي + إنجليزي">Arabic + English</h3>
+      <p data-en="Full RTL support with Arabic interface. Switch languages instantly. Perfect for GCC and Middle East organizations."
+         data-ar="دعم كامل للعربية مع واجهة RTL. بدّل اللغة فوراً. مثالي لمنظمات الخليج والشرق الأوسط.">
+        Full RTL support with Arabic interface. Switch languages instantly. Perfect for GCC and Middle East organizations.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(124,134,156,0.12);">🔒</div>
+      <h3 data-en="Privacy First" data-ar="الخصوصية أولاً">Privacy First</h3>
+      <p data-en="Works entirely in your browser. No data leaves your device unless you choose cloud sync. Your training data stays yours."
+         data-ar="يعمل بالكامل في متصفحك. بياناتك لا تغادر جهازك إلا إذا اخترت المزامنة السحابية.">
+        Works entirely in your browser. No data leaves your device unless you choose cloud sync. Your training data stays yours.
+      </p>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="how">
+    <h2 data-en="Up and Running in 3 Steps" data-ar="ابدأ في 3 خطوات">Up and Running in 3 Steps</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3 data-en="Upload Your Data" data-ar="ارفع بياناتك">Upload Your Data</h3>
+        <p data-en="Import your training spreadsheet (Excel/CSV). Column mapping is automatic."
+           data-ar="استورد ملف التدريب (Excel/CSV). ربط الأعمدة تلقائي.">
+          Import your training spreadsheet (Excel/CSV). Column mapping is automatic.
+        </p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3 data-en="See Compliance Status" data-ar="شاهد حالة الامتثال">See Compliance Status</h3>
+        <p data-en="Dashboard calculates expiry dates, flags overdue items, and prioritizes actions."
+           data-ar="اللوحة تحسب تواريخ الانتهاء، تنبه للمتأخرات، وترتب الأولويات.">
+          Dashboard calculates expiry dates, flags overdue items, and prioritizes actions.
+        </p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3 data-en="Take Action" data-ar="اتخذ الإجراء">Take Action</h3>
+        <p data-en="Send reminders, export reports, and close compliance gaps before the next audit."
+           data-ar="أرسل تذكيرات، صدّر التقارير، وأغلق فجوات الامتثال قبل التدقيق القادم.">
+          Send reminders, export reports, and close compliance gaps before the next audit.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2 data-en="Ready to Simplify HSE Compliance?" data-ar="جاهز تبسّط متابعة السلامة؟">Ready to Simplify HSE Compliance?</h2>
+    <p data-en="No sign-up required. No credit card. Just open and start tracking."
+       data-ar="بدون تسجيل. بدون بطاقة ائتمان. افتح وابدأ المتابعة.">
+      No sign-up required. No credit card. Just open and start tracking.
+    </p>
+    <a href="/app/" class="btn-primary" data-en="Open Dashboard — It's Free" data-ar="افتح لوحة المتابعة — مجاناً">Open Dashboard — It's Free</a>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>
+      <span data-en="Built by" data-ar="بناء">Built by</span>
+      <a href="https://www.youtube.com/@HSE.MasteryHub" target="_blank" rel="noopener">HSE Mastery Hub</a>
+      · © 2026
+    </p>
+  </footer>
+
+  <script>
+    let currentLang = (navigator.language || '').startsWith('ar') ? 'ar' : 'en';
+
+    function applyLang(lang) {
+      currentLang = lang;
+      const isAr = lang === 'ar';
+      document.documentElement.lang = lang;
+      document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+      document.getElementById('langBtn').textContent = isAr ? 'English' : 'العربية';
+      document.querySelectorAll('[data-' + lang + ']').forEach(function(el) {
+        el.textContent = el.getAttribute('data-' + lang);
+      });
+    }
+
+    function toggleLang() {
+      applyLang(currentLang === 'en' ? 'ar' : 'en');
+    }
+
+    applyLang(currentLang);
+  </script>
+</body>
+</html>

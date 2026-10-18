@@ -1070,7 +1070,7 @@ tbody tr:last-child { border-bottom: none; }
   .header-title { font-size: 18px; line-height: 1.25; }
   .header-subtitle { font-size: 11px; }
   .logo-slot { width: 32px; height: 32px; }
-  .main-content { padding: var(--sp-3); }
+  .main-content { padding: var(--sp-2); }
   .section { padding: var(--sp-3); }
 
   /* Touch targets: 44 px minimum, label never clipped. */
@@ -1106,6 +1106,51 @@ tbody tr:last-child { border-bottom: none; }
   /* A table keeps its own horizontal scroll; the page keeps none. */
   .table-wrap { max-height: 60vh; }
   table { min-width: 560px; }
+
+  /* Executive summary: single column, hide vertical dividers */
+  .exec-grid { grid-template-columns: 1fr; gap: var(--sp-3); }
+  .exec-divider { display: none; }
+  .exec-summary { padding: var(--sp-3); }
+  .exec-item-value { font-size: 28px; }
+
+  /* KPI status cards: full width */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
+
+  /* Charts: reduce padding */
+  .chart-wrap { padding: var(--sp-3); }
+
+  /* Donut legend: single column on tiny screens */
+  .donut-legend { grid-template-columns: 1fr; gap: 8px; }
+
+  /* Priority rows: stack action below name */
+  .priority-row { flex-wrap: wrap; padding: 10px 12px; }
+  .priority-row-action { width: 100%; text-align: left; margin-top: 4px; font-size: var(--fs-micro); }
+  [dir="rtl"] .priority-row-action { text-align: right; }
+
+  /* Pagination: stack on narrow screens */
+  .pagination-bar { flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+  .pagination-controls { justify-content: center; }
+
+  /* Section headers: allow title to wrap */
+  .section-title { font-size: 16px; }
+
+  /* Footer: stack */
+  .app-footer { padding: var(--sp-3); }
+  .app-footer-inner { flex-direction: column; align-items: flex-start; }
+
+  /* Header: compact on phone */
+  .header-row { padding: var(--sp-2) var(--sp-3); }
+  .header-actions { flex-wrap: wrap; gap: var(--sp-2); width: 100%; }
+  .privacy-badge { max-width: 100%; font-size: 10px; }
+  .lang-toggle { padding: 6px 10px; font-size: 11px; }
+  .header-meta-fields { gap: var(--sp-2); }
+  .header-field { flex: 1 1 45%; }
+  .header-export-group { gap: var(--sp-2); }
+  .header-export-group .btn { font-size: 11px; padding: 8px 10px; }
+
+  /* Action bar: stack buttons on phone */
+  .action-bar { gap: var(--sp-2); }
+  .action-bar .file-input-label { flex: 1 1 100%; justify-content: center; }
 }
 
 /* ── Reduced motion ─────────────────────────────────────── */

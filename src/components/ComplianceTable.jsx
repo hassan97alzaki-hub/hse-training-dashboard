@@ -4,9 +4,10 @@ import { PRIORITY_FROM_STATUS, filterComplianceItems } from '../lib/tableFilters
 import { formatDateDisplay } from '../lib/normalization.js';
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from '../lib/constants.js';
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, t }) {
   if (!status) return null;
-  return <span className={`status-badge ${status}`}>{status.replace(/_/g, ' ')}</span>;
+  const label = t ? t('status' + status) : status.replace(/_/g, ' ');
+  return <span className={`status-badge ${status}`}>{label}</span>;
 }
 
 export default function ComplianceTable({
@@ -95,7 +96,7 @@ export default function ComplianceTable({
                   <td title={item.Department_Code ?? item.Department}>{item.Department_Name ?? item.Department}</td>
                   <td title={item.Job_Title_Code ?? item.Job_Title}>{item.Job_Title_Name ?? item.Job_Title}</td>
                   <td title={item.Course_Name}>{item.Course_Code} — {item.Course_Name}</td>
-                  <td><StatusBadge status={item.Status} /></td>
+                  <td><StatusBadge status={item.Status} t={t} /></td>
                   <td style={{ fontFamily: 'monospace', fontSize: 11 }}>
                     {item.Expiry_Date ? formatDateDisplay(item.Expiry_Date, lang) : '—'}
                   </td>

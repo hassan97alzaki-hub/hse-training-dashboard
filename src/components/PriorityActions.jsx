@@ -33,7 +33,7 @@ export default function PriorityActions({ actions, t, lang }) {
               <div className="priority-row-top">
                 <span className="priority-row-name">{a.Employee_Name}</span>
                 <span className={`priority-badge ${a.priority}`}>{t(`priority${a.priority}`)}</span>
-                <span className={`status-badge ${a.Status}`}>{a.Status.replace(/_/g, ' ')}</span>
+                <span className={`status-badge ${a.Status}`}>{t('status' + a.Status)}</span>
               </div>
               <div className="priority-row-meta">
                 {a.Employee_ID} · {a.Department_Name ?? a.Department} · {a.Course_Code} — {a.Course_Name}

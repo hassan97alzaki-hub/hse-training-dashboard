@@ -573,6 +573,17 @@ const translations = {
     // Data quality overflow
     dqMoreInvalid: '…and {count} more invalid rows',
     dqMoreDuplicates: '…and {count} more duplicate groups',
+
+    // Status labels
+    statusVALID: 'Valid',
+    statusEXPIRING_90: 'Expiring (90d)',
+    statusEXPIRING_60: 'Expiring (60d)',
+    statusEXPIRING_30: 'Expiring (30d)',
+    statusEXPIRED: 'Expired',
+    statusIN_PROGRESS: 'In Progress',
+    statusNOT_STARTED: 'Not Started',
+    statusMISSING: 'Missing',
+    statusNOT_REQUIRED: 'Not Required',
   },
 
   ar: {
@@ -1144,6 +1155,17 @@ const translations = {
     // جودة البيانات — المزيد
     dqMoreInvalid: '…و {count} صفاً إضافياً غير صالح',
     dqMoreDuplicates: '…و {count} مجموعة مكررة إضافية',
+
+    // تسميات الحالة
+    statusVALID: 'صالح',
+    statusEXPIRING_90: 'ينتهي خلال 90 يوم',
+    statusEXPIRING_60: 'ينتهي خلال 60 يوم',
+    statusEXPIRING_30: 'ينتهي خلال 30 يوم',
+    statusEXPIRED: 'منتهي الصلاحية',
+    statusIN_PROGRESS: 'قيد التنفيذ',
+    statusNOT_STARTED: 'لم يبدأ',
+    statusMISSING: 'مفقود',
+    statusNOT_REQUIRED: 'غير مطلوب',
   },
 };
 

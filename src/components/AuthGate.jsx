@@ -53,7 +53,7 @@ export function AuthGate({ children, t = (key) => key }) {
   }, [required]);
 
   if (state === AUTH_STATE.LOADING) {
-    return <div style={styles.center}>{t('loading')}</div>;
+    return <div className="auth-gate"><div className="auth-gate-card" style={{ textAlign: 'center' }}>{t('loading')}</div></div>;
   }
 
   if (state === AUTH_STATE.SIGNED_OUT) {
@@ -107,170 +107,75 @@ export function SignInForm({ t = (key) => key }) {
       : t('resetPassword');
 
   return (
-    <div style={styles.center}>
-      <form onSubmit={submit} style={styles.card}>
-        <h1 style={styles.title}>{t('authTitle')}</h1>
-        <h2 style={styles.subtitle}>{title}</h2>
+    <div className="auth-gate">
+      <div className="auth-gate-brand">
+        <img src="/favicon.svg" alt="" width="40" height="40" className="auth-gate-logo" />
+        <h1 className="auth-gate-title">{t('authTitle')}</h1>
+        <p className="auth-gate-tagline">{t('authTagline')}</p>
+      </div>
+      <form onSubmit={submit} className="auth-gate-card">
+        <h2 className="auth-gate-mode">{title}</h2>
 
-        {error && <div style={styles.error}>{error}</div>}
-        {notice && <div style={styles.notice}>{notice}</div>}
+        {error && <div className="auth-gate-error">{error}</div>}
+        {notice && <div className="auth-gate-notice">{notice}</div>}
 
-        <label style={styles.label} htmlFor="auth-email">{t('emailAddress')}</label>
+        <label className="auth-gate-label" htmlFor="auth-email">{t('emailAddress')}</label>
         <input
           id="auth-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={styles.input}
+          className="auth-gate-input"
           autoComplete="username"
           required
           disabled={busy}
+          placeholder={t('emailPlaceholder')}
         />
 
         {mode !== 'reset' && (
           <>
-            <label style={styles.label} htmlFor="auth-password">{t('password')}</label>
+            <label className="auth-gate-label" htmlFor="auth-password">{t('password')}</label>
             <input
               id="auth-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
+              className="auth-gate-input"
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               required
               disabled={busy}
             />
             {mode === 'signup' && (
-              <p style={styles.hint}>{t('passwordHint')}</p>
+              <p className="auth-gate-hint">{t('passwordHint')}</p>
             )}
           </>
         )}
 
-        <button type="submit" style={styles.primaryBtn} disabled={busy}>
+        <button type="submit" className="auth-gate-submit" disabled={busy}>
           {busy ? t('working') : title}
         </button>
 
-        <div style={styles.links}>
+        <div className="auth-gate-links">
           {mode !== 'signin' && (
-            <button type="button" style={styles.linkBtn} onClick={() => setMode('signin')}>
+            <button type="button" className="auth-gate-link" onClick={() => setMode('signin')}>
               {t('signInInstead')}
             </button>
           )}
           {mode !== 'signup' && (
-            <button type="button" style={styles.linkBtn} onClick={() => setMode('signup')}>
+            <button type="button" className="auth-gate-link" onClick={() => setMode('signup')}>
               {t('createAccount')}
             </button>
           )}
           {mode !== 'reset' && (
-            <button type="button" style={styles.linkBtn} onClick={() => setMode('reset')}>
+            <button type="button" className="auth-gate-link" onClick={() => setMode('reset')}>
               {t('forgotPassword')}
             </button>
           )}
         </div>
 
-        <p style={styles.footnote}>{t('authPrivacy')}</p>
+        <p className="auth-gate-footnote">{t('authPrivacy')}</p>
       </form>
     </div>
   );
 }
 
-const styles = {
-  center: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-    backgroundColor: '#f9fafb',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '400px',
-    backgroundColor: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '28px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-  },
-  title: {
-    margin: '0 0 4px',
-    fontSize: '18px',
-    fontWeight: 700,
-    color: '#1f2937',
-  },
-  subtitle: {
-    margin: '0 0 20px',
-    fontSize: '14px',
-    fontWeight: 500,
-    color: '#6b7280',
-  },
-  label: {
-    display: 'block',
-    marginBottom: '4px',
-    fontSize: '13px',
-    fontWeight: 500,
-    color: '#374151',
-  },
-  input: {
-    width: '100%',
-    padding: '10px',
-    marginBottom: '14px',
-    border: '1px solid #d1d5db',
-    borderRadius: '4px',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-  },
-  hint: {
-    margin: '-8px 0 14px',
-    fontSize: '12px',
-    color: '#6b7280',
-  },
-  primaryBtn: {
-    width: '100%',
-    padding: '11px',
-    border: 'none',
-    borderRadius: '4px',
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    fontSize: '14px',
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  links: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '12px',
-    marginTop: '14px',
-  },
-  linkBtn: {
-    background: 'transparent',
-    border: 'none',
-    padding: 0,
-    color: '#2563eb',
-    fontSize: '13px',
-    cursor: 'pointer',
-  },
-  error: {
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    padding: '10px',
-    borderRadius: '4px',
-    marginBottom: '14px',
-    fontSize: '13px',
-  },
-  notice: {
-    backgroundColor: '#ecfdf5',
-    color: '#065f46',
-    padding: '10px',
-    borderRadius: '4px',
-    marginBottom: '14px',
-    fontSize: '13px',
-  },
-  footnote: {
-    marginTop: '18px',
-    marginBottom: 0,
-    fontSize: '12px',
-    color: '#9ca3af',
-  },
-};

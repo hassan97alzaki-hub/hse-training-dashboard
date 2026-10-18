@@ -4,9 +4,9 @@
   "env": {
     "VITE_APP_NAME": "HSE Training Dashboard"
   },
-  "rewrites": [
-    { "source": "/", "destination": "/landing.html" },
-    { "source": "/app", "destination": "/index.html" },
-    { "source": "/app/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "^/$", "dest": "/landing.html" },
+    { "src": "^/app(/.*)?$", "dest": "/index.html" },
+    { "handle": "filesystem" }
   ]
 }

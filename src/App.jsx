@@ -667,22 +667,29 @@ export default function App({
     }
   }
 
-  function handleExportPDF() {
+  // An Arabic report has to fetch and embed its font before anything is drawn,
+  // so the export is asynchronous and its failure has to be reported here.
+  async function handleExportPDF() {
     if (!kpis) return;
-    exportManagementPDF({
-      companyName, projectName,
-      asOfDate,
-      sourceFileName,
-      kpis: displayKpis, priorityActions: displayPriorityActions,
-      dataQuality: {
-        invalidRows: lastImportResult?.importSummary?.invalid || 0,
-        duplicateGroups: complianceResult?.duplicates?.length || 0,
-        configWarnings: complianceResult?.configWarnings?.length || 0,
-      },
-      universe: displayUniverse,
-      requirementsProvenance,
-      lang, t,
-    });
+    try {
+      await exportManagementPDF({
+        companyName, projectName,
+        asOfDate,
+        sourceFileName,
+        kpis: displayKpis, priorityActions: displayPriorityActions,
+        dataQuality: {
+          invalidRows: lastImportResult?.importSummary?.invalid || 0,
+          duplicateGroups: complianceResult?.duplicates?.length || 0,
+          configWarnings: complianceResult?.configWarnings?.length || 0,
+        },
+        universe: displayUniverse,
+        requirementsProvenance,
+        lang, t,
+      });
+    } catch (err) {
+      console.error('PDF export failed', err);
+      alert(t('pdfExportFailed'));
+    }
   }
 
   function handleExportCSV() {

@@ -2,6 +2,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { STATUS_COLORS } from './constants.js';
 import { isSupabaseConfigured } from './supabaseClient.js';
+import { createI18n } from './i18n.js';
+import { shapeArabicLine } from './pdf/arabicText.js';
+import { registerArabicFont, ARABIC_FONT_NAME } from './pdf/arabicFont.js';
 import {
   REQUIREMENTS_PROVENANCE,
   isTestRequirements,
@@ -145,10 +148,25 @@ export function exportPriorityActionsCSV(actions, meta, t) {
 }
 
 // ============================================================
-// MANAGEMENT PDF EXPORT (English only — see ASSUMPTIONS.md for Arabic PDF limitation)
+// MANAGEMENT PDF EXPORT (English and Arabic)
 // ============================================================
 
-export function exportManagementPDF(opts) {
+/** Fills `{name}` placeholders in a translated string. */
+function fmt(template, vars = {}) {
+  return Object.keys(vars).reduce(
+    (out, key) => out.split(`{${key}}`).join(String(vars[key])),
+    String(template),
+  );
+}
+
+/**
+ * Builds the management report and starts the download. Returns the filename.
+ *
+ * Arabic reports embed a font and therefore fetch it, which is why this is
+ * async. If the font cannot be loaded the report falls back to English rather
+ * than producing a PDF full of blank glyphs.
+ */
+export async function exportManagementPDF(opts) {
   const {
     companyName,
     projectName,
@@ -163,14 +181,23 @@ export function exportManagementPDF(opts) {
     requirementsProvenance,
   } = opts;
 
-  if (lang === 'ar') {
-    // Arabic PDF: jsPDF cannot shape Arabic glyphs without custom font embedding.
-    // Export English PDF with a note instead (see docs/ASSUMPTIONS.md).
-    alert(t('pdfNotAvailableArabic'));
-    return exportManagementPDF({ ...opts, lang: 'en', t: (k) => k });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const isArabic = lang === 'ar';
+  if (isArabic) {
+    try {
+      await registerArabicFont(doc);
+    } catch {
+      alert(t('pdfFontLoadFailed'));
+      return exportManagementPDF({ ...opts, lang: 'en', t: createI18n('en').t });
+    }
   }
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  // Every string drawn into the document goes through `S`. In Arabic it shapes
+  // the letters and reorders the line; in English it is a no-op.
+  const FONT = isArabic ? ARABIC_FONT_NAME : 'helvetica';
+  const S = (value) => (isArabic ? shapeArabicLine(value) : (value ?? ''));
+  const L = (key, vars) => S(fmt(t(key), vars));
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const margin = 14;
@@ -186,6 +213,47 @@ export function exportManagementPDF(opts) {
   const RED = [220, 38, 38];
   const AMBER = [234, 88, 12];
   const SLATE = [30, 41, 59];
+
+  // An Arabic report reads right to left, so every text anchor is mirrored
+  // across the page and drawn right-aligned. `ALIGN` is spread into the jsPDF
+  // text options; `mx` mirrors an x coordinate that was measured from the left.
+  const ALIGN = isArabic ? { align: 'right' } : {};
+  const mx = (x) => (isArabic ? pw - x : x);
+
+  // jsPDF-AutoTable has no shaping or bidi support either, so table cells are
+  // prepared exactly like the hand-drawn text. An Arabic table also reads right
+  // to left, so the columns are reversed: `cells` flips every row and header,
+  // `colIndex` maps a logical column onto the index it ends up at, and `cols`
+  // moves the per-column styles with it.
+  const tableStyles = { font: FONT, halign: isArabic ? 'right' : 'left' };
+  const cells = (rows) => (isArabic ? rows.map((row) => row.map(S).reverse()) : rows);
+  const colIndex = (count, i) => (isArabic ? count - 1 - i : i);
+  const cols = (count, styles) => Object.fromEntries(
+    Object.entries(styles).map(([i, style]) => [colIndex(count, Number(i)), style]),
+  );
+
+  /**
+   * Wraps text to `maxW`, measuring the shaped form of each candidate line.
+   * jsPDF's own splitTextToSize measures the unshaped code points, which is the
+   * wrong width for Arabic, and it would break the line in visual order.
+   */
+  function wrap(text, maxW) {
+    const source = String(text ?? '');
+    if (!isArabic) return doc.splitTextToSize(source, maxW);
+    const lines = [];
+    let line = '';
+    for (const word of source.split(' ')) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && doc.getTextWidth(S(candidate)) > maxW) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) lines.push(line);
+    return lines.length ? lines : [''];
+  }
 
   function newPage() {
     doc.addPage();
@@ -204,9 +272,9 @@ export function exportManagementPDF(opts) {
   function h1(text, reserve = 0) {
     checkSpace(12 + reserve);
     doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(FONT, 'bold');
     doc.setTextColor(...ORANGE);
-    doc.text(text, margin, y);
+    doc.text(S(text), mx(margin), y, ALIGN);
     y += 8;
     doc.setDrawColor(...ORANGE);
     doc.setLineWidth(0.5);
@@ -217,31 +285,33 @@ export function exportManagementPDF(opts) {
   function h2(text) {
     checkSpace(10);
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(FONT, 'bold');
     doc.setTextColor(...DARK);
-    doc.text(text, margin, y);
+    doc.text(S(text), mx(margin), y, ALIGN);
     y += 7;
   }
 
   function kv(key, value, highlight = false) {
     checkSpace(7);
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(FONT, 'bold');
     doc.setTextColor(...GREY);
-    doc.text(key + ':', margin, y);
-    doc.setFont('helvetica', 'normal');
+    doc.text(S(key + ':'), mx(margin), y, ALIGN);
+    doc.setFont(FONT, 'normal');
     doc.setTextColor(highlight ? ORANGE[0] : DARK[0], highlight ? ORANGE[1] : DARK[1], highlight ? ORANGE[2] : DARK[2]);
-    doc.text(String(value), margin + 55, y);
+    doc.text(S(String(value)), mx(margin + 55), y, ALIGN);
     y += 6;
   }
 
   function para(text, indented = false) {
     checkSpace(8);
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(FONT, 'normal');
     doc.setTextColor(...DARK);
-    const lines = doc.splitTextToSize(text, pw - margin * 2 - (indented ? 10 : 0));
-    doc.text(lines, margin + (indented ? 10 : 0), y);
+    // The line break has to be measured on the logical text, because shaping
+    // and reordering would scramble the word order inside each wrapped line.
+    const lines = wrap(text, pw - margin * 2 - (indented ? 10 : 0));
+    doc.text(lines.map(S), mx(margin + (indented ? 10 : 0)), y, ALIGN);
     y += lines.length * 5 + 2;
   }
 
@@ -284,21 +354,26 @@ export function exportManagementPDF(opts) {
       doc.setDrawColor(...LIGHT_GREY);
       doc.setLineWidth(0.3);
       doc.roundedRect(x, y, cardW, cardH, 2, 2, 'FD');
-      // Accent bar on the leading edge carries the card's status colour.
+      // Accent bar on the leading edge carries the card's status colour, which
+      // is the right edge when the report reads right to left.
       doc.setFillColor(...card.color);
-      doc.rect(x, y, 1.6, cardH, 'F');
+      doc.rect(isArabic ? x + cardW - 1.6 : x, y, 1.6, cardH, 'F');
+      // Text is inset from the leading edge of the card, mirrored for Arabic.
+      const tx = isArabic ? x + cardW - 5 : x + 5;
       doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(FONT, 'bold');
       doc.setTextColor(...GREY);
-      doc.text(doc.splitTextToSize(card.label.toUpperCase(), cardW - 8), x + 5, y + 6);
+      // Arabic has no case, so uppercasing is only applied to the Latin label.
+      const label = isArabic ? String(card.label) : String(card.label).toUpperCase();
+      doc.text(wrap(label, cardW - 8).map(S), tx, y + 6, ALIGN);
       doc.setFontSize(17);
       doc.setTextColor(...card.color);
-      doc.text(String(card.value), x + 5, y + 18);
+      doc.text(S(String(card.value)), tx, y + 18, ALIGN);
       if (card.note) {
         doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
+        doc.setFont(FONT, 'normal');
         doc.setTextColor(...GREY);
-        doc.text(card.note, x + 5, y + 22);
+        doc.text(S(String(card.note)), tx, y + 22, ALIGN);
       }
     });
     y += cardH + 8;
@@ -316,22 +391,24 @@ export function exportManagementPDF(opts) {
     const trackW = pw - margin * 2 - labelW - valueW;
     const max = Math.max(1, ...series.map((s) => s.value));
     checkSpace(series.length * rowH + 4);
+    // Mirrored for Arabic: labels on the right, bars growing leftwards.
+    const trackX = isArabic ? margin + valueW : margin + labelW;
     series.forEach((s) => {
       const barY = y + 1.5;
       doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(FONT, 'normal');
       doc.setTextColor(...DARK);
-      doc.text(s.label, margin, y + 4.5);
+      doc.text(S(s.label), mx(margin), y + 4.5, ALIGN);
       doc.setFillColor(240, 241, 245);
-      doc.rect(margin + labelW, barY, trackW, 3.5, 'F');
+      doc.rect(trackX, barY, trackW, 3.5, 'F');
       const w = (s.value / max) * trackW;
       if (w > 0) {
         doc.setFillColor(...s.color);
-        doc.rect(margin + labelW, barY, w, 3.5, 'F');
+        doc.rect(isArabic ? trackX + trackW - w : trackX, barY, w, 3.5, 'F');
       }
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(FONT, 'bold');
       doc.setTextColor(...s.color);
-      doc.text(String(s.value), margin + labelW + trackW + 3, y + 4.5);
+      doc.text(String(s.value), mx(margin + labelW + trackW + 3), y + 4.5, ALIGN);
       y += rowH;
     });
     y += 4;
@@ -347,20 +424,22 @@ export function exportManagementPDF(opts) {
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, y, pw - margin * 2, boxH, 2, 2, 'FD');
     doc.setFillColor(...RED);
-    doc.rect(margin, y, 1.6, boxH, 'F');
+    doc.rect(isArabic ? pw - margin - 1.6 : margin, y, 1.6, boxH, 'F');
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(FONT, 'bold');
     doc.setTextColor(...RED);
-    doc.text(title, margin + 5, y + 7);
+    doc.text(S(title), mx(margin + 5), y + 7, ALIGN);
     doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(FONT, 'normal');
     doc.setTextColor(...DARK);
     items.forEach((item, i) => {
-      doc.text(
-        doc.splitTextToSize(`${i + 1}. ${item}`, pw - margin * 2 - 10)[0],
-        margin + 5,
-        y + 12.5 + i * lineH,
-      );
+      // Measured on the logical text, then shaped, so the words stay in order.
+      // `1.` at the head of an Arabic line is a neutral-terminated Latin run,
+      // so the bidi pass moves it to the visual left — the far end of the line
+      // from where the reader starts. A bullet has no direction of its own.
+      const prefix = isArabic ? '•' : `${i + 1}.`;
+      const line = wrap(`${prefix} ${item}`, pw - margin * 2 - 10)[0];
+      doc.text(S(line), mx(margin + 5), y + 12.5 + i * lineH, ALIGN);
     });
     y += boxH + 8;
   }
@@ -375,33 +454,35 @@ export function exportManagementPDF(opts) {
       .filter((d) => d.total > 0)
       .sort((a, b) => a.percentage - b.percentage)[0];
     if (worstDept && worstDept.percentage < 100) {
-      items.push(
-        `Lowest department compliance: ${worstDept.department} at ${worstDept.percentage}% `
-        + `(${worstDept.nonCompliant} of ${worstDept.total} requirements non-compliant).`,
-      );
+      items.push(fmt(t('pdfRiskLowestDept'), {
+        dept: worstDept.department,
+        pct: worstDept.percentage,
+        bad: worstDept.nonCompliant,
+        total: worstDept.total,
+      }));
     }
     const worstCourse = (kpis.courseCompliance || [])
       .filter((c) => c.employeesRequired > 0)
       .sort((a, b) => a.percentage - b.percentage)[0];
     if (worstCourse && worstCourse.percentage < 100) {
-      items.push(
-        `Lowest course compliance: ${worstCourse.course_name} at ${worstCourse.percentage}% `
-        + `(${worstCourse.nonCompliant} of ${worstCourse.employeesRequired} employees non-compliant).`,
-      );
+      items.push(fmt(t('pdfRiskLowestCourse'), {
+        course: worstCourse.course_name,
+        pct: worstCourse.percentage,
+        bad: worstCourse.nonCompliant,
+        total: worstCourse.employeesRequired,
+      }));
     }
     const expired = kpis.statusCounts.EXPIRED || 0;
     const missing = kpis.statusCounts.MISSING || 0;
     if (expired + missing > 0) {
-      items.push(
-        `${expired} expired and ${missing} missing requirement(s) need scheduling now.`,
-      );
+      items.push(fmt(t('pdfRiskExpiredMissing'), { expired, missing }));
     }
     const expiring30 = kpis.statusCounts.EXPIRING_30 || 0;
     if (items.length < 3 && expiring30 > 0) {
-      items.push(`${expiring30} requirement(s) expire within 30 days.`);
+      items.push(fmt(t('pdfRiskExpiring30'), { count: expiring30 }));
     }
     if (items.length === 0) return;
-    riskBox('Top Risks Requiring Action', items.slice(0, 3));
+    riskBox(t('pdfTopRisks'), items.slice(0, 3));
   }
 
   // ── Cover / Title ──────────────────────────────────────────
@@ -410,73 +491,82 @@ export function exportManagementPDF(opts) {
   // Brand rule along the bottom edge of the header band.
   doc.setFillColor(...BRAND);
   doc.rect(0, 58, pw, 1.6, 'F');
-  shieldMark(margin, 14, 13, BRAND);
-  doc.setFontSize(21);
-  doc.setFont('helvetica', 'bold');
+  shieldMark(isArabic ? pw - margin - 13 : margin, 14, 13, BRAND);
+  // Arabic reads right to left, so the logomark leads from the right edge and
+  // the title block is right-aligned beside it.
+  const titleX = isArabic ? pw - margin - 19 : margin + 19;
+  doc.setFontSize(isArabic ? 18 : 21);
+  doc.setFont(FONT, 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text('HSE Training Compliance Report', margin + 19, 23);
+  doc.text(L('pdfReportTitle'), titleX, 23, ALIGN);
   doc.setFontSize(10.5);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(FONT, 'normal');
   doc.setTextColor(200, 200, 200);
-  doc.text(companyName + '  |  ' + projectName, margin + 19, 32);
-  doc.text(`As Of: ${asOfDate}`, margin + 19, 40);
+  doc.text(S(companyName + '  |  ' + projectName), titleX, 32, ALIGN);
+  doc.text(S(`${t('pdfAsOfDate')}: ${asOfDate}`), titleX, 40, ALIGN);
   y = 68;
 
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
+  // The embedded Arabic font has no italic style, so Arabic uses the regular one.
+  doc.setFont(FONT, isArabic ? 'normal' : 'italic');
   doc.setTextColor(...GREY);
   // The local-only claim is only true in a local-only build. A cloud build
   // stores the data in the account's own database, so it says so instead.
   doc.text(
-    isSupabaseConfigured()
-      ? 'Data stored in the account that generated this report. No personal contact data is exported.'
-      : 'Local MVP — data processed in browser only. No external upload or storage.',
-    margin,
+    L(isSupabaseConfigured() ? 'privacyNoteCloud' : 'privacyNote'),
+    mx(margin),
     y,
+    ALIGN,
   );
   y += 8;
-  kv('Data source', sourceFileName || 'Demo data');
-  kv('Generated', new Date().toLocaleString('en-GB'));
+  kv(t('pdfDataSource'), sourceFileName || t('pdfDemoDataSource'));
+  // Both languages get the same Gregorian day/month/year timestamp. An Arabic
+  // locale string carries a Hijri date that would not line up with the
+  // Gregorian As Of Date above it, and its `ص`/`م` meridiem turns the whole
+  // value into a mixed-direction run that the bidi reorder renders unreadable.
+  kv(t('pdfGeneratedOn'), new Date().toLocaleString('en-GB'));
   const marker = testRequirementsMarker(requirementsProvenance);
   if (marker) {
     y += 2;
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(FONT, 'bold');
     doc.setTextColor(200, 60, 20);
-    doc.text(doc.splitTextToSize(marker, pw - margin * 2), margin, y);
+    doc.text(wrap(marker, pw - margin * 2).map(S), mx(margin), y, ALIGN);
     y += 10;
     doc.setTextColor(...DARK);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(FONT, 'normal');
   }
   y += 4;
 
   // ── Executive Summary ─────────────────────────────────────
-  h1('Executive Summary', 40);
+  h1(t('pdfSummary'), 40);
 
   const compliance = kpis.requirementCompliance;
+  // One label per compliance band, reused by the card note and the table row.
+  const band = (pct) => t(pct >= 80 ? 'pdfOnTrack' : pct >= 60 ? 'pdfNeedsAttention' : 'pdfCriticalIndicator');
   kpiCards([
     {
-      label: 'Requirement Compliance',
+      label: t('kpiRequirementCompliance'),
       value: `${compliance}%`,
-      note: compliance >= 80 ? 'On track' : compliance >= 60 ? 'Needs attention' : 'Critical',
+      note: band(compliance),
       color: compliance >= 80 ? GREEN : compliance >= 60 ? AMBER : RED,
     },
     {
-      label: 'Fully Compliant',
+      label: t('pdfFullyCompliantShort'),
       value: `${kpis.fullyCompliantPct}%`,
-      note: `${kpis.fullyCompliantCount} of ${kpis.empWithMandatoryReqs} employees`,
+      note: fmt(t('pdfOfEmployees'), { done: kpis.fullyCompliantCount, total: kpis.empWithMandatoryReqs }),
       color: BRAND,
     },
     {
-      label: 'Expired',
+      label: t('statusExpired'),
       value: kpis.statusCounts.EXPIRED || 0,
-      note: 'requirements',
+      note: t('pdfRequirementsNote'),
       color: (kpis.statusCounts.EXPIRED || 0) > 0 ? RED : GREEN,
     },
     {
-      label: 'Missing',
+      label: t('statusMissing'),
       value: kpis.statusCounts.MISSING || 0,
-      note: 'requirements',
+      note: t('pdfRequirementsNote'),
       color: (kpis.statusCounts.MISSING || 0) > 0 ? RED : GREEN,
     },
   ]);
@@ -484,64 +574,65 @@ export function exportManagementPDF(opts) {
   topRisks();
 
   const summaryData = [
-    ['Requirement Compliance', `${kpis.requirementCompliance}%`, kpis.requirementCompliance >= 80 ? 'On Track' : kpis.requirementCompliance >= 60 ? 'Needs Attention' : 'Critical'],
-    ['Fully Compliant Employees', `${kpis.fullyCompliantCount} / ${kpis.empWithMandatoryReqs} (${kpis.fullyCompliantPct}%)`, ''],
-    ['Total Active Employees', String(kpis.totalActiveEmployees), ''],
-    ['Requirements Not Configured', String(kpis.employeesNotConfigured) + ' employee(s)', kpis.employeesNotConfigured > 0 ? 'Review Required' : 'OK'],
-    ['Expired Requirements', String(kpis.statusCounts.EXPIRED || 0), kpis.statusCounts.EXPIRED > 0 ? 'Action Required' : 'OK'],
-    ['Missing Requirements', String(kpis.statusCounts.MISSING || 0), kpis.statusCounts.MISSING > 0 ? 'Action Required' : 'OK'],
+    [t('kpiRequirementCompliance'), `${kpis.requirementCompliance}%`, band(kpis.requirementCompliance)],
+    [t('kpiFullyCompliant'), `${kpis.fullyCompliantCount} / ${kpis.empWithMandatoryReqs} (${kpis.fullyCompliantPct}%)`, ''],
+    [t('pdfTotalActiveEmployees'), String(kpis.totalActiveEmployees), ''],
+    [t('pdfNotConfiguredRow'), `${kpis.employeesNotConfigured} ${t('pdfEmployeesSuffix')}`, t(kpis.employeesNotConfigured > 0 ? 'pdfReviewRequired' : 'pdfOk')],
+    [t('pdfExpiredRow'), String(kpis.statusCounts.EXPIRED || 0), t(kpis.statusCounts.EXPIRED > 0 ? 'pdfActionRequired' : 'pdfOk')],
+    [t('pdfMissingRow'), String(kpis.statusCounts.MISSING || 0), t(kpis.statusCounts.MISSING > 0 ? 'pdfActionRequired' : 'pdfOk')],
   ];
 
   autoTable(doc, {
     startY: y,
-    head: [['Metric', 'Value', 'Indicator']],
-    body: summaryData,
+    head: cells([[t('pdfMetric'), t('pdfValue'), t('pdfIndicator')]]),
+    body: cells(summaryData),
     theme: 'striped',
+    styles: tableStyles,
     headStyles: { fillColor: ORANGE, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
     bodyStyles: { fontSize: 9 },
-    columnStyles: { 0: { fontStyle: 'bold' }, 2: { textColor: ORANGE } },
+    columnStyles: cols(3, { 0: { fontStyle: 'bold' }, 2: { textColor: ORANGE } }),
     margin: { left: margin, right: margin },
   });
   y = doc.lastAutoTable.finalY + 8;
 
   // ── Status Summary ────────────────────────────────────────
-  h1('Status Summary (Mandatory Requirements)', 60);
+  h1(t('pdfStatusSummaryFull'), 60);
 
   const sc = kpis.statusCounts;
 
-  barChart([
-    { label: 'Valid', value: sc.VALID || 0, color: GREEN },
-    { label: 'Expiring (90d)', value: sc.EXPIRING_90 || 0, color: [132, 204, 22] },
-    { label: 'Expiring (60d)', value: sc.EXPIRING_60 || 0, color: [250, 204, 21] },
-    { label: 'Expiring (30d)', value: sc.EXPIRING_30 || 0, color: AMBER },
-    { label: 'Expired', value: sc.EXPIRED || 0, color: RED },
-    { label: 'In Progress', value: sc.IN_PROGRESS || 0, color: BRAND },
-    { label: 'Not Started', value: sc.NOT_STARTED || 0, color: GREY },
-    { label: 'Missing', value: sc.MISSING || 0, color: [148, 23, 23] },
-  ]);
-
-  const statusData = [
-    ['Valid', sc.VALID || 0, 'Compliant'],
-    ['Expiring (90d)', sc.EXPIRING_90 || 0, 'Compliant'],
-    ['Expiring (60d)', sc.EXPIRING_60 || 0, 'Compliant'],
-    ['Expiring (30d)', sc.EXPIRING_30 || 0, 'Compliant'],
-    ['Expired', sc.EXPIRED || 0, 'Non-Compliant'],
-    ['In Progress', sc.IN_PROGRESS || 0, 'Non-Compliant'],
-    ['Not Started', sc.NOT_STARTED || 0, 'Non-Compliant'],
-    ['Missing', sc.MISSING || 0, 'Non-Compliant'],
+  // Each status, in severity order, with the bar colour and whether it counts
+  // as compliant. Driving the chart and the table from one list keeps them
+  // from drifting apart.
+  const statuses = [
+    { key: 'statusValid', value: sc.VALID || 0, color: GREEN, ok: true },
+    { key: 'statusExpiring90', value: sc.EXPIRING_90 || 0, color: [132, 204, 22], ok: true },
+    { key: 'statusExpiring60', value: sc.EXPIRING_60 || 0, color: [250, 204, 21], ok: true },
+    { key: 'statusExpiring30', value: sc.EXPIRING_30 || 0, color: AMBER, ok: true },
+    { key: 'statusExpired', value: sc.EXPIRED || 0, color: RED, ok: false },
+    { key: 'statusInProgress', value: sc.IN_PROGRESS || 0, color: BRAND, ok: false },
+    { key: 'statusNotStarted', value: sc.NOT_STARTED || 0, color: GREY, ok: false },
+    { key: 'statusMissing', value: sc.MISSING || 0, color: [148, 23, 23], ok: false },
   ];
+
+  barChart(statuses.map((s) => ({ label: t(s.key), value: s.value, color: s.color })));
+
+  // The compliance column is colour-coded in didParseCell, which only sees the
+  // rendered cell text, so the two possible values are captured here as drawn.
+  const COMPLIANT_CELL = isArabic ? S(t('compliant')) : t('compliant');
+  const statusData = statuses.map((s) => [t(s.key), s.value, t(s.ok ? 'compliant' : 'nonCompliant')]);
 
   autoTable(doc, {
     startY: y,
-    head: [['Status', 'Count', 'Compliance']],
-    body: statusData,
+    head: cells([[t('status'), t('pdfCountCol'), t('pdfComplianceLabel')]]),
+    body: cells(statusData),
     theme: 'grid',
+    styles: tableStyles,
     headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontSize: 9 },
     bodyStyles: { fontSize: 9 },
-    columnStyles: { 1: { halign: 'center' } },
+    columnStyles: cols(3, { 1: { halign: 'center' } }),
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 2) {
-        data.cell.styles.textColor = data.cell.raw === 'Compliant' ? [22, 163, 74] : [220, 38, 38];
+      if (data.section === 'body' && data.column.index === colIndex(3, 2)) {
+        data.cell.styles.textColor = data.cell.raw === COMPLIANT_CELL ? [22, 163, 74] : [220, 38, 38];
         data.cell.styles.fontStyle = 'bold';
       }
     },
@@ -551,7 +642,7 @@ export function exportManagementPDF(opts) {
 
   // ── Department Compliance ─────────────────────────────────
   checkSpace(30);
-  h1('Department Compliance', 30);
+  h1(t('pdfDeptCompliance'), 30);
 
   const deptData = (kpis.departmentCompliance || []).map(d => [
     d.department, d.total, d.compliant, d.nonCompliant, `${d.percentage}%`,
@@ -559,22 +650,23 @@ export function exportManagementPDF(opts) {
 
   autoTable(doc, {
     startY: y,
-    head: [['Department', 'Total Reqs', 'Compliant', 'Non-Compliant', 'Compliance %']],
-    body: deptData,
+    head: cells([[t('department'), t('pdfTotalReqs'), t('compliant'), t('nonCompliant'), t('percentage')]]),
+    body: cells(deptData),
     theme: 'striped',
+    styles: tableStyles,
     headStyles: { fillColor: ORANGE, textColor: [255, 255, 255], fontSize: 9 },
     bodyStyles: { fontSize: 9 },
-    columnStyles: {
+    columnStyles: cols(5, {
       1: { halign: 'center' }, 2: { halign: 'center', textColor: [22, 163, 74], fontStyle: 'bold' },
       3: { halign: 'center', textColor: [220, 38, 38] }, 4: { halign: 'center', fontStyle: 'bold' },
-    },
+    }),
     margin: { left: margin, right: margin },
   });
   y = doc.lastAutoTable.finalY + 8;
 
   // ── Course Compliance ─────────────────────────────────────
   checkSpace(30);
-  h1('Course Compliance', 30);
+  h1(t('pdfCourseCompliance'), 30);
 
   const courseData = (kpis.courseCompliance || []).map(c => [
     c.course_code, c.course_name, c.employeesRequired, c.compliant, c.nonCompliant, `${c.percentage}%`,
@@ -582,41 +674,57 @@ export function exportManagementPDF(opts) {
 
   autoTable(doc, {
     startY: y,
-    head: [['Code', 'Course Name', 'Required', 'Compliant', 'Non-Compliant', '%']],
-    body: courseData,
+    head: cells([[t('pdfCodeCol'), t('pdfCourseNameCol'), t('pdfRequiredCol'), t('compliant'), t('nonCompliant'), '%']]),
+    body: cells(courseData),
     theme: 'striped',
+    styles: tableStyles,
     headStyles: { fillColor: ORANGE, textColor: [255, 255, 255], fontSize: 9 },
     bodyStyles: { fontSize: 9 },
-    columnStyles: {
+    columnStyles: cols(6, {
       2: { halign: 'center' }, 3: { halign: 'center', textColor: [22, 163, 74] },
       4: { halign: 'center', textColor: [220, 38, 38] }, 5: { halign: 'center', fontStyle: 'bold' },
-    },
+    }),
     margin: { left: margin, right: margin },
   });
   y = doc.lastAutoTable.finalY + 8;
 
   // ── Priority Actions ─────────────────────────────────────
   checkSpace(30);
-  h1('Priority Actions (Non-Compliant Requirements)', 30);
+  h1(t('pdfPriorityActionsFull'), 30);
 
   const prioSlice = priorityActions.slice(0, 30);
   if (prioSlice.length === 0) {
-    para('No priority actions — all configured requirements are compliant.');
+    para(t('pdfNoPriorityActions'));
   } else {
+    // Priority and status arrive from the analysis as English identifiers, so
+    // they are looked up in the dictionary before being drawn.
+    const PRIORITY_KEYS = { Critical: 'priorityCritical', High: 'priorityHigh', Medium: 'priorityMedium', Low: 'priorityLow' };
+    const STATUS_KEYS = {
+      VALID: 'statusValid', EXPIRING_90: 'statusExpiring90', EXPIRING_60: 'statusExpiring60',
+      EXPIRING_30: 'statusExpiring30', EXPIRED: 'statusExpired', IN_PROGRESS: 'statusInProgress',
+      NOT_STARTED: 'statusNotStarted', MISSING: 'statusMissing', NOT_REQUIRED: 'statusNotRequired',
+    };
+    const label = (map, value) => (map[value] ? t(map[value]) : String(value ?? ''));
+    // didParseCell only sees rendered text, so the two highlighted priority
+    // labels are captured here exactly as they are drawn.
+    const CRITICAL_CELL = isArabic ? S(t('priorityCritical')) : t('priorityCritical');
+    const HIGH_CELL = isArabic ? S(t('priorityHigh')) : t('priorityHigh');
     const prioData = prioSlice.map(a => [
-      a.priority, a.Employee_ID, a.Employee_Name, a.Department, a.Course_Name, a.Status, a.Expiry_Date || 'N/A',
+      label(PRIORITY_KEYS, a.priority), a.Employee_ID, a.Employee_Name, a.Department,
+      a.Course_Name, label(STATUS_KEYS, a.Status), a.Expiry_Date || t('pdfNotApplicable'),
     ]);
     autoTable(doc, {
       startY: y,
-      head: [['Priority', 'ID', 'Employee', 'Department', 'Course', 'Status', 'Expiry']],
-      body: prioData,
+      head: cells([[t('priority'), t('pdfIdCol'), t('pdfEmployeeCol'), t('department'), t('course'), t('status'), t('pdfExpiryCol')]]),
+      body: cells(prioData),
       theme: 'striped',
+      styles: tableStyles,
       headStyles: { fillColor: [220, 38, 38], textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 8 },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 0) {
+        if (data.section === 'body' && data.column.index === colIndex(7, 0)) {
           const p = data.cell.raw;
-          data.cell.styles.textColor = p === 'Critical' ? [220, 38, 38] : p === 'High' ? [234, 88, 12] : [100, 100, 100];
+          data.cell.styles.textColor = p === CRITICAL_CELL ? [220, 38, 38] : p === HIGH_CELL ? [234, 88, 12] : [100, 100, 100];
           data.cell.styles.fontStyle = 'bold';
         }
       },
@@ -624,44 +732,42 @@ export function exportManagementPDF(opts) {
     });
     y = doc.lastAutoTable.finalY + 6;
     if (priorityActions.length > 30) {
-      para(`... and ${priorityActions.length - 30} more priority actions. See full CSV export.`);
+      para(fmt(t('pdfMoreActions'), { count: priorityActions.length - 30 }));
     }
   }
 
   // ── Data Quality ─────────────────────────────────────────
   checkSpace(20);
-  h1('Data Quality', 20);
+  h1(t('pdfDataQuality'), 20);
 
   if (dataQuality) {
-    kv('Invalid rows', dataQuality.invalidRows || 0);
-    kv('Duplicate groups', dataQuality.duplicateGroups || 0);
-    kv('Config warnings', dataQuality.configWarnings || 0);
+    kv(t('invalidRows'), dataQuality.invalidRows || 0);
+    kv(t('duplicateGroups'), dataQuality.duplicateGroups || 0);
+    kv(t('configWarnings'), dataQuality.configWarnings || 0);
   }
 
   // ── Assumptions ──────────────────────────────────────────
   checkSpace(30);
-  h1('Assumptions & Methodology', 40);
+  h1(t('pdfAssumptionsTitle'), 40);
 
-  para('Compliance = VALID + EXPIRING within 30/60/90 days. Boundaries:');
-  para('• VALID: >90 calendar days until expiry (or completed with no expiry date)', true);
-  para('• EXPIRING_30: 0–30 days remaining (includes expiry on As Of Date)', true);
-  para('• EXPIRING_60: 31–60 days remaining', true);
-  para('• EXPIRING_90: 61–90 days remaining', true);
-  para('• EXPIRED: expiry strictly before As Of Date', true);
-  para('• MISSING: mandatory course with no training record', true);
-  para('Non-compliant: EXPIRED, IN_PROGRESS, NOT_STARTED, MISSING. NOT_REQUIRED excluded from KPI denominators.');
-  para('Inactive/Left employees are excluded from KPI denominators but remain visible in raw data.');
-  para('Duplicate records: all rows kept; most relevant (latest valid expiry) selected for compliance.');
+  para(t('pdfAssumptionsIntro'));
+  [
+    'pdfAssumptionValid', 'pdfAssumptionExp30', 'pdfAssumptionExp60',
+    'pdfAssumptionExp90', 'pdfAssumptionExpired', 'pdfAssumptionMissing',
+  ].forEach((key) => para(`• ${t(key)}`, true));
+  para(t('pdfAssumptionNonCompliant'));
+  para(t('pdfAssumptionInactive'));
+  para(t('pdfAssumptionDuplicates'));
 
   // ── Page numbers ─────────────────────────────────────────
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(FONT, 'normal');
     doc.setTextColor(...GREY);
     doc.text(
-      `HSE Training Compliance Dashboard  |  Page ${i} of ${totalPages}  |  ${asOfDate}`,
+      L('pdfFooter', { page: t('pdfPage'), i, n: totalPages, date: asOfDate }),
       pw / 2, ph - 8, { align: 'center' }
     );
   }

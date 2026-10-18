@@ -195,7 +195,7 @@ describe('the management PDF', () => {
     const { exportManagementPDF } = await import('../src/lib/exportService.js');
     const file = resolve(process.cwd(), `HSE_Management_Report_${base.asOfDate}.pdf`);
     if (existsSync(file)) unlinkSync(file);
-    exportManagementPDF({ ...base, requirementsProvenance });
+    await exportManagementPDF({ ...base, requirementsProvenance });
     const content = existsSync(file) ? readFileSync(file, 'latin1') : '';
     if (existsSync(file)) unlinkSync(file);
     return content;
@@ -227,6 +227,6 @@ describe('the management PDF', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/lib/exportService.js'), 'utf8');
     // The marker reaches the page through the shared helper and nothing else.
     expect(source).toMatch(/const marker = testRequirementsMarker\(requirementsProvenance\);/);
-    expect(source).toMatch(/if \(marker\) \{[\s\S]*doc\.text\(doc\.splitTextToSize\(marker/);
+    expect(source).toMatch(/if \(marker\) \{[\s\S]*doc\.text\(wrap\(marker/);
   });
 });

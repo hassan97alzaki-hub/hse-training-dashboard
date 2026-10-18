@@ -119,6 +119,16 @@ const translations = {
     next: 'Next',
     pageSize: 'Per page',
 
+    // Welcome onboarding
+    welcomeTitle: 'Welcome to HSE Training Dashboard',
+    welcomeSubtitle: 'Track certifications, catch expiring trainings, and keep your workforce compliant.',
+    welcomeDemoTitle: 'Load Demo Data',
+    welcomeDemoDesc: 'See a full dashboard with sample data in seconds.',
+    welcomeImportTitle: 'Import Your Data',
+    welcomeImportDesc: 'Upload a CSV or Excel file using the Import panel above.',
+    welcomeAnalyzeTitle: 'Analyze & Export',
+    welcomeAnalyzeDesc: 'Review compliance, filter records, and export reports.',
+
     // States
     noData: 'No data loaded',
     noDataHint: 'Load demo data or import a CSV/XLSX file to begin.',
@@ -700,6 +710,16 @@ const translations = {
     previous: 'السابق',
     next: 'التالي',
     pageSize: 'لكل صفحة',
+
+    // Welcome onboarding
+    welcomeTitle: 'مرحباً بك في لوحة متابعة التدريب HSE',
+    welcomeSubtitle: 'تابع الشهادات، اكتشف التدريبات المنتهية، وحافظ على امتثال القوى العاملة.',
+    welcomeDemoTitle: 'تحميل بيانات تجريبية',
+    welcomeDemoDesc: 'شاهد لوحة كاملة ببيانات نموذجية خلال ثوانٍ.',
+    welcomeImportTitle: 'استيراد بياناتك',
+    welcomeImportDesc: 'ارفع ملف CSV أو Excel من لوحة الاستيراد أعلاه.',
+    welcomeAnalyzeTitle: 'تحليل وتصدير',
+    welcomeAnalyzeDesc: 'راجع الامتثال، فلتر السجلات، وصدّر التقارير.',
 
     // States
     noData: 'لا توجد بيانات',

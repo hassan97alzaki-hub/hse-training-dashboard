@@ -55,6 +55,7 @@ import { ManagementDrawer, ManagementDrawerButton } from './components/Managemen
 import { CertificateGallery } from './components/CertificateGallery.jsx';
 import { TrainingSessionForm } from './components/TrainingSessionForm.jsx';
 import { ReminderSender } from './components/ReminderSender.jsx';
+import WelcomeOnboarding from './components/WelcomeOnboarding.jsx';
 import Footer from './components/Footer.jsx';
 
 import './styles/dashboard.css';
@@ -869,14 +870,11 @@ export default function App({
         )}
 
         {!hasData && (
-          <div className="empty-state">
-            <div className="empty-icon"><ClipboardList size={26} /></div>
-            <h3>{t('noData')}</h3>
-            <p>{t('noDataHint')}</p>
-            {!hasRequirements && (
-              <p style={{ marginTop: 8, fontSize: 12 }}>{t('requirementsNotLoadedHint')}</p>
-            )}
-          </div>
+          <WelcomeOnboarding
+            t={t}
+            onLoadDemo={handleLoadDemo}
+            hasRequirements={hasRequirements}
+          />
         )}
 
         {hasData && (

@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The dashboard is an empty shell until a user loads their own data into
+         it, so there is nothing here worth indexing. `follow` still lets a
+         crawler walk back out to the landing page. The same rule is sent as an
+         X-Robots-Tag header from vercel.json, which covers every /app/ path
+         including the ones that only exist because the router answers them. -->
+    <meta name="robots" content="noindex,follow" />
     <title>HSE Training Dashboard — Track Safety Compliance</title>
     <meta name="description" content="Track HSE training compliance, certifications, and workforce readiness. Free bilingual dashboard for safety professionals.">
   </head>

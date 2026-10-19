@@ -212,7 +212,7 @@ describe('every legacy path clears the production binding', () => {
 
   it('demo data', async () => {
     await afterLegacy(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Load Demo Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
       // The binding is dropped as the demo starts loading, before its rows
       // arrive, so the check below does not wait for the demo banner.
       await waitFor(() => expect(screen.queryByTestId('production-preview')).toBeNull(), { timeout: 5000 });

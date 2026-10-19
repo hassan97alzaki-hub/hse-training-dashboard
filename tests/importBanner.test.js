@@ -116,12 +116,15 @@ describe('a banner follows the language inside the app', () => {
     vi.restoreAllMocks();
   });
 
+  // The demo button is queried by its exact accessible name. The welcome
+  // screen offers the same action as a card whose name also carries its
+  // description, so a substring match finds both controls.
   const renderApp = () =>
     render(createElement(App, { now: () => '2027-01-11T08:00:00.000Z', newBatchId: () => 'LOCAL-TEST-0001' }));
 
   it('rewrites the demo banner when the language changes', async () => {
     renderApp();
-    fireEvent.click(screen.getByRole('button', { name: /Load Demo Data/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
     expect(await screen.findByText('Demo data loaded', {}, { timeout: 5000 })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch to Arabic' }));
@@ -151,7 +154,7 @@ describe('a banner follows the language inside the app', () => {
 
   it('rewrites the reset banner', async () => {
     renderApp();
-    fireEvent.click(screen.getByRole('button', { name: /Load Demo Data/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
     await screen.findByText('Demo data loaded', {}, { timeout: 5000 });
     fireEvent.click(screen.getByRole('button', { name: /Reset Data/i }));
     expect(await screen.findByText('Data cleared')).toBeInTheDocument();

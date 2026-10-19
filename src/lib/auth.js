@@ -90,6 +90,59 @@ export async function signUp(email, password) {
 }
 
 /**
+ * Sign in with a link sent to an email address.
+ *
+ * Added alongside the password, not in place of it. Accounts created before
+ * this existed have passwords and must keep being able to use them; taking
+ * that away would lock out real users to make a new sign-in path tidier.
+ *
+ * A new account is created on first use, which is why there is no separate
+ * registration step for this path.
+ *
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function signInWithMagicLink(email) {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'This build has no account backend' };
+
+  const trimmed = String(email ?? '').trim();
+  if (!trimmed) return { success: false, error: 'Email address required' };
+
+  const { error } = await client.auth.signInWithOtp({
+    email: trimmed,
+    options: {
+      shouldCreateUser: true,
+      // Where the link lands. The dashboard is served from /app, and the
+      // client is configured with detectSessionInUrl, so it reads the token
+      // out of the URL on load.
+      emailRedirectTo: `${globalThis.location?.origin ?? ''}/app`,
+    },
+  });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/**
+ * The workspace this account works in, created on the spot if it has none.
+ *
+ * A workspace cannot be created by the client directly: the policy that would
+ * allow the insert has to check membership, and there is no membership until
+ * the workspace exists. `bootstrap_workspace_for_user()` does both writes as
+ * its owner, outside the policies, and returns the same workspace on every
+ * later call — so this is safe to run after any sign-in.
+ *
+ * @returns {Promise<{success: boolean, workspaceId?: string, error?: string}>}
+ */
+export async function ensureWorkspace() {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'This build has no account backend' };
+
+  const { data, error } = await client.rpc('bootstrap_workspace_for_user');
+  if (error) return { success: false, error: error.message };
+  return { success: true, workspaceId: data ?? null };
+}
+
+/**
  * Send a password-reset email.
  * @returns {Promise<{success: boolean, error?: string}>}
  */

@@ -6,7 +6,9 @@ import {
   onAuthChange,
   signIn,
   signUp,
+  signInWithMagicLink,
   requestPasswordReset,
+  ensureWorkspace,
 } from '../lib/auth.js';
 
 /**
@@ -34,16 +36,23 @@ export function AuthGate({ children, t = (key) => key }) {
     if (!required) return undefined;
 
     let cancelled = false;
-    (async () => {
-      const current = await getSession();
+
+    // A signed-in account needs a workspace before it can read or write
+    // anything: every policy is a membership check. The call is idempotent,
+    // so it runs after each sign-in without a flag to remember.
+    const arrive = async (next) => {
+      if (next) await ensureWorkspace();
       if (cancelled) return;
-      setSession(current);
-      setState(current ? AUTH_STATE.SIGNED_IN : AUTH_STATE.SIGNED_OUT);
+      setSession(next);
+      setState(next ? AUTH_STATE.SIGNED_IN : AUTH_STATE.SIGNED_OUT);
+    };
+
+    (async () => {
+      await arrive(await getSession());
     })();
 
     const unsubscribe = onAuthChange((next) => {
-      setSession(next);
-      setState(next ? AUTH_STATE.SIGNED_IN : AUTH_STATE.SIGNED_OUT);
+      arrive(next);
     });
 
     return () => {
@@ -67,7 +76,7 @@ export function AuthGate({ children, t = (key) => key }) {
  * Sign-in, registration and password reset in one form.
  */
 export function SignInForm({ t = (key) => key }) {
-  const [mode, setMode] = useState('signin'); // signin | signup | reset
+  const [mode, setMode] = useState('signin'); // signin | signup | link | reset
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -83,6 +92,7 @@ export function SignInForm({ t = (key) => key }) {
     let result;
     if (mode === 'signin') result = await signIn(email, password);
     else if (mode === 'signup') result = await signUp(email, password);
+    else if (mode === 'link') result = await signInWithMagicLink(email);
     else result = await requestPasswordReset(email);
 
     setBusy(false);
@@ -99,12 +109,16 @@ export function SignInForm({ t = (key) => key }) {
     if (mode === 'reset') {
       setNotice(t('resetLinkSent').replace('{email}', email));
     }
+    if (mode === 'link') {
+      setNotice(t('magicLinkSent').replace('{email}', email));
+    }
     // On a successful sign-in the auth listener in AuthGate swaps the view.
   }, [mode, email, password]);
 
   const title = mode === 'signin' ? t('signIn')
     : mode === 'signup' ? t('createAccount')
-      : t('resetPassword');
+      : mode === 'link' ? t('sendMagicLink')
+        : t('resetPassword');
 
   return (
     <div className="auth-gate">
@@ -132,7 +146,7 @@ export function SignInForm({ t = (key) => key }) {
           placeholder={t('emailPlaceholder')}
         />
 
-        {mode !== 'reset' && (
+        {mode !== 'reset' && mode !== 'link' && (
           <>
             <label className="auth-gate-label" htmlFor="auth-password">{t('password')}</label>
             <input
@@ -164,6 +178,11 @@ export function SignInForm({ t = (key) => key }) {
           {mode !== 'signup' && (
             <button type="button" className="auth-gate-link" onClick={() => setMode('signup')}>
               {t('createAccount')}
+            </button>
+          )}
+          {mode !== 'link' && (
+            <button type="button" className="auth-gate-link" onClick={() => setMode('link')}>
+              {t('useMagicLink')}
             </button>
           )}
           {mode !== 'reset' && (

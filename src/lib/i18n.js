@@ -524,7 +524,10 @@ const translations = {
     working: 'Working…',
     signInInstead: 'Sign in instead',
     forgotPassword: 'Forgot your password?',
-    authPrivacy: 'Your training data belongs to this account. Only this account can read it.',
+    useMagicLink: 'Email me a sign-in link',
+    sendMagicLink: 'Send a sign-in link',
+    magicLinkSent: 'A sign-in link is on its way to {email}.',
+    authPrivacy: 'Your training data belongs to your workspace. Only its members can read it.',
     confirmEmail: 'Confirm your address. A message is on its way to {email}.',
     resetLinkSent: 'A reset link is on its way to {email}.',
 
@@ -1169,7 +1172,10 @@ const translations = {
     working: 'جارٍ المعالجة…',
     signInInstead: 'تسجيل الدخول بدلاً من ذلك',
     forgotPassword: 'نسيت كلمة المرور؟',
-    authPrivacy: 'بيانات التدريب تخص هذا الحساب. لا يقرأها إلا هذا الحساب.',
+    useMagicLink: 'أرسل لي رابط دخول',
+    sendMagicLink: 'إرسال رابط الدخول',
+    magicLinkSent: 'رابط الدخول في طريقه إلى {email}.',
+    authPrivacy: 'بيانات التدريب تخص مساحة عملك. لا يقرأها إلا أعضاؤها.',
     confirmEmail: 'أكّد عنوانك. رسالة في طريقها إلى {email}.',
     resetLinkSent: 'رابط إعادة التعيين في طريقه إلى {email}.',
 

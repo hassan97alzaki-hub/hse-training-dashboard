@@ -12,7 +12,7 @@
  * Date, the batch id and the approval time are given by the caller.
  */
 
-import * as XLSX from 'xlsx';
+import { loadXlsx, xlsx } from '../xlsx.js';
 
 import {
   PACKAGE_TYPES, PACKAGE_SHEETS, PRESENCE, SEVERITY,
@@ -36,9 +36,9 @@ const CONTRACT_SHEET = '_Contract';
 function readSheet(workbook, name) {
   const sheet = workbook.Sheets[name];
   if (!sheet) return { rows: [], columns: [] };
-  const header = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' });
+  const header = xlsx().utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' });
   const columns = (header[0] ?? []).map((value) => collapseText(value)).filter(Boolean);
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true, blankrows: false });
+  const rows = xlsx().utils.sheet_to_json(sheet, { defval: '', raw: true, blankrows: false });
   return { rows, columns };
 }
 
@@ -48,9 +48,12 @@ function readSheet(workbook, name) {
  * happens here.
  */
 export async function readProductionWorkbook(fileOrBytes) {
+  // Fetched alongside reading the file, so the download overlaps work the
+  // caller is waiting on anyway.
+  await loadXlsx();
   let bytes = fileOrBytes;
   if (typeof fileOrBytes?.arrayBuffer === 'function') bytes = await fileOrBytes.arrayBuffer();
-  const workbook = XLSX.read(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes, {
+  const workbook = xlsx().read(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes, {
     type: 'array',
     // Dates stay text or serials; the contract rules of §2.3 decide.
     cellDates: false,

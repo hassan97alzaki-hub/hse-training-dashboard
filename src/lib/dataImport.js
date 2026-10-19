@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import { loadXlsx } from './xlsx.js';
 import {
   REQUIRED_TRAINING_COLUMNS,
   REQUIRED_REQUIREMENTS_COLUMNS,
@@ -34,6 +34,9 @@ export async function importCSV(file) {
 // ============================================================
 
 export async function importXLSX(file) {
+  // Fetched here rather than at the top of the module: a session that never
+  // imports a spreadsheet never downloads the library.
+  const XLSX = await loadXlsx();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {

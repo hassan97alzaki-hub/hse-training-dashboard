@@ -71,11 +71,40 @@ See `docs/EXPECTED-RESULTS.md` for full derivation and `docs/ASSUMPTIONS.md` for
 
 ```bash
 npm run dev          # Dev server (http://localhost:5173)
-npm run build        # Production build
+npm run build        # Production build, including the Arabic landing page
 npm run preview      # Preview production build
-npm run test         # Run 116 tests
+npm run test         # Run the test suite
 npm run test:watch   # Watch mode
 ```
+
+### Generated assets
+
+Three files in `public/` are produced by a script rather than drawn by hand.
+Each is run on demand and its output is committed, because none of them
+changes often and all three need a headless browser, which would add close to
+a minute to every deploy.
+
+```bash
+npm run screenshot   # public/dashboard-screenshot.{webp,png} — the landing page's dashboard shot
+npm run og           # public/og-image.png — the 1200x630 card shown when a link is shared
+npm run favicon      # public/favicon.ico — 16px and 32px, rendered from favicon.svg
+```
+
+`npm run screenshot` starts the dev server, loads the demo dataset through the
+same button a visitor would use, and captures the dashboard. Re-run it after
+any change to the interface or to the demo data, and commit the result.
+
+### Bundle budget
+
+```bash
+npm run build && npm run check:bundle
+```
+
+Measures what a visitor downloads before anything renders — the entry script,
+its preloads and its stylesheet — compressed with brotli, which is what the
+CDN serves. It fails over 500KB, and it fails if a library that is meant to
+load on demand (`xlsx`, the charting library, the PDF writer) has found its
+way back into the first load. CI runs it on every pull request.
 
 ---
 

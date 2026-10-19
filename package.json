@@ -3,12 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/build-ar-landing.mjs",
     "og": "node scripts/build-og-image.mjs",
     "favicon": "node scripts/build-favicon.mjs",
     "screenshot": "node scripts/build-dashboard-screenshot.mjs",
+    "check:bundle": "node scripts/check-bundle-budget.mjs",
     "verify:rls": "node scripts/verify-rls-isolation.mjs",
     "preview": "vite preview",
     "test": "vitest run",

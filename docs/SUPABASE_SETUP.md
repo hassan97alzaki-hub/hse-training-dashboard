@@ -25,7 +25,12 @@ the device.
 ## 2. Create the tables
 
 1. In the project, open **SQL Editor** → **New query**.
-2. Paste the whole of `supabase/migrations/0001_init.sql` and run it.
+2. Paste the whole of `supabase/migrations/20261012103348_init.sql` and run it.
+
+> **New projects should use the CLI instead.** Everything below describes how
+> the migrations reached the hosted project before the CLI was adopted, and is
+> kept because that is how the existing project was built. See
+> [Migrations](#migrations) at the end of this file.
 3. Open **Table Editor** and confirm six tables: `courses`, `certificates`,
    `departments`, `employees`, `employee_contacts`, `reminders_sent`.
 4. Each one must show **RLS enabled**. If any does not, the migration did not
@@ -110,3 +115,48 @@ goes in.
 - **More than one user per company.** `owner_id` is a single user today. A
   shared company workspace needs an organisations table and a membership
   check in the policies.
+
+
+---
+
+## Migrations
+
+Migrations are applied with the Supabase CLI. Pasting SQL into the dashboard
+is how this project reached its current schema, and it is also how
+`0002_requirements.sql` went missing from the hosted project for a week
+without anyone noticing: nothing recorded what had been applied and what had
+not, so the next migration failed on a table that was never created.
+
+Files are named `<timestamp>_<name>.sql`, which is the order the CLI applies
+them in.
+
+```bash
+supabase login                                  # once, interactive
+supabase link --project-ref <your-project-ref>  # once per clone
+npm run db:status                               # what is applied, local vs remote
+npm run db:push                                 # apply what is missing
+npm run db:diff -- --file <name>                # write a migration from dashboard edits
+```
+
+### A project whose migrations were applied by hand
+
+The hosted project already has all three, applied through the SQL editor
+before the CLI existed here. Run `supabase/REGISTER_EXISTING.sql` **once** in
+the SQL editor to record them as applied; without it the next `db:push` would
+try to run them again.
+
+It does what `supabase migration repair --status applied <version>` does.
+`repair` is the usual route, but it needs `supabase link`, which needs an
+interactive login — the SQL file does not, so it can be run by anyone with
+dashboard access.
+
+Check before running it:
+
+```sql
+select count(*) from pg_tables
+where schemaname = 'public' and tablename in ('workspaces', 'workspace_members');
+```
+
+Two rows means the third migration is applied and the file is safe to run. On
+a project where they are **not** applied, running it tells the CLI a lie it
+cannot detect: it will skip all three and leave the schema half built.

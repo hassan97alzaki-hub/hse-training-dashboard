@@ -7,7 +7,7 @@
  * of hundreds of rows.
  *
  * owner_id is never set here: the database fills it in and row-level security
- * rejects anything else. See supabase/migrations/0002_requirements.sql.
+ * rejects anything else. See supabase/migrations/20261013140610_requirements.sql.
  */
 
 import { getDbService } from './db/dbService.js';

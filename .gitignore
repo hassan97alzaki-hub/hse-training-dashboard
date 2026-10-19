@@ -11,3 +11,6 @@ artifacts/
 # Rendered briefs: build outputs of the committed .html sources
 docs/*.pdf
 .vercel
+
+# Supabase CLI: written by `supabase link`, holds the project ref
+supabase/.temp/

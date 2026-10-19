@@ -26,7 +26,12 @@ const sql = readdirSync(dir)
   .map((file) => readFileSync(resolve(dir, file), 'utf8'))
   .join('\n');
 
-const migration = readFileSync(resolve(dir, '0003_workspaces.sql'), 'utf8');
+// Found by suffix rather than by name: the files carry a timestamp so the
+// Supabase CLI can order them, and that timestamp is not something a test
+// should have to be told about.
+const migrationFile = readdirSync(dir).find((file) => file.endsWith('_workspaces.sql'));
+if (!migrationFile) throw new Error('no workspaces migration found in supabase/migrations');
+const migration = readFileSync(resolve(dir, migrationFile), 'utf8');
 
 const SCOPED_TABLES = [
   'courses', 'certificates', 'departments', 'employees',
@@ -224,5 +229,33 @@ describe('what the migration leaves alone', () => {
   it('grants nothing to an unauthenticated request', () => {
     expect(migration).not.toMatch(/TO\s+anon\b/);
     expect(migration).not.toMatch(/USING\s*\(\s*true\s*\)/i);
+  });
+});
+
+describe('the migration files', () => {
+  const files = readdirSync(dir).filter((file) => file.endsWith('.sql'));
+
+  // The Supabase CLI orders migrations by the timestamp in the filename and
+  // records that timestamp as the version. A file named any other way is one
+  // the CLI will not apply, which is how a migration goes missing from a
+  // project without anyone noticing.
+  it.each(files.map((f) => [f]))('%s is named for the CLI', (file) => {
+    expect(file).toMatch(/^\d{14}_[a-z0-9-]+\.sql$/);
+  });
+
+  it('registers every migration that was applied by hand', () => {
+    const register = readFileSync(resolve(dir, '..', 'REGISTER_EXISTING.sql'), 'utf8');
+    for (const file of files) {
+      const version = file.slice(0, 14);
+      expect(register, file).toContain(`('${version}'`);
+    }
+  });
+
+  // Telling the CLI a migration is applied when it is not makes it skip the
+  // migration for ever. The file has to say so where it cannot be missed.
+  it('warns that registering an unapplied migration is unrecoverable', () => {
+    const register = readFileSync(resolve(dir, '..', 'REGISTER_EXISTING.sql'), 'utf8');
+    expect(register).toMatch(/has NOT had them applied/);
+    expect(register).toMatch(/select count\(\*\) from pg_tables/);
   });
 });

@@ -4,6 +4,15 @@
 # bundle budget that Phase 1 introduced would have been a number nobody
 # looked at again. A budget enforced on a developer's goodwill is not
 # enforced.
+#
+# Node 24 is not a preference. On Node 22 four tests that drive the whole
+# application fail: they load the demo data, which builds a File from a
+# fetched Blob, and jsdom's File and the platform Blob do not interoperate the
+# same way on the two versions — the CSV arrives empty and no banner is ever
+# rendered. The application itself runs in a browser and is unaffected; it is
+# the test environment that differs. Pinning the version the project is
+# developed on keeps that from being rediscovered. `.nvmrc` and the `engines`
+# field say the same thing to anyone cloning the repository.
 name: CI
 
 on:
@@ -18,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       # `npm ci` rather than `npm install`: it installs what the lockfile
       # says, so CI cannot pass against dependencies the repository does not
@@ -32,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       - run: npm ci
       - run: npm run build

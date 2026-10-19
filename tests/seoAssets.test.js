@@ -230,10 +230,15 @@ describe('vercel.json', () => {
     expect(config.headers).toBeDefined();
   });
 
+  // `/app/` needs its own rule. `:path*` is documented as matching zero or
+  // more segments, but it does not match the empty segment a trailing slash
+  // leaves behind, so `/app/` fell through to a 404 in production while both
+  // `/app` and `/app/anything` were served.
   it('serves the landing page at / and the dashboard under /app', () => {
     expect(config.rewrites).toEqual([
       { source: '/', destination: '/landing.html' },
       { source: '/app', destination: '/app.html' },
+      { source: '/app/', destination: '/app.html' },
       { source: '/app/:path*', destination: '/app.html' },
     ]);
   });

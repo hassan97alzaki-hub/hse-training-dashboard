@@ -302,7 +302,7 @@ describe('Trial Mode inside the app', () => {
     }));
 
     renderApp(CONFIG, atRiyadh('2027-01-07'));
-    fireEvent.click(screen.getByRole('button', { name: /Load Demo Data/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
 
     expect(await screen.findByTestId('import-loading')).toHaveTextContent('Processing the selected file');
     expect(screen.getByTestId('training-file-input')).toBeDisabled();
@@ -340,7 +340,7 @@ describe('Trial Mode inside the app', () => {
 
   it('keeps the demonstration data working after the trial has ended', async () => {
     renderApp(CONFIG, atRiyadh('2027-01-12'));
-    fireEvent.click(screen.getByRole('button', { name: /Load Demo Data/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
     await screen.findByTestId('test-requirements-banner', {}, { timeout: 5000 });
     await waitFor(() => expect(document.querySelector('.kpi-card, .kpi-hero-card')).not.toBeNull());
   });

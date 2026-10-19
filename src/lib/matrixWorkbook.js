@@ -30,7 +30,7 @@
 //   or reused as production requirements.
 // - Issues carry codes, counts and row numbers only — never names, badges or
 //   certificate numbers.
-import * as XLSX from 'xlsx';
+import { loadXlsx, xlsx } from './xlsx.js';
 import { EMPLOYMENT_STATUS, COMPLETION_STATUS } from './constants.js';
 import {
   normalizeTrainingRecord,
@@ -80,11 +80,21 @@ export function looksLikeMatrixWorkbook(workbook) {
   return Object.values(MATRIX_SHEETS).filter(n => names.includes(n)).length >= 2;
 }
 
+/**
+ * Parse a workbook out of bytes.
+ *
+ * Synchronous, and so requires the spreadsheet library to be loaded already —
+ * `readWorkbookFromFile` does that. A caller holding raw bytes of its own
+ * awaits `loadXlsx()` first.
+ */
 export function readWorkbook(data) {
-  return XLSX.read(data, { type: 'array', cellDates: false });
+  return xlsx().read(data, { type: 'array', cellDates: false });
 }
 
-export function readWorkbookFromFile(file) {
+export async function readWorkbookFromFile(file) {
+  // The library is fetched while the file is still being chosen and read, so
+  // the download costs the user nothing they were not already waiting for.
+  await loadXlsx();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -100,8 +110,9 @@ export function readMatrixSheets(workbook) {
   const out = {};
   for (const [key, name] of Object.entries(MATRIX_SHEETS)) {
     const ws = workbook.Sheets[name];
-    out[key] = ws ? XLSX.utils.sheet_to_json(ws, { defval: '', raw: true }) : null;
-    out[`${key}Headers`] = ws ? (XLSX.utils.sheet_to_json(ws, { header: 1, raw: true })[0] || []) : [];
+    const { utils } = xlsx();
+    out[key] = ws ? utils.sheet_to_json(ws, { defval: '', raw: true }) : null;
+    out[`${key}Headers`] = ws ? (utils.sheet_to_json(ws, { header: 1, raw: true })[0] || []) : [];
   }
   return out;
 }

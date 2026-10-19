@@ -94,6 +94,18 @@ npm run favicon      # public/favicon.ico — 16px and 32px, rendered from favic
 same button a visitor would use, and captures the dashboard. Re-run it after
 any change to the interface or to the demo data, and commit the result.
 
+### Bundle budget
+
+```bash
+npm run build && npm run check:bundle
+```
+
+Measures what a visitor downloads before anything renders — the entry script,
+its preloads and its stylesheet — compressed with brotli, which is what the
+CDN serves. It fails over 500KB, and it fails if a library that is meant to
+load on demand (`xlsx`, the charting library, the PDF writer) has found its
+way back into the first load. CI runs it on every pull request.
+
 ---
 
 ## Known Limitations

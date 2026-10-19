@@ -73,8 +73,17 @@ if (missing.length) {
   process.exit(2);
 }
 
-if (/service_role/i.test(SUPABASE_ANON_KEY) || SUPABASE_ANON_KEY.length > 500) {
-  console.error('That looks like a service-role key. It bypasses RLS, so this check would be meaningless.');
+// A key with privileged access bypasses row-level security entirely, so the
+// check would pass however wrong the policies are. Both spellings are
+// refused: the legacy `service_role` JWT and the newer `sb_secret_` form that
+// sits directly beneath the publishable key in the dashboard.
+if (
+  /service_role/i.test(SUPABASE_ANON_KEY) ||
+  /^sb_secret_/.test(SUPABASE_ANON_KEY) ||
+  SUPABASE_ANON_KEY.length > 500
+) {
+  console.error('That key has privileged access: it bypasses RLS, so this check would be meaningless.');
+  console.error('Use the publishable key — `sb_publishable_…`, or the legacy anon JWT.');
   process.exit(2);
 }
 

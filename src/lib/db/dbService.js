@@ -18,31 +18,54 @@ import { getSupabaseClient } from '../supabaseClient.js';
 import { SupabaseDbService } from './supabaseDbService.js';
 
 let dbInstance = null;
+let dbReady = null;
 let backend = 'local';
 
 /**
  * Initialize the database service. Picks the backend from the build
  * environment; falls back to the local one when the cloud is unreachable, so
  * a configuration mistake degrades instead of blocking the application.
+ *
+ * What is cached here is the work, not the result. A service is only reachable
+ * once it is built: `LocalDbService`'s constructor leaves every collection an
+ * empty object and `init()` is what gives each one its `add`, `list` and `get`.
+ * Publishing the instance before that finished meant a second caller arriving
+ * during the `await` was handed those empty objects and failed on
+ * `db.courses.list is not a function`, which the callers catch — so the user
+ * silently saw an empty dashboard instead of the data already in their
+ * browser. Awaiting one shared promise gives every caller the same built
+ * service and removes the window entirely.
  */
-export async function initDb() {
-  if (!dbInstance) {
-    const client = getSupabaseClient();
-    if (client) {
-      try {
-        dbInstance = await new SupabaseDbService(client).init();
-        backend = 'supabase';
-        return dbInstance;
-      } catch (err) {
-        console.warn('Supabase unavailable, using the local database:', err.message);
-        dbInstance = null;
+export function initDb() {
+  if (!dbReady) {
+    dbReady = (async () => {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const cloud = await new SupabaseDbService(client).init();
+          dbInstance = cloud;
+          backend = 'supabase';
+          return cloud;
+        } catch (err) {
+          console.warn('Supabase unavailable, using the local database:', err.message);
+        }
       }
-    }
-    dbInstance = new LocalDbService();
-    await dbInstance.init();
-    backend = 'local';
+
+      const local = new LocalDbService();
+      await local.init();
+      dbInstance = local;
+      backend = 'local';
+      return local;
+    })();
+
+    // A failed initialization must not be cached, or every later call replays
+    // the same rejection and the application can never recover.
+    dbReady.catch(() => {
+      dbReady = null;
+    });
   }
-  return dbInstance;
+
+  return dbReady;
 }
 
 /**
@@ -59,6 +82,7 @@ export function getDbBackend() {
  */
 export function resetDb() {
   dbInstance = null;
+  dbReady = null;
   backend = 'local';
 }
 

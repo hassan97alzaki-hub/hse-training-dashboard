@@ -1382,3 +1382,53 @@ tbody tr:last-child { border-bottom: none; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Moving a browser's data into a workspace ===== */
+.migration-prompt {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  color: var(--text-primary);
+}
+.migration-prompt p {
+  color: var(--text-sec);
+  margin: var(--sp-1) 0 0;
+  font-size: 14px;
+}
+.migration-prompt > div:first-of-type { flex: 1; }
+.migration-warning { color: var(--warning); }
+.migration-prompt--done { border-color: var(--success); }
+.migration-prompt--failed { border-color: var(--critical); }
+.migration-actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.migration-go, .migration-retry {
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.migration-dismiss {
+  background: transparent;
+  color: var(--text-sec);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.migration-go:disabled, .migration-dismiss:disabled { opacity: 0.6; cursor: default; }
+@media (max-width: 768px) {
+  .migration-prompt { flex-direction: column; }
+  .migration-actions { width: 100%; }
+  .migration-go, .migration-dismiss { flex: 1; }
+}

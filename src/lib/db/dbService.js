@@ -100,8 +100,13 @@ export function getDbService() {
 /**
  * Local database implementation (IndexedDB)
  * For self-hosted MVP, uses browser storage
+ *
+ * Exported so a signed-in session can open the browser's own database
+ * alongside the cloud one and offer to move what is in it. That is the only
+ * situation where both backends exist at once; everything else goes through
+ * `initDb()` and does not know which it has.
  */
-class LocalDbService {
+export class LocalDbService {
   constructor() {
     this.dbName = 'hse-training-db';
     // Version 2 added the employees store, version 3 the departments store,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { ClipboardList } from 'lucide-react';
 import { DEMO_AS_OF_DATE, DEFAULT_COMPANY, DEFAULT_PROJECT } from './lib/constants.js';
 import { getRuntimeAsOfDate } from './lib/clock.js';
@@ -43,7 +43,16 @@ import ExecutiveSummary from './components/ExecutiveSummary.jsx';
 import KpiCards from './components/KpiCards.jsx';
 import Filters from './components/Filters.jsx';
 import ComplianceTable from './components/ComplianceTable.jsx';
-import { DeptComplianceChart, StatusBreakdownChart, CourseComplianceChart } from './components/Charts.jsx';
+// The charts carry the charting library, which is the second heaviest thing
+// in the bundle and is needed by nothing else. Nobody sees a chart before
+// data is loaded, so it is fetched when the first one is about to render
+// rather than during the first paint. `lazy` wants a default export, and
+// these are named; all three live in one module, so all three arrive in one
+// request.
+const chartsModule = () => import('./components/Charts.jsx');
+const DeptComplianceChart = lazy(() => chartsModule().then((m) => ({ default: m.DeptComplianceChart })));
+const StatusBreakdownChart = lazy(() => chartsModule().then((m) => ({ default: m.StatusBreakdownChart })));
+const CourseComplianceChart = lazy(() => chartsModule().then((m) => ({ default: m.CourseComplianceChart })));
 import PriorityActions from './components/PriorityActions.jsx';
 import DataQualityPanel from './components/DataQualityPanel.jsx';
 import MatrixImportPreview from './components/MatrixImportPreview.jsx';
@@ -897,23 +906,27 @@ export default function App({
 
             <KpiCards kpis={displayKpis} t={t} />
 
-            <div className="charts-grid">
-              <div className="chart-wrap">
-                <div className="chart-title">{t('deptComplianceTitle')}</div>
-                <DeptComplianceChart data={displayKpis?.departmentCompliance} t={t} lang={lang} />
+            {/* One boundary around every chart: they arrive together, and a
+                fallback per chart would flash three placeholders. */}
+            <Suspense fallback={<div className="chart-loading">{t('loading')}</div>}>
+              <div className="charts-grid">
+                <div className="chart-wrap">
+                  <div className="chart-title">{t('deptComplianceTitle')}</div>
+                  <DeptComplianceChart data={displayKpis?.departmentCompliance} t={t} lang={lang} />
+                </div>
+                <div className="chart-wrap">
+                  <div className="chart-title">{t('statusBreakdownTitle')}</div>
+                  <StatusBreakdownChart statusCounts={kpis?.statusCounts} t={t} lang={lang} />
+                </div>
               </div>
-              <div className="chart-wrap">
-                <div className="chart-title">{t('statusBreakdownTitle')}</div>
-                <StatusBreakdownChart statusCounts={kpis?.statusCounts} t={t} lang={lang} />
-              </div>
-            </div>
 
-            <div className="section">
-              <div className="section-header">
-                <span className="section-title">{t('courseComplianceTitle')}</span>
+              <div className="section">
+                <div className="section-header">
+                  <span className="section-title">{t('courseComplianceTitle')}</span>
+                </div>
+                <CourseComplianceChart data={displayKpis?.courseCompliance} t={t} lang={lang} />
               </div>
-              <CourseComplianceChart data={displayKpis?.courseCompliance} t={t} lang={lang} />
-            </div>
+            </Suspense>
 
             <div className="section">
               <div className="section-header">

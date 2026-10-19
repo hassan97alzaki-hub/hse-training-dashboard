@@ -9,6 +9,7 @@
     "og": "node scripts/build-og-image.mjs",
     "favicon": "node scripts/build-favicon.mjs",
     "screenshot": "node scripts/build-dashboard-screenshot.mjs",
+    "check:bundle": "node scripts/check-bundle-budget.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"

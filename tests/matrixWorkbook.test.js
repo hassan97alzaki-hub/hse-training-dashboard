@@ -12,9 +12,17 @@ import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from '../s
 import { filterComplianceItems } from '../src/lib/tableFilters.js';
 import { createI18n } from '../src/lib/i18n.js';
 import { addCalendarMonths } from '../src/lib/normalization.js';
+import { loadXlsx } from '../src/lib/xlsx.js';
 import MatrixImportPreview from '../src/components/MatrixImportPreview.jsx';
 import ComplianceTable from '../src/components/ComplianceTable.jsx';
 import { fireEvent } from '@testing-library/react';
+
+// `readWorkbook` is synchronous and expects the spreadsheet library to be
+// loaded, which in the application is the business of the file-reading path
+// that calls it. These tests build workbooks in memory, so they load it
+// themselves — top-level, because the helpers below run as the module is
+// evaluated.
+await loadXlsx();
 
 const AS_OF = '2026-07-26';
 

@@ -168,31 +168,41 @@ END $$;
 -- own holding exactly the rows it already had. Nobody gains access to
 -- anything: a one-person workspace is the owner model, written the new way.
 
--- One statement, so the identifiers generated for the new workspaces are the
--- same ones written into the membership rows. A data-modifying CTE always
--- runs, and every CTE here reads the one `owners` snapshot.
-WITH owners AS (
-  SELECT owner_id, gen_random_uuid() AS workspace_id
-  FROM (
-    SELECT owner_id FROM public.courses
-    UNION SELECT owner_id FROM public.certificates
-    UNION SELECT owner_id FROM public.departments
-    UNION SELECT owner_id FROM public.employees
-    UNION SELECT owner_id FROM public.employee_contacts
-    UNION SELECT owner_id FROM public.reminders_sent
-    UNION SELECT owner_id FROM public.requirements
-    UNION SELECT owner_id FROM public.training_records
-    UNION SELECT owner_id FROM public.requirements_approval
-  ) AS distinct_owners
-  WHERE owner_id IS NOT NULL
-    -- An account that already belongs to a workspace is not given a second
-    -- one, so running this migration again changes nothing.
-    AND owner_id NOT IN (SELECT user_id FROM public.workspace_members)
-), created AS (
-  INSERT INTO public.workspaces (id) SELECT workspace_id FROM owners RETURNING id
-)
-INSERT INTO public.workspace_members (workspace_id, user_id, role)
-SELECT workspace_id, owner_id, 'owner' FROM owners;
+-- A loop rather than one statement with data-modifying CTEs. The membership
+-- row carries a foreign key to the workspace, and that key is checked as each
+-- row is inserted, not at the end of the statement. Postgres does not order
+-- CTEs against each other, so writing both in one statement risks inserting a
+-- membership for a workspace that has not been written yet. A loop creates
+-- each pair in order, which the foreign key requires.
+DO $$
+DECLARE
+  -- Not `owner`: that is a SQL keyword, and a plpgsql variable sharing a name
+  -- with one is a trap waiting for the next person to edit this block.
+  owner_uid UUID;
+  ws UUID;
+BEGIN
+  FOR owner_uid IN
+    SELECT owner_id FROM (
+      SELECT owner_id FROM public.courses
+      UNION SELECT owner_id FROM public.certificates
+      UNION SELECT owner_id FROM public.departments
+      UNION SELECT owner_id FROM public.employees
+      UNION SELECT owner_id FROM public.employee_contacts
+      UNION SELECT owner_id FROM public.reminders_sent
+      UNION SELECT owner_id FROM public.requirements
+      UNION SELECT owner_id FROM public.training_records
+      UNION SELECT owner_id FROM public.requirements_approval
+    ) AS distinct_owners
+    WHERE owner_id IS NOT NULL
+      -- An account that already belongs to a workspace is not given a second
+      -- one, so running this migration again changes nothing.
+      AND owner_id NOT IN (SELECT user_id FROM public.workspace_members)
+  LOOP
+    INSERT INTO public.workspaces DEFAULT VALUES RETURNING id INTO ws;
+    INSERT INTO public.workspace_members (workspace_id, user_id, role)
+    VALUES (ws, owner_uid, 'owner');
+  END LOOP;
+END $$;
 
 DO $$
 DECLARE

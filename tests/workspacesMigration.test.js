@@ -183,7 +183,19 @@ describe('the SECURITY DEFINER functions', () => {
 
 describe('the backfill', () => {
   it('gives each existing owner a workspace of their own', () => {
-    expect(migration).toContain("SELECT workspace_id, owner_id, 'owner' FROM owners");
+    expect(migration).toContain("VALUES (ws, owner_uid, 'owner')");
+  });
+
+  // The membership row carries a foreign key to the workspace, checked as the
+  // row is inserted. Postgres does not order data-modifying CTEs against each
+  // other, so creating both in one statement can insert a membership for a
+  // workspace that does not exist yet. The pairs are created in a loop.
+  it('creates each workspace before the membership that points at it', () => {
+    const loop = migration.match(/FOR owner_uid IN[\s\S]*?END LOOP;/);
+    expect(loop).not.toBeNull();
+    expect(loop[0].indexOf('INSERT INTO public.workspaces'))
+      .toBeLessThan(loop[0].indexOf('INSERT INTO public.workspace_members'));
+    expect(migration).not.toMatch(/\), created AS \(/);
   });
 
   it('skips an account that already has one, so it can be run again', () => {

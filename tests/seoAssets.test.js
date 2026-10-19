@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
@@ -118,6 +118,41 @@ describe('landing page head', () => {
   });
 });
 
+describe('the dashboard preview on the landing page', () => {
+  const figure = landingDom.querySelector('.preview');
+  const image = figure.querySelector('img');
+
+  it('offers WebP with a PNG fallback', () => {
+    expect(figure.querySelector('source').getAttribute('srcset')).toBe('/dashboard-screenshot.webp');
+    expect(image.getAttribute('src')).toBe('/dashboard-screenshot.png');
+  });
+
+  // Without an intrinsic size the browser cannot reserve the box, and the
+  // text below the image jumps once the file arrives.
+  it('declares its intrinsic size', () => {
+    expect(image.getAttribute('width')).toBe('1600');
+    expect(image.getAttribute('height')).toBe('1000');
+  });
+
+  it('defers the download, being below the fold', () => {
+    expect(image.getAttribute('loading')).toBe('lazy');
+  });
+
+  it('describes itself in both languages', () => {
+    expect(image.getAttribute('alt').length).toBeGreaterThan(20);
+    expect(image.dataset.arAlt).toMatch(/[\u0600-\u06FF]/);
+  });
+
+  // The page is served over a connection the visitor did not choose, and the
+  // image is the heaviest thing on it.
+  it.each([
+    ['public/dashboard-screenshot.webp'],
+    ['public/dashboard-screenshot.png'],
+  ])('ships %s under 300KB', (file) => {
+    expect(statSync(resolve(root, file)).size).toBeLessThan(300 * 1024);
+  });
+});
+
 describe('language switch', () => {
   // The two languages used to be one page swapping its own text in the
   // browser, which left the Arabic unreachable to a crawler. The switch has to
@@ -144,6 +179,7 @@ describe('toArabic', () => {
 <body>
   <h1 data-en="Compliance" data-ar="الامتثال">Compliance</h1>
   <p data-en="Only English">Only English</p>
+  <img src="/shot.png" alt="English alt" data-ar-alt="نص بديل عربي">
   <a id="langBtn" href="/ar/" hreflang="ar" lang="ar">العربية</a>
 </body>
 </html>`;
@@ -183,6 +219,12 @@ describe('toArabic', () => {
     expect(
       document.querySelector('meta[property="og:locale:alternate"]').getAttribute('content'),
     ).toBe('en_US');
+  });
+
+  it('translates an image description', () => {
+    const image = document.querySelector('img');
+    expect(image.getAttribute('alt')).toBe('نص بديل عربي');
+    expect(image.hasAttribute('data-ar-alt')).toBe(false);
   });
 
   it('points the language switch back at the English page', () => {

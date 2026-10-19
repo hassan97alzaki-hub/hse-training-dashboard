@@ -217,6 +217,39 @@
     .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
     /* ── How it works ── */
+    .preview {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      text-align: center;
+    }
+    .preview h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .preview p {
+      color: var(--text-sec);
+      margin-bottom: 32px;
+    }
+    .preview figure {
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      /* The shot is a dark dashboard on a dark page, so the frame is what
+         separates the two. */
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+    .preview img {
+      display: block;
+      width: 100%;
+      /* The intrinsic size is declared on the element as well, so the browser
+         reserves the right box before the file arrives and the text below it
+         does not jump. */
+      height: auto;
+    }
+
     .how {
       max-width: 800px;
       margin: 0 auto;
@@ -286,6 +319,7 @@
       .features { padding: 24px 16px 48px; }
       .stats { gap: 24px; padding: 24px 16px; }
       .stat-value { font-size: 28px; }
+      .preview { padding: 0 16px 48px; }
       .how { padding: 48px 16px; }
     }
 
@@ -399,6 +433,26 @@
   </section>
 
   <!-- How it works -->
+  <!-- A visitor cannot tell from a feature list what the tool looks like.
+       The shot is generated from the running application with the project's
+       own demo data by `npm run screenshot`, so it cannot drift from what a
+       visitor gets when they click through. -->
+  <section class="preview">
+    <h2 data-en="This Is Your Dashboard, Minute One"
+        data-ar="هكذا تبدو لوحتك في أول دقيقة">This Is Your Dashboard, Minute One</h2>
+    <p data-en="Load the demo data and this is the screen you get — no setup, no account."
+       data-ar="حمّل البيانات التجريبية وستصلك هذه الشاشة — بلا إعداد وبلا حساب.">Load the demo data and this is the screen you get — no setup, no account.</p>
+    <figure>
+      <picture>
+        <source srcset="/dashboard-screenshot.webp" type="image/webp">
+        <img src="/dashboard-screenshot.png"
+             width="1600" height="1000" loading="lazy" decoding="async"
+             alt="The HSE Training Dashboard showing compliance percentages, expiry counts, a department compliance chart and a status breakdown"
+             data-ar-alt="لوحة متابعة تدريبات السلامة وفيها نسب الامتثال وأعداد الشهادات المنتهية ورسم امتثال الأقسام وتوزيع الحالات">
+      </picture>
+    </figure>
+  </section>
+
   <section class="how">
     <h2 data-en="Up and Running in 3 Steps" data-ar="ابدأ في 3 خطوات">Up and Running in 3 Steps</h2>
     <div class="steps">

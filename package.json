@@ -8,6 +8,7 @@
     "build": "vite build && node scripts/build-ar-landing.mjs",
     "og": "node scripts/build-og-image.mjs",
     "favicon": "node scripts/build-favicon.mjs",
+    "screenshot": "node scripts/build-dashboard-screenshot.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"

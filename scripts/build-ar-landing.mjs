@@ -60,6 +60,13 @@ export function toArabic(html) {
     element.removeAttribute('data-en');
   }
 
+  // An image describes itself in its `alt`, which is text a reader hears and
+  // a crawler reads, so it is translated like any other string on the page.
+  for (const element of document.querySelectorAll('[data-ar-alt]')) {
+    element.setAttribute('alt', element.dataset.arAlt);
+    element.removeAttribute('data-ar-alt');
+  }
+
   const set = (selector, attribute, value) => {
     const node = document.querySelector(selector);
     if (node) node.setAttribute(attribute, value);

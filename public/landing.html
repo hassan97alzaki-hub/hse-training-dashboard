@@ -4,15 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HSE Training Dashboard — Track Safety Compliance Effortlessly</title>
-  <meta name="description" content="Free HSE training compliance dashboard. Track certifications, expiry dates, and workforce readiness. Built for safety professionals in oil & gas, construction, and manufacturing.">
-  <meta name="keywords" content="HSE training, safety compliance, training tracker, certification management, نظام متابعة تدريب السلامة, إدارة شهادات التدريب">
+  <!-- Search results cut a description at roughly 160 characters, so this one
+       says what the tool is and who it is for inside that budget. -->
+  <meta name="description" content="Free HSE training compliance dashboard. Track certifications, expiry dates and workforce readiness. Bilingual EN/AR, Excel import in minutes.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" sizes="32x32" href="/favicon.ico">
   <meta property="og:title" content="HSE Training Dashboard">
   <meta property="og:description" content="Track safety training compliance across your workforce. Free, bilingual (EN/AR), works offline.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://hse-training-dashboard.vercel.app">
+  <meta property="og:url" content="https://hse-training-dashboard.vercel.app/">
+  <meta property="og:image" content="https://hse-training-dashboard.vercel.app/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="ar_SA">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="canonical" href="https://hse-training-dashboard.vercel.app">
+  <link rel="canonical" href="https://hse-training-dashboard.vercel.app/">
+  <!-- The Arabic page at /ar/ is generated from this file at build time. The
+       cluster has to be identical and reciprocal on both pages or Google
+       ignores it entirely. -->
+  <link rel="alternate" hreflang="en" href="https://hse-training-dashboard.vercel.app/">
+  <link rel="alternate" hreflang="ar" href="https://hse-training-dashboard.vercel.app/ar/">
+  <link rel="alternate" hreflang="x-default" href="https://hse-training-dashboard.vercel.app/">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -64,9 +77,12 @@
     .nav-logo img { width: 28px; height: 28px; }
     .nav-actions { display: flex; align-items: center; gap: 12px; }
     .lang-toggle {
+      display: inline-block;
       background: none;
       border: 1px solid var(--border);
+      /* Wins over the global `a` colour: this is a control, not a body link. */
       color: var(--text-sec);
+      text-decoration: none;
       padding: 6px 14px;
       border-radius: 6px;
       cursor: pointer;
@@ -288,7 +304,7 @@
       <span data-en="HSE Training Dashboard" data-ar="لوحة متابعة التدريب HSE">HSE Training Dashboard</span>
     </div>
     <div class="nav-actions">
-      <button class="lang-toggle" onclick="toggleLang()" id="langBtn">العربية</button>
+      <a class="lang-toggle" id="langBtn" href="/ar/" hreflang="ar" lang="ar">العربية</a>
       <a href="/app/" class="btn-primary" data-en="Open Dashboard" data-ar="افتح لوحة المتابعة">Open Dashboard</a>
     </div>
   </nav>
@@ -432,25 +448,16 @@
     </p>
   </footer>
 
-  <script>
-    let currentLang = (navigator.language || '').startsWith('ar') ? 'ar' : 'en';
+  <!--
+    The two languages used to be one page that swapped its own text in the
+    browser. A search engine only ever saw the English half of it, so the
+    Arabic terms this page is meant to rank for were unreachable.
 
-    function applyLang(lang) {
-      currentLang = lang;
-      const isAr = lang === 'ar';
-      document.documentElement.lang = lang;
-      document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-      document.getElementById('langBtn').textContent = isAr ? 'English' : 'العربية';
-      document.querySelectorAll('[data-' + lang + ']').forEach(function(el) {
-        el.textContent = el.getAttribute('data-' + lang);
-      });
-    }
-
-    function toggleLang() {
-      applyLang(currentLang === 'en' ? 'ar' : 'en');
-    }
-
-    applyLang(currentLang);
-  </script>
+    The Arabic text now lives on its own address. `scripts/build-ar-landing.mjs`
+    reads this file at build time, writes each `data-ar` value into its element
+    and emits `dist/ar/index.html`. The attributes below are that script's
+    input; nothing reads them at run time, and there is no language script on
+    the page any more.
+  -->
 </body>
 </html>

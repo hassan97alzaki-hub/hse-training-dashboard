@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# /app/ is deliberately left crawlable. It carries an X-Robots-Tag: noindex
+# header (see vercel.json), and a crawler has to be allowed in to read that
+# header before it will drop the page from the index. Disallowing the path
+# instead would hide the noindex and strand anything already indexed.
+
+Sitemap: https://hse-training-dashboard.vercel.app/sitemap.xml

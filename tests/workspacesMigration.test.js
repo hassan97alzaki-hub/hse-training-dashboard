@@ -243,9 +243,14 @@ describe('the migration files', () => {
     expect(file).toMatch(/^\d{14}_[a-z0-9-]+\.sql$/);
   });
 
+  // Only the migrations that reached the hosted project through the SQL editor
+  // belong in this file. Anything newer is applied by `supabase db push`, and
+  // registering it here would make the CLI skip it.
   it('registers every migration that was applied by hand', () => {
     const register = readFileSync(resolve(dir, '..', 'REGISTER_EXISTING.sql'), 'utf8');
-    for (const file of files) {
+    const byHand = files.filter((file) => file.slice(0, 14) <= '20261019100039');
+    expect(byHand.length).toBe(3);
+    for (const file of byHand) {
       const version = file.slice(0, 14);
       expect(register, file).toContain(`('${version}'`);
     }

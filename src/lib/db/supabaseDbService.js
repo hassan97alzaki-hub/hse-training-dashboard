@@ -84,7 +84,12 @@ export class SupabaseDbService {
     const api = {
       add: async (data) => {
         const row = { ...data };
-        delete row.owner_id; // the database fills this in; see the migration
+        // Both are filled in by the database from the signed-in account: see
+        // 0001_init.sql for owner_id and 0003_workspaces.sql for the
+        // workspace. A row arriving with either could only carry the wrong
+        // one — rows copied up from a browser carry neither.
+        delete row.owner_id;
+        delete row.workspace_id;
         unwrap(await this.client.from(name).insert(row).select().single());
         return data;
       },
@@ -93,6 +98,7 @@ export class SupabaseDbService {
       update: async (id, data) => {
         const row = { ...data, id, updated_at: new Date().toISOString() };
         delete row.owner_id;
+        delete row.workspace_id;
         unwrap(await this.client.from(name).update(row).eq('id', id).select().single());
         return data;
       },

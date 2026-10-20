@@ -7,7 +7,16 @@ import { buildComplianceUniverse, calculateKPIs, getPriorityActions } from './li
 import { importTrainingFile, importRequirementsFile } from './lib/dataImport.js';
 import { loadDemoDataFromPublic } from './lib/demoData.js';
 import { createCertificateGallery, loadCertificatesFromDb, saveCertificateWithDb } from './lib/certificateGallery.js';
-import { initDb } from './lib/db/dbService.js';
+import { initDb, getDbBackend, getDbService, LocalDbService } from './lib/db/dbService.js';
+import {
+  hasLocalData,
+  describeWorkspace,
+  countRows,
+  readAll,
+  totalRows,
+  migrateLocalToWorkspace,
+  purgeExpiredBackup,
+} from './lib/migrateLocalToCloud.js';
 import {
   loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeRequirements,
   loadEmployeesFromDb, addEmployeeWithDb, editEmployeeWithDb, deleteEmployeeWithDb, mergeManualEmployees,
@@ -56,6 +65,7 @@ const CourseComplianceChart = lazy(() => chartsModule().then((m) => ({ default: 
 import PriorityActions from './components/PriorityActions.jsx';
 import DataQualityPanel from './components/DataQualityPanel.jsx';
 import MatrixImportPreview from './components/MatrixImportPreview.jsx';
+import { MigrationPrompt } from './components/MigrationPrompt.jsx';
 import ProductionPackagePreview from './components/ProductionPackagePreview.jsx';
 import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
 import TrialBanner from './components/TrialBanner.jsx';
@@ -146,6 +156,42 @@ export default function App({
   // Departments registered through the interface. A department that only
   // exists in imported data is discovered from the people, not stored here.
   const [registeredDepartments, setRegisteredDepartments] = useState([]);
+  // Set when a signed-in session finds data in this browser that is not yet
+  // in its workspace. Null the rest of the time, which is most of the time.
+  const [migrationOffer, setMigrationOffer] = useState(null);
+
+  // Opening the browser's own database while signed in is the one place both
+  // backends exist at once. It is only done to ask the question; if there is
+  // nothing to move, nothing is shown and nothing is touched.
+  useEffect(() => {
+    if (!dbInitialized || getDbBackend() !== 'supabase') return undefined;
+
+    let cancelled = false;
+    (async () => {
+      purgeExpiredBackup();
+      try {
+        const local = await new LocalDbService().init();
+        if (cancelled || !(await hasLocalData(local))) return;
+
+        const { rows } = await readAll(local);
+        const workspace = await describeWorkspace(getDbService());
+        if (cancelled) return;
+
+        setMigrationOffer({
+          local,
+          localCount: totalRows(countRows(rows)),
+          workspaceCount: workspace.total,
+        });
+      } catch {
+        // No local database, or it will not open. There is then nothing to
+        // offer to move, and the dashboard is unaffected either way.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dbInitialized]);
 
   useEffect(() => {
     (async () => {
@@ -742,6 +788,18 @@ export default function App({
 
       <main className="main-content">
         <TrialBanner state={trial} t={t} />
+
+        {migrationOffer && (
+          <MigrationPrompt
+            t={t}
+            localCount={migrationOffer.localCount}
+            workspaceCount={migrationOffer.workspaceCount}
+            onMigrate={() =>
+              migrateLocalToWorkspace({ local: migrationOffer.local, cloud: getDbService() })
+            }
+            onDismiss={() => setMigrationOffer(null)}
+          />
+        )}
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginBottom: 12 }}>
           {approval.status === 'draft' && managedRequirements.length > 0 && (

@@ -1022,6 +1022,7 @@ export default function App({
                 onRecordEdit={(item) => setSessionForm({
                   prefill: {
                     recordId: item.record?.Record_ID ?? null,
+                    completionStatus: item.record?.Completion_Status ?? 'Completed',
                     employeeId: item.Employee_ID,
                     courseCode: item.Course_Code,
                     issueDate: item.Issue_Date ?? '',

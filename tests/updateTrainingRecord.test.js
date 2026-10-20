@@ -49,10 +49,21 @@ describe('updateTrainingRecord', () => {
     });
   });
 
-  it('reports failure when the record is gone', async () => {
+  it('writes an imported record under its own id when no stored row exists', async () => {
     globalThis.__testDb.trainingRecords.get = async () => null;
-    const result = await updateTrainingRecord('rec_missing', { employeeId: '1997', courseCode: '3973' }, courses);
-    expect(result.success).toBe(false);
+    const result = await updateTrainingRecord('imp_row_5', {
+      employeeId: '1997', courseCode: '3973', issueDate: '2026-10-20', completionStatus: 'In Progress',
+    }, courses);
+
+    expect(result.success).toBe(true);
     expect(globalThis.__testDb.trainingRecords.update).not.toHaveBeenCalled();
+    const [row] = globalThis.__testDb.trainingRecords.add.mock.calls[0];
+    expect(row).toMatchObject({
+      id: 'imp_row_5',
+      employee_id: '1997',
+      course_code: '3973',
+      completion_status: 'In Progress',
+      source: 'import',
+    });
   });
 });

@@ -95,6 +95,7 @@ export function TrainingSessionForm({
       ? await updateTrainingRecord(prefill.recordId, {
           employeeId: prefill.employeeId,
           courseCode, issueDate, expiryDate, certificateNumber,
+          completionStatus: prefill.completionStatus,
         }, courses)
       : await addTrainingRecords({
           courseCode, issueDate, expiryDate, certificateNumber,

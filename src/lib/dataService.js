@@ -625,6 +625,7 @@ export async function loadTrainingRecordsFromDb() {
     const db = getDbService();
     const rows = await db.trainingRecords.list();
     return rows.map(row => ({
+      Record_ID: row.id,
       Employee_ID: row.employee_id,
       Course_Code: row.course_code,
       Completion_Status: row.completion_status ?? 'Completed',

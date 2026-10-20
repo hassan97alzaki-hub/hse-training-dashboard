@@ -881,17 +881,21 @@ export default function App({
             requirements={mergedRequirements}
             prefill={sessionForm.prefill}
             t={t}
-            onSaved={(records) => setManualRecords(prev => [
-              ...prev,
-              ...records.map(r => ({
+            onSaved={(records) => setManualRecords(prev => {
+              const mapped = records.map(r => ({
+                Record_ID: r.id,
                 Employee_ID: r.employee_id,
                 Course_Code: r.course_code,
                 Completion_Status: r.completion_status ?? 'Completed',
                 Issue_Date: r.issue_date ?? null,
                 Expiry_Date: r.expiry_date ?? null,
                 Certificate_Number: r.certificate_number ?? null,
-              })),
-            ])}
+              }));
+              const editedId = sessionForm.prefill?.recordId;
+              return editedId
+                ? prev.map(r => (r.Record_ID === editedId ? mapped[0] : r))
+                : [...prev, ...mapped];
+            })}
             onClose={() => setSessionForm(null)}
           />
         )}
@@ -1017,6 +1021,7 @@ export default function App({
                 onCertificateClick={(certNumber) => setSelectedCertificate({ number: certNumber, isNew: false })}
                 onRecordEdit={(item) => setSessionForm({
                   prefill: {
+                    recordId: item.record?.Record_ID ?? null,
                     employeeId: item.Employee_ID,
                     courseCode: item.Course_Code,
                     issueDate: item.Issue_Date ?? '',

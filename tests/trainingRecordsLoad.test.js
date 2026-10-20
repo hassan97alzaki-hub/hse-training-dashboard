@@ -32,6 +32,7 @@ describe('loadTrainingRecordsFromDb', () => {
     const rows = await loadTrainingRecordsFromDb();
     expect(rows).toEqual([
       {
+        Record_ID: 'rec_1997_3973_1',
         Employee_ID: '1997',
         Course_Code: '3973',
         Completion_Status: 'Completed',

@@ -147,6 +147,37 @@ export async function addTrainingRecords(session, courses = []) {
 }
 
 /**
+ * Rewrite one stored training record in place, so an edit replaces it.
+ */
+export async function updateTrainingRecord(recordId, session, courses = []) {
+  const { employeeId, courseCode, issueDate, expiryDate, certificateNumber } = session ?? {};
+
+  if (!courseCode) return { success: false, records: [], error: 'A course is required' };
+
+  const course = courses.find(c => c?.code && c.code.toUpperCase() === courseCode.toUpperCase());
+  const expiry = expiryDate || computeExpiryDate(issueDate, course?.validityMonths ?? null);
+
+  try {
+    const db = getDbService();
+    const existing = await db.trainingRecords.get(recordId);
+    if (!existing) return { success: false, records: [], error: 'Training record not found' };
+
+    const row = {
+      ...existing,
+      employee_id: employeeId,
+      course_code: courseCode,
+      issue_date: issueDate || null,
+      expiry_date: expiry,
+      certificate_number: certificateNumber || null,
+    };
+    await db.trainingRecords.update(recordId, row);
+    return { success: true, records: [row] };
+  } catch (err) {
+    return { success: false, records: [], error: err.message };
+  }
+}
+
+/**
  * Replace the whole matrix with an imported one. One active source at a time.
  *
  * The training records are deliberately untouched: those are actual

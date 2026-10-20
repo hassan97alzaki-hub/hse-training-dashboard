@@ -16,7 +16,7 @@
  *
  * owner_id is never sent from here. The column defaults to auth.uid() and
  * row-level security rejects anything else, so a row always belongs to the
- * signed-in user. See supabase/migrations/0001_init.sql.
+ * signed-in user. See supabase/migrations/20261012103348_init.sql.
  */
 
 /** Throw the Supabase error, or return the data. */

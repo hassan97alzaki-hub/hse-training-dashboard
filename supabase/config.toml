@@ -1,0 +1,19 @@
+# Supabase CLI configuration.
+#
+# The project ref is deliberately absent: `supabase link` writes it to
+# supabase/.temp, which is ignored, so a clone of this repository carries no
+# pointer at anyone's project. Run `supabase link --project-ref <ref>` once.
+
+project_id = "hse-training-dashboard"
+
+[db]
+# The version the hosted project runs. A local `supabase start` uses the same
+# one, so a migration cannot pass locally and fail on deploy over a version
+# difference.
+major_version = 17
+
+[auth]
+enable_signup = true
+# Both sign-in paths are live: accounts created before the magic link existed
+# have passwords and keep using them.
+enable_confirmations = false

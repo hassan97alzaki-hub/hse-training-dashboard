@@ -296,17 +296,18 @@ describe('the migration', () => {
     expect(owners).toHaveLength(TABLES.length);
   });
 
-  it('scopes every unique key to the account', () => {
-    // A code or an employee ID is unique per account, never globally: two
-    // companies may both run H2S and both number an employee 1001.
-    expect(sql).toContain('UNIQUE (owner_id, code)');
-    expect(sql).toContain('UNIQUE (owner_id, certificate_number)');
-    expect(sql).toContain('UNIQUE (owner_id, name_key)');
-    expect(sql).toContain('UNIQUE (owner_id, employee_id)');
+  // The account-scoped keys of 0001 are replaced in 0003 by workspace-scoped
+  // ones: a code is unique to the dataset, and the dataset is now shared.
+  // Two members must not each be allowed their own H2S.
+  it('scopes every unique key to the workspace', () => {
+    expect(sql).toContain('ON public.courses(workspace_id, code)');
+    expect(sql).toContain('ON public.certificates(workspace_id, certificate_number)');
+    expect(sql).toContain('ON public.departments(workspace_id, name_key)');
+    expect(sql).toContain('ON public.employees(workspace_id, employee_id)');
   });
 
-  it('scopes the requirements key to the account', () => {
-    expect(sql).toContain('UNIQUE (owner_id, department, job_title, course_code)');
+  it('scopes the requirements key to the workspace', () => {
+    expect(sql).toContain('ON public.requirements(workspace_id, department, job_title, course_code)');
   });
 
   it('grants nothing to an unauthenticated request', () => {
@@ -315,9 +316,13 @@ describe('the migration', () => {
     expect(sql).not.toMatch(/USING\s*\(\s*true\s*\)/i);
   });
 
-  it('removes an account\'s rows with the account', () => {
+  // Nine data tables plus `workspace_members`: deleting an account takes its
+  // membership with it, and the rows it created are deleted too. The rows
+  // survive only as long as the workspace does, which is the point of a
+  // workspace — a colleague's departure does not erase the training records.
+  it('removes an account\'s rows and its membership with the account', () => {
     const cascades = sql.match(/REFERENCES auth\.users\(id\) ON DELETE CASCADE/g) ?? [];
-    expect(cascades).toHaveLength(TABLES.length);
+    expect(cascades).toHaveLength(TABLES.length + 1);
   });
 });
 

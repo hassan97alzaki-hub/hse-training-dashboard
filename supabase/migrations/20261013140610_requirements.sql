@@ -2,7 +2,7 @@
 --
 -- Adds the three tables that let a course be scoped to roles and a completion
 -- be recorded, both from inside the interface. Same ownership model as
--- 0001_init.sql: owner_id defaults to auth.uid(), so the client never sends it.
+-- 20261012103348_init.sql: owner_id defaults to auth.uid(), so the client never sends it.
 
 -- ===== Requirements =====
 -- One row per role per course. An empty job_title means every job title in

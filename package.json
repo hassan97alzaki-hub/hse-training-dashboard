@@ -13,9 +13,13 @@
     "favicon": "node scripts/build-favicon.mjs",
     "screenshot": "node scripts/build-dashboard-screenshot.mjs",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
+    "verify:rls": "node scripts/verify-rls-isolation.mjs",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:push": "supabase db push",
+    "db:diff": "supabase db diff",
+    "db:status": "supabase migration list"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
@@ -38,6 +42,7 @@
     "jsdom": "^29.1.1",
     "oxlint": "^1.71.0",
     "puppeteer": "^25.13.0",
+    "supabase": "^2.121.0",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
   }

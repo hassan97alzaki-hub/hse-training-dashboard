@@ -21,6 +21,7 @@ import {
   loadCoursesFromDb, addCourseWithDb, editCourseWithDb, deleteCourseWithDb, mergeRequirements,
   loadEmployeesFromDb, addEmployeeWithDb, editEmployeeWithDb, deleteEmployeeWithDb, mergeManualEmployees,
   loadDepartmentsFromDb, addDepartmentWithDb, deleteDepartmentWithDb, listDepartments,
+  loadTrainingRecordsFromDb,
 } from './lib/dataService.js';
 import {
   readWorkbookFromFile, looksLikeMatrixWorkbook, readMatrixSheets,
@@ -243,6 +244,13 @@ export default function App({
         const dbDepartments = await loadDepartmentsFromDb();
         if (dbDepartments && dbDepartments.length > 0) {
           setRegisteredDepartments(dbDepartments);
+        }
+
+        // Load the training records entered through the interface. Without
+        // this, saved records vanish on reload and compliance reads MISSING.
+        const dbRecords = await loadTrainingRecordsFromDb();
+        if (dbRecords.length > 0) {
+          setManualRecords(dbRecords);
         }
 
         // Load the requirements matrix built through the interface

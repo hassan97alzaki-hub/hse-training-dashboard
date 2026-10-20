@@ -254,6 +254,7 @@ describe('every legacy path clears the production binding', () => {
 
   it('reset', async () => {
     await afterLegacy(async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
       fireEvent.click(screen.getByRole('button', { name: /Reset Data/i }));
       await waitFor(() => expect(screen.queryAllByText('Test Operations')).toHaveLength(0), { timeout: 5000 });
     });

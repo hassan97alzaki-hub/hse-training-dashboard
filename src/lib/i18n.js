@@ -24,6 +24,8 @@ const translations = {
     importTrainingData: 'Import Training Data',
     importRequirements: 'Import Requirements Matrix',
     resetData: 'Reset Data',
+    resetConfirmLocal: 'Clear all imported and entered data on this screen? This cannot be undone.',
+    resetConfirmCloud: 'Clear this screen only. Saved training records stay in the cloud and load again on reload. Continue?',
     importTrainingHint: 'CSV or XLSX',
     importRequirementsHint: 'CSV',
 
@@ -684,6 +686,8 @@ const translations = {
     importTrainingData: 'استيراد بيانات التدريب',
     importRequirements: 'استيراد مصفوفة المتطلبات',
     resetData: 'إعادة تعيين البيانات',
+    resetConfirmLocal: 'مسح كل البيانات المستوردة والمُدخلة على هذه الشاشة؟ لا يمكن التراجع.',
+    resetConfirmCloud: 'مسح هذه الشاشة فقط. تبقى السجلات المحفوظة في السحابة وتعود عند إعادة التحميل. متابعة؟',
     importTrainingHint: 'CSV أو XLSX',
     importRequirementsHint: 'CSV',
 

@@ -77,6 +77,7 @@ import { TrainingSessionForm } from './components/TrainingSessionForm.jsx';
 import { ReminderSender } from './components/ReminderSender.jsx';
 import WelcomeOnboarding from './components/WelcomeOnboarding.jsx';
 import Footer from './components/Footer.jsx';
+import { isSupabaseConfigured } from './lib/supabaseClient.js';
 
 import './styles/dashboard.css';
 
@@ -766,6 +767,8 @@ export default function App({
   }
 
   function handleReset() {
+    const message = t(isSupabaseConfigured() ? 'resetConfirmCloud' : 'resetConfirmLocal');
+    if (!window.confirm(message)) return;
     setImportedRecords([]); setManualRecords([]); setRequirements([]); setManualCourses([]); setManagedRequirements([]); setApproval(createApproval()); setLastImportResult(null);
     certificateGallery.clear();
     setSelectedCertificate(null);

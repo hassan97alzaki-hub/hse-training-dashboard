@@ -156,6 +156,7 @@ describe('a banner follows the language inside the app', () => {
     renderApp();
     fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
     await screen.findByText('Demo data loaded', {}, { timeout: 5000 });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Reset Data/i }));
     expect(await screen.findByText('Data cleared')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Switch to Arabic' }));

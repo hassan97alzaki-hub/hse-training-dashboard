@@ -301,10 +301,20 @@ describe('the banner inside the app', () => {
     expect(banner).toHaveAttribute('data-provenance', 'derived');
   });
 
+  it('keeps the data when the reset confirmation is declined', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
+    await screen.findByTestId('test-requirements-banner', {}, { timeout: 5000 });
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    fireEvent.click(screen.getByRole('button', { name: /Reset Data/i }));
+    expect(screen.getByTestId('test-requirements-banner')).toBeInTheDocument();
+  });
+
   it('clears the banner on reset', async () => {
     renderApp();
     fireEvent.click(screen.getByRole('button', { name: 'Load Demo Data' }));
     await screen.findByTestId('test-requirements-banner', {}, { timeout: 5000 });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Reset Data/i }));
     await waitFor(() => expect(screen.queryByTestId('test-requirements-banner')).toBeNull());
   });

@@ -614,6 +614,30 @@ export async function loadEmployeesFromDb() {
   }
 }
 
+/**
+ * Load the training records entered through the interface, in the shape the
+ * compliance engine reads. Same mapping as the save callback in App.jsx, so a
+ * record looks identical before and after a reload.
+ * @returns {Promise<array>} [{Employee_ID, Course_Code, Completion_Status, Issue_Date, Expiry_Date, Certificate_Number}]
+ */
+export async function loadTrainingRecordsFromDb() {
+  try {
+    const db = getDbService();
+    const rows = await db.trainingRecords.list();
+    return rows.map(row => ({
+      Employee_ID: row.employee_id,
+      Course_Code: row.course_code,
+      Completion_Status: row.completion_status ?? 'Completed',
+      Issue_Date: row.issue_date ?? null,
+      Expiry_Date: row.expiry_date ?? null,
+      Certificate_Number: row.certificate_number ?? null,
+    }));
+  } catch (err) {
+    console.warn('Failed to load training records:', err.message);
+    return [];
+  }
+}
+
 // ===== Departments =====
 
 /**

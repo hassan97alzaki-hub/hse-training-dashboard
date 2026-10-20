@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 
-import { addTrainingRecords, computeExpiryDate } from '../lib/requirementsService.js';
+import {
+  addTrainingRecords, computeExpiryDate, updateTrainingRecord,
+} from '../lib/requirementsService.js';
 
 /**
  * Records a training completion for one employee or for a whole session.
@@ -89,10 +91,15 @@ export function TrainingSessionForm({
   const handleSave = async () => {
     setError('');
     if (selected.size === 0) return;
-    const result = await addTrainingRecords({
-      courseCode, issueDate, expiryDate, certificateNumber,
-      employeeIds: Array.from(selected),
-    }, courses);
+    const result = prefill?.recordId
+      ? await updateTrainingRecord(prefill.recordId, {
+          employeeId: prefill.employeeId,
+          courseCode, issueDate, expiryDate, certificateNumber,
+        }, courses)
+      : await addTrainingRecords({
+          courseCode, issueDate, expiryDate, certificateNumber,
+          employeeIds: Array.from(selected),
+        }, courses);
 
     if (!result.success) {
       setError(result.error);

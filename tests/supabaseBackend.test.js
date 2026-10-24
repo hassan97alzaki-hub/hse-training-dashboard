@@ -310,9 +310,13 @@ describe('the migration', () => {
     expect(sql).toContain('ON public.requirements(workspace_id, department, job_title, course_code)');
   });
 
+  // trial-signups is the one table that accepts an anonymous insert, by design;
+  // trialSignupMigration.test.js pins that grant and nothing wider.
   it('grants nothing to an unauthenticated request', () => {
-    expect(sql).toContain('TO authenticated');
-    expect(sql).not.toMatch(/TO\s+anon\b/);
+    const trial = readFileSync(resolve(process.cwd(), 'supabase/migrations/20261024100000_trial-signups.sql'), 'utf8');
+    const rest = sql.replace(trial, '');
+    expect(rest).toContain('TO authenticated');
+    expect(rest).not.toMatch(/TO\s+anon\b/);
     expect(sql).not.toMatch(/USING\s*\(\s*true\s*\)/i);
   });
 

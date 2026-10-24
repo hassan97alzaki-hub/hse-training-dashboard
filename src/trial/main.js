@@ -145,6 +145,10 @@ form.addEventListener('submit', async (event) => {
 
 toggle.addEventListener('click', () => applyLanguage(lang === 'ar' ? 'en' : 'ar'));
 
+// The English landing page links here with ?lang=en, so its visitors land on
+// the form in their own language.
+if (new URLSearchParams(window.location.search).get('lang') === 'en') applyLanguage('en');
+
 if (!client) {
   submit.disabled = true;
   setStatus(MESSAGES.ar.notConfigured, 'bad');

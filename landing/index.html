@@ -215,10 +215,11 @@
   <section id="request">
     <div class="wrap">
       <h2 data-i18n="reqTitle">اطلب تجربة 7 أيام</h2>
-      <p data-i18n="reqLede">لا يوجد نموذج يُرسل من هذه الصفحة. انسخ الطلب التالي أو اطبعه وأرسله بالقناة التي تفضّلها.</p>
+      <p data-i18n="reqLede">أرسل طلبك من النموذج، أو انسخ النص التالي وأرسله بالقناة التي تفضّلها.</p>
       <div class="request">
         <div class="cta no-print">
-          <button class="btn btn-primary" type="button" id="copy-request" data-i18n="reqCopy">انسخ نص الطلب</button>
+          <a class="btn btn-primary" href="/trial" data-i18n="reqForm">افتح نموذج الطلب</a>
+          <button class="btn" type="button" id="copy-request" data-i18n="reqCopy">انسخ نص الطلب</button>
           <button class="btn" type="button" id="print-request" data-i18n="reqPrint">اطبع الطلب</button>
           <span class="pill" id="copy-state" role="status" aria-live="polite"></span>
         </div>
@@ -235,7 +236,7 @@
 
 تنبيه قبل الإرسال: أرسل ملفًا منقّحًا للتجربة. لا ترسل أسماء موظفين ولا أرقام
 هوية أو إقامة ولا تواريخ ميلاد ولا جنسيات ولا بيانات اتصال.</pre>
-        <p class="note" style="margin-top:14px" data-i18n="reqNote">قناة الإرسال تُحدَّد عند الاتفاق. هذه الصفحة لا تحتوي عنوان بريد أو رقم هاتف، ولا ترسل شيئًا بنفسها.</p>
+        <p class="note" style="margin-top:14px" data-i18n="reqNote">النموذج يرسل طلبك إلى قاعدة بيانات التجربة وحدها. هذه الصفحة نفسها لا ترسل شيئًا ولا تحمّل أي خدمة خارجية.</p>
       </div>
     </div>
   </section>
@@ -323,9 +324,10 @@ const EN = {
   q6: 'Does the trial build expire by itself?', a6: 'It shows the end date and switches off importing your data after it. Access itself is closed on the hosting side, not inside the page.',
   q7: 'What about Arabic?', a7: 'The interface is fully Arabic and English. The PDF report is English for now because of a limitation in the generating library, which is documented.',
   reqTitle: 'Request a 7-day trial',
-  reqLede: 'This page sends no form. Copy or print the request below and send it through whichever channel you prefer.',
+  reqLede: 'Send your request through the form, or copy the text below and send it through whichever channel you prefer.',
+  reqForm: 'Open the request form',
   reqCopy: 'Copy the request', reqPrint: 'Print the request',
-  reqNote: 'The channel is agreed with you. This page carries no email address and no phone number, and it sends nothing by itself.',
+  reqNote: 'The form sends your request to the trial database only. This page itself sends nothing and loads no external service.',
   footer1: 'HSE training compliance dashboard — a local build that runs inside the browser.',
   footer2: 'This page uses no analytics, no cookies and no external service.',
 };

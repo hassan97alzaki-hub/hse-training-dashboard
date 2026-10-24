@@ -5,7 +5,6 @@ import {
   getSession,
   onAuthChange,
   signIn,
-  signUp,
   signInWithMagicLink,
   requestPasswordReset,
   ensureWorkspace,
@@ -73,10 +72,13 @@ export function AuthGate({ children, t = (key) => key }) {
 }
 
 /**
- * Sign-in, registration and password reset in one form.
+ * Sign-in and password reset in one form.
+ *
+ * There is no registration: accounts are created by the owner for each trial
+ * request, so a newcomer is sent to the request form instead.
  */
 export function SignInForm({ t = (key) => key }) {
-  const [mode, setMode] = useState('signin'); // signin | signup | link | reset
+  const [mode, setMode] = useState('signin'); // signin | link | reset
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -91,7 +93,6 @@ export function SignInForm({ t = (key) => key }) {
 
     let result;
     if (mode === 'signin') result = await signIn(email, password);
-    else if (mode === 'signup') result = await signUp(email, password);
     else if (mode === 'link') result = await signInWithMagicLink(email);
     else result = await requestPasswordReset(email);
 
@@ -102,10 +103,6 @@ export function SignInForm({ t = (key) => key }) {
       return;
     }
 
-    if (mode === 'signup' && result.needsConfirmation) {
-      setNotice(t('confirmEmail').replace('{email}', email));
-      return;
-    }
     if (mode === 'reset') {
       setNotice(t('resetLinkSent').replace('{email}', email));
     }
@@ -116,9 +113,8 @@ export function SignInForm({ t = (key) => key }) {
   }, [mode, email, password]);
 
   const title = mode === 'signin' ? t('signIn')
-    : mode === 'signup' ? t('createAccount')
-      : mode === 'link' ? t('sendMagicLink')
-        : t('resetPassword');
+    : mode === 'link' ? t('sendMagicLink')
+      : t('resetPassword');
 
   return (
     <div className="auth-gate">
@@ -155,13 +151,10 @@ export function SignInForm({ t = (key) => key }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="auth-gate-input"
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              autoComplete="current-password"
               required
               disabled={busy}
             />
-            {mode === 'signup' && (
-              <p className="auth-gate-hint">{t('passwordHint')}</p>
-            )}
           </>
         )}
 
@@ -173,11 +166,6 @@ export function SignInForm({ t = (key) => key }) {
           {mode !== 'signin' && (
             <button type="button" className="auth-gate-link" onClick={() => setMode('signin')}>
               {t('signInInstead')}
-            </button>
-          )}
-          {mode !== 'signup' && (
-            <button type="button" className="auth-gate-link" onClick={() => setMode('signup')}>
-              {t('createAccount')}
             </button>
           )}
           {mode !== 'link' && (
@@ -192,6 +180,9 @@ export function SignInForm({ t = (key) => key }) {
           )}
         </div>
 
+        <p className="auth-gate-footnote">
+          {t('noAccountYet')} <a href="/trial" className="auth-gate-link">{t('requestTrialLink')}</a>
+        </p>
         <p className="auth-gate-footnote">{t('authPrivacy')}</p>
       </form>
     </div>

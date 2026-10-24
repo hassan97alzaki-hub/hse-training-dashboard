@@ -180,6 +180,7 @@ describe('toArabic', () => {
   <h1 data-en="Compliance" data-ar="الامتثال">Compliance</h1>
   <p data-en="Only English">Only English</p>
   <img src="/shot.png" alt="English alt" data-ar-alt="نص بديل عربي">
+  <a id="trialBtn" href="/trial?lang=en" data-ar-href="/trial">Trial</a>
   <a id="langBtn" href="/ar/" hreflang="ar" lang="ar">العربية</a>
 </body>
 </html>`;
@@ -227,11 +228,25 @@ describe('toArabic', () => {
     expect(image.hasAttribute('data-ar-alt')).toBe(false);
   });
 
+  it('sends an Arabic link to its own destination', () => {
+    const link = document.getElementById('trialBtn');
+    expect(link.getAttribute('href')).toBe('/trial');
+    expect(link.hasAttribute('data-ar-href')).toBe(false);
+  });
+
   it('points the language switch back at the English page', () => {
     const toggle = document.getElementById('langBtn');
     expect(toggle.textContent).toBe('English');
     expect(toggle.getAttribute('href')).toBe('/');
     expect(toggle.getAttribute('hreflang')).toBe('en');
+  });
+
+  it('offers the trial request on the real landing page in both languages', () => {
+    const english = new JSDOM(landing).window.document;
+    const arabic = new JSDOM(toArabic(landing)).window.document;
+    const trialLinks = (doc, href) => doc.querySelectorAll(`a[href="${href}"]`).length;
+    expect(trialLinks(english, '/trial?lang=en')).toBeGreaterThanOrEqual(2);
+    expect(trialLinks(arabic, '/trial')).toBeGreaterThanOrEqual(2);
   });
 
   it('leaves the real landing page translatable without throwing', () => {
@@ -257,7 +272,7 @@ describe('app shell', () => {
   // never be served there.
   it('does not build to index.html', () => {
     const config = read('vite.config.js');
-    expect(config).toMatch(/input: \{ app: resolve\(root, 'app\.html'\) \}/);
+    expect(config).toMatch(/input: \{\s*app: resolve\(root, 'app\.html'\),/);
   });
 });
 
@@ -279,6 +294,8 @@ describe('vercel.json', () => {
   it('serves the landing page at / and the dashboard under /app', () => {
     expect(config.rewrites).toEqual([
       { source: '/', destination: '/landing.html' },
+      { source: '/trial', destination: '/trial.html' },
+      { source: '/trial/', destination: '/trial.html' },
       { source: '/app', destination: '/app.html' },
       { source: '/app/', destination: '/app.html' },
       { source: '/app/:path*', destination: '/app.html' },

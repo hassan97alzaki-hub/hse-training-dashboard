@@ -480,6 +480,15 @@ const translations = {
     importReplaceBody: '{removed} rows from your matrix will be removed and {added} rows from the file will be added. Your training records are not affected.',
     importReplaceConfirm: 'Replace',
 
+    // Cloud trial (workspace with trial_ends_at)
+    cloudTrialHeadline: 'Free 7-day trial',
+    cloudTrialDaysRemaining: 'Days remaining: {count}',
+    cloudTrialLastDay: 'last day {date} (Riyadh time)',
+    cloudTrialAfterNote: 'When the trial ends your data is frozen, not deleted: you can still view and export all of it.',
+    cloudTrialEndedHeadline: 'Your trial has ended — view and export only',
+    cloudTrialEndedBody: 'Your data is kept, not deleted. Changes and new imports are switched off; you can still view everything and export it with Export CSV.',
+    cloudTrialEndedNext: 'The data is held for 30 days. To continue, contact us.',
+
     // Trial Mode (optional build)
     trialRegionLabel: 'Trial status',
     trialHeadlineBefore: 'Free 7-day trial — not started yet',
@@ -515,14 +524,12 @@ const translations = {
 
     // Auth gate
     signIn: 'Sign in',
-    createAccount: 'Create an account',
     resetPassword: 'Reset your password',
     authTitle: 'HSE Training Dashboard',
     authTagline: 'Track safety training compliance across your workforce.',
     emailAddress: 'Email address',
     emailPlaceholder: 'name@company.com',
     password: 'Password',
-    passwordHint: 'At least 8 characters.',
     working: 'Working…',
     signInInstead: 'Sign in instead',
     forgotPassword: 'Forgot your password?',
@@ -542,7 +549,8 @@ const translations = {
     sendMagicLink: 'Send a sign-in link',
     magicLinkSent: 'A sign-in link is on its way to {email}.',
     authPrivacy: 'Your training data belongs to your workspace. Only its members can read it.',
-    confirmEmail: 'Confirm your address. A message is on its way to {email}.',
+    noAccountYet: 'No account yet?',
+    requestTrialLink: 'Request a 7-day trial',
     resetLinkSent: 'A reset link is on its way to {email}.',
 
     // Certificate gallery
@@ -1142,6 +1150,15 @@ const translations = {
     importReplaceBody: 'سيُحذف {removed} صفاً من مصفوفتك ويُضاف {added} صفاً من الملف. سجلات التدريب لا تتأثر.',
     importReplaceConfirm: 'استبدال',
 
+    // التجربة السحابية (مساحة لها trial_ends_at)
+    cloudTrialHeadline: 'تجربة مجانية 7 أيام',
+    cloudTrialDaysRemaining: 'الأيام المتبقية: {count}',
+    cloudTrialLastDay: 'آخر يوم {date} (بتوقيت الرياض)',
+    cloudTrialAfterNote: 'عند انتهاء التجربة تُجمَّد بياناتك ولا تُحذف: يمكنك عرضها وتصديرها كاملة.',
+    cloudTrialEndedHeadline: 'انتهت تجربتك — للعرض والتصدير فقط',
+    cloudTrialEndedBody: 'بياناتك محفوظة ولم تُحذف. التعديل والاستيراد متوقفان؛ يمكنك عرض كل شيء وتصديره من زر Export CSV.',
+    cloudTrialEndedNext: 'نحتفظ بالبيانات 30 يوماً. للمتابعة تواصل معنا.',
+
     // الوضع التجريبي (بناء اختياري)
     trialRegionLabel: 'حالة التجربة',
     trialHeadlineBefore: 'تجربة مجانية 7 أيام — لم تبدأ بعد',
@@ -1177,14 +1194,12 @@ const translations = {
 
     // بوابة المصادقة
     signIn: 'تسجيل الدخول',
-    createAccount: 'إنشاء حساب',
     resetPassword: 'إعادة تعيين كلمة المرور',
     authTitle: 'لوحة تدريب السلامة والصحة والبيئة',
     authTagline: 'تابع امتثال تدريب السلامة عبر القوى العاملة.',
     emailAddress: 'البريد الإلكتروني',
     emailPlaceholder: 'name@company.com',
     password: 'كلمة المرور',
-    passwordHint: '٨ أحرف على الأقل.',
     working: 'جارٍ المعالجة…',
     signInInstead: 'تسجيل الدخول بدلاً من ذلك',
     forgotPassword: 'نسيت كلمة المرور؟',
@@ -1204,7 +1219,8 @@ const translations = {
     sendMagicLink: 'إرسال رابط الدخول',
     magicLinkSent: 'رابط الدخول في طريقه إلى {email}.',
     authPrivacy: 'بيانات التدريب تخص مساحة عملك. لا يقرأها إلا أعضاؤها.',
-    confirmEmail: 'أكّد عنوانك. رسالة في طريقها إلى {email}.',
+    noAccountYet: 'ليس لديك حساب؟',
+    requestTrialLink: 'اطلب تجربة 7 أيام',
     resetLinkSent: 'رابط إعادة التعيين في طريقه إلى {email}.',
 
     // معرض الشهادات

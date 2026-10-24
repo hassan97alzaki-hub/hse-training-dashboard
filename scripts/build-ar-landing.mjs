@@ -67,6 +67,13 @@ export function toArabic(html) {
     element.removeAttribute('data-ar-alt');
   }
 
+  // A link may lead to a page that opens in the reader's language, so the
+  // Arabic page carries its own destination.
+  for (const element of document.querySelectorAll('[data-ar-href]')) {
+    element.setAttribute('href', element.dataset.arHref);
+    element.removeAttribute('data-ar-href');
+  }
+
   const set = (selector, attribute, value) => {
     const node = document.querySelector(selector);
     if (node) node.setAttribute(attribute, value);

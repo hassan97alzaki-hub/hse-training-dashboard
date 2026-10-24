@@ -70,34 +70,15 @@ export async function signIn(email, password) {
 }
 
 /**
- * Register a new account. Whether a confirmation email is required is a
- * project setting in Supabase, so the caller is told which happened.
- * @returns {Promise<{success: boolean, needsConfirmation?: boolean, error?: string}>}
- */
-export async function signUp(email, password) {
-  const client = getSupabaseClient();
-  if (!client) return { success: false, error: 'This build has no account backend' };
-
-  const trimmed = String(email ?? '').trim();
-  if (!trimmed) return { success: false, error: 'Email address required' };
-  if (String(password ?? '').length < 8) {
-    return { success: false, error: 'Password must be at least 8 characters' };
-  }
-
-  const { data, error } = await client.auth.signUp({ email: trimmed, password });
-  if (error) return { success: false, error: error.message };
-  return { success: true, needsConfirmation: !data?.session };
-}
-
-/**
  * Sign in with a link sent to an email address.
  *
  * Added alongside the password, not in place of it. Accounts created before
  * this existed have passwords and must keep being able to use them; taking
  * that away would lock out real users to make a new sign-in path tidier.
  *
- * A new account is created on first use, which is why there is no separate
- * registration step for this path.
+ * It never creates an account. Accounts are made by the owner, one per trial
+ * request (docs/TRIAL_CLOUD_RUNBOOK.md); a link sent to an unknown address
+ * signs nobody in.
  *
  * @returns {Promise<{success: boolean, error?: string}>}
  */
@@ -111,7 +92,7 @@ export async function signInWithMagicLink(email) {
   const { error } = await client.auth.signInWithOtp({
     email: trimmed,
     options: {
-      shouldCreateUser: true,
+      shouldCreateUser: false,
       // Where the link lands. The dashboard is served from /app, and the
       // client is configured with detectSessionInUrl, so it reads the token
       // out of the URL on load.

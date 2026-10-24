@@ -14,6 +14,7 @@
     "screenshot": "node scripts/build-dashboard-screenshot.mjs",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "verify:rls": "node scripts/verify-rls-isolation.mjs",
+    "verify:freeze": "node scripts/verify-trial-freeze.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

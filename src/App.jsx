@@ -78,6 +78,7 @@ import { TrainingSessionForm } from './components/TrainingSessionForm.jsx';
 import { ReminderSender } from './components/ReminderSender.jsx';
 import WelcomeOnboarding from './components/WelcomeOnboarding.jsx';
 import Footer from './components/Footer.jsx';
+import { isSupabaseConfigured } from './lib/supabaseClient.js';
 
 import './styles/dashboard.css';
 
@@ -767,6 +768,8 @@ export default function App({
   }
 
   function handleReset() {
+    const message = t(isSupabaseConfigured() ? 'resetConfirmCloud' : 'resetConfirmLocal');
+    if (!window.confirm(message)) return;
     setImportedRecords([]); setManualRecords([]); setRequirements([]); setManualCourses([]); setManagedRequirements([]); setApproval(createApproval()); setLastImportResult(null);
     certificateGallery.clear();
     setSelectedCertificate(null);
@@ -1024,6 +1027,7 @@ export default function App({
                 onRecordEdit={(item) => setSessionForm({
                   prefill: {
                     recordId: item.record?.Record_ID ?? null,
+                    completionStatus: item.record?.Completion_Status ?? 'Completed',
                     employeeId: item.Employee_ID,
                     courseCode: item.Course_Code,
                     issueDate: item.Issue_Date ?? '',

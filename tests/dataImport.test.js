@@ -87,6 +87,14 @@ EMP0001,Test Employee,Operations,Field Supervisor,Active,H2S Safety,H2S001,Yes,C
     expect(result.validRecords[0].Training_Required).toBe(true);
   });
 
+  it('gives each imported training row a stable Record_ID', async () => {
+    const csv = `Employee_ID,Employee_Name,Department,Job_Title,Employment_Status,Course_Name,Course_Code,Training_Required,Completion_Status,Issue_Date,Expiry_Date,Certificate_Number,Training_Provider,Remarks
+EMP0001,Test Employee,Operations,Field Supervisor,Active,H2S Safety,H2S001,Yes,Completed,2026-01-01,2027-01-01,CERT001,Provider,Remark
+EMP0002,Other Employee,Operations,Field Supervisor,Active,H2S Safety,H2S001,Yes,Completed,2026-01-01,2027-01-01,CERT002,Provider,Remark`;
+    const result = await importTrainingFile(csvFile(csv));
+    expect(result.validRecords.map(r => r.Record_ID)).toEqual(['imp_row_2', 'imp_row_3']);
+  });
+
   it('handles UTF-8 BOM in CSV', async () => {
     const csv = '﻿Employee_ID,Employee_Name,Department,Job_Title,Employment_Status,Course_Name,Course_Code,Training_Required,Completion_Status,Issue_Date,Expiry_Date,Certificate_Number,Training_Provider,Remarks\nEMP0002,Test,Operations,Field Supervisor,Active,H2S Safety,H2S001,Yes,Completed,2026-01-01,2027-01-01,,Provider,';
     const result = await importTrainingFile(csvFile(csv));

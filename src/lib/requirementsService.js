@@ -147,10 +147,12 @@ export async function addTrainingRecords(session, courses = []) {
 }
 
 /**
- * Rewrite one stored training record in place, so an edit replaces it.
+ * Rewrite one training record in place, so an edit replaces it.
+ * A record that exists only in the imported file has no stored row yet:
+ * the edit writes it under its own id (source 'import') instead of failing.
  */
 export async function updateTrainingRecord(recordId, session, courses = []) {
-  const { employeeId, courseCode, issueDate, expiryDate, certificateNumber } = session ?? {};
+  const { employeeId, courseCode, issueDate, expiryDate, certificateNumber, completionStatus } = session ?? {};
 
   if (!courseCode) return { success: false, records: [], error: 'A course is required' };
 
@@ -160,7 +162,21 @@ export async function updateTrainingRecord(recordId, session, courses = []) {
   try {
     const db = getDbService();
     const existing = await db.trainingRecords.get(recordId);
-    if (!existing) return { success: false, records: [], error: 'Training record not found' };
+
+    if (!existing) {
+      const row = {
+        id: recordId,
+        employee_id: employeeId,
+        course_code: courseCode,
+        completion_status: completionStatus ?? 'Completed',
+        issue_date: issueDate || null,
+        expiry_date: expiry,
+        certificate_number: certificateNumber || null,
+        source: 'import',
+      };
+      await db.trainingRecords.add(row);
+      return { success: true, records: [row] };
+    }
 
     const row = {
       ...existing,

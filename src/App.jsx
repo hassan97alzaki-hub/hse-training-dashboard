@@ -70,6 +70,7 @@ import { MigrationPrompt } from './components/MigrationPrompt.jsx';
 import ProductionPackagePreview from './components/ProductionPackagePreview.jsx';
 import TestRequirementsBanner from './components/TestRequirementsBanner.jsx';
 import TrialBanner from './components/TrialBanner.jsx';
+import CloudTrialBanner from './components/CloudTrialBanner.jsx';
 import TrialQuickStart from './components/TrialQuickStart.jsx';
 import { ManagementDrawer, ManagementDrawerButton } from './components/ManagementDrawer.jsx';
 import { CertificateGallery } from './components/CertificateGallery.jsx';
@@ -796,6 +797,7 @@ export default function App({
 
       <main className="main-content">
         <TrialBanner state={trial} t={t} />
+        <CloudTrialBanner t={t} />
 
         {migrationOffer && (
           <MigrationPrompt

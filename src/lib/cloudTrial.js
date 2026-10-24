@@ -36,6 +36,20 @@ export function trialDaysRemaining(trialEndsAt, now = new Date()) {
 }
 
 /**
+ * Whether the trial has ended, by this page's clock. The database decides the
+ * freeze by its own clock; this only chooses which notice to show.
+ *
+ * @param {string|null} trialEndsAt
+ * @param {Date} now
+ * @returns {boolean}
+ */
+export function trialHasEnded(trialEndsAt, now = new Date()) {
+  if (!trialEndsAt) return false;
+  const end = new Date(trialEndsAt).getTime();
+  return !Number.isNaN(end) && end <= now.getTime();
+}
+
+/**
  * The trial state the banner needs, read with the signed-in account's own
  * rights. Null when there is no backend, no session or no workspace — the
  * local-only build and a signed-out page both show no banner.

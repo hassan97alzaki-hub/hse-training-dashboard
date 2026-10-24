@@ -1,7 +1,7 @@
 # مواصفات التجربة المجانية السحابية 1.0
 ## HSE Training Dashboard
 
-**الإصدار:** 1.1 (البوابة معتمدة 2026-10-24)  
+**الإصدار:** 1.2 (تصحيحات القاعدة والاستعلامات — 2026-10-24)  
 **التاريخ:** 2026-10-21  
 **الحالة:** معتمد من المرجع — تنفيذ كامل بلا انحراف  
 **سرية:** لأصحاب المشروع والمطورين فقط
@@ -34,9 +34,10 @@
 |------|-------------|-----------------|
 | **المسجلون** | 10 شركات | `select count(*) from trial_signups` |
 | **رفع بيانات** | 5 منها رفعت ملف تدريب فعلي | عدد المساحات التجريبية التي فيها سجلات تدريب (استعلام المهمة 3 الموثق) |
-| **إشارة شراء** | 3 أسئلة عن التذكيرات أو الأسعار | `select count(*) from trial_signups where interest in ('التذكيرات','السعر')` + رسائل واتساب/بريد يدوية |
+| **إشارة شراء** | 3 أسئلة عن التذكيرات أو الأسعار | `select count(*) from trial_signups where interest @> '["reminders"]' or interest @> '["pricing"]'` + رسائل واتساب/بريد يدوية |
 
 **قاعدة القرار:** يجب تجاوز **بندين من الثلاثة** على الأقل. واحد فقط غير كافٍ.  
+**نافذة العدّ:** 2026-10-24 (نشر نموذج التسجيل على الموقع الحي — PR #16) → 2026-11-07. يحق للمالك إرجاع البداية مرة واحدة إلى تاريخ أول مشاركة فعلية للرابط إن كانت قبل النشر، ويُدوَّن الإرجاع هنا.  
 **التجاوز** → شراء النطاق + المهمة 4 + وثيقة المرحلة 2  
 **عدم التجاوز** → إعادة صياغة العرض/قناة التسويق قبل أي إنفاق جديد
 
@@ -52,7 +53,7 @@
 | `src/lib/trial.js` | بوابة UX وقت البناء لـ tar.gz | **لا تُمس** — أصل تسويقي فقط |
 | `VITE_TRIAL_MODE` | مخبوز في البناء (tar.gz) | **لا تُمس** — أي تعديل سؤال للمرجع |
 | `tests/trialMode.test.js` | 24 اختبار | **لا تُمس** — أي تعديل سؤال للمرجع |
-| جدول `workspaces` | يحمل `trial_ends_at` و `subscription_tier` | بناء عليها لا حولها |
+| جدول `workspaces` | يحمل `plan_tier` فقط — لا يوجد `trial_ends_at` (يُضاف بmigration في المهمة 2) | بناء عليها لا حولها |
 | `landing/` ثنائية اللغة | `hreflang` + `dir=rtl` | أي نموذج جديد: عربي + إنجليزي من اليوم الأول |
 
 ---
@@ -140,13 +141,15 @@ create table trial_signups (
 - هنا: تنفيذ على مستوى قاعدة البيانات (RLS)
 
 **التنفيذ:**
+0. **Migration (Supabase CLI):** إضافة `trial_ends_at timestamptz` إلى `workspaces` — NULL يعني «ليس حساباً تجريبياً» (لا يُجمَّد أبداً)؛ هذا يحمي مساحة المالك الإنتاجية من التجميد الخاطئ. لا يُعدَّل `plan_tier`.
+
 1. **Banner في التطبيق:**
    - يقرأ `workspaces.trial_ends_at` من القاعدة
    - يعرض الأيام المتبقية (للـ owner فقط)
    - يختفي بعد الانتهاء
 
 2. **سياسة RLS على `training_records` و `requirements`:**
-   - INSERT / UPDATE / DELETE مرفوضة عندما `trial_ends_at < today`
+   - INSERT / UPDATE / DELETE مرفوضة عندما `trial_ends_at` ليس NULL وقبل اليوم (`trial_ends_at < now()`)
    - SELECT يبقى متاحاً (العميل يرى بياناته بعد الانتهاء)
    - **القاعدة نفسها ترفض، لا الواجهة**
 
@@ -172,10 +175,10 @@ create table trial_signups (
 
 | الرقم | الاستعلام |
 |------|-----------|
-| المسجلون | `select count(*) from trial_signups where created_at >= '2026-10-21'` |
-| رفعوا بيانات | `select count(distinct workspace_id) from training_records where workspace_id in (select workspace_id from workspaces where created_at >= '2026-10-21')` |
-| إشارة الشراء | `select count(*) from trial_signups where interest @> '"التذكيرات"' or interest @> '"السعر"'` + يدوي |
-| النشاط اليومي | `select workspace_id, max(last_sign_in_at) from auth.users group by workspace_id` |
+| المسجلون | `select count(*) from trial_signups where created_at >= '2026-10-24'` |
+| رفعوا بيانات | `select count(distinct workspace_id) from training_records where workspace_id in (select id from workspaces where created_at >= '2026-10-24')` |
+| إشارة الشراء | `select count(*) from trial_signups where interest @> '["reminders"]' or interest @> '["pricing"]'` + يدوي |
+| النشاط اليومي | `select m.workspace_id, max(u.last_sign_in_at) from workspace_members m join auth.users u on u.id = m.user_id group by m.workspace_id` |
 
 **✅ تعريف الإنجاز:**
 - كل رقم بأمر SQL واحد موثق في runbook
@@ -250,6 +253,13 @@ create table trial_signups (
 ---
 
 ## 8. سجل التعديلات
+
+**v1.2 — 2026-10-24 (مساءً)**  
+ثلاثة تصحيحات اعتمدها المرجع بعد تحقق مباشر من المستودع، بطلب من المنفذ:  
+1. **جدول workspaces:** لا يحمل `trial_ends_at` ولا `subscription_tier` — العمود الوحيد `plan_tier`. أُضيف بند Migration في المهمة 2 يضيف `trial_ends_at timestamptz` مع قاعدة NULL = «ليس تجريبياً» لحماية مساحة المالك.  
+2. **استعلام إشارة الشراء:** النموذج يخزن الاهتمامات بمفاتيح إنجليزية في jsonb (`reminders`/`reports`/`arabic`/`pricing`) — صُحح الاستعلام إلى `interest @> '["reminders"]' or interest @> '["pricing"]'`.  
+3. **استعلام النشاط اليومي:** `auth.users` لا يحمل `workspace_id` — صُحح بالربط عبر `workspace_members`.  
+كما عُرّفت نافذة العدّ رسمياً: **2026-10-24 → 2026-11-07** (من نشر النموذج على الموقع الحي)، مع حق المالك إرجاع البداية مرة واحدة لتاريخ أول مشاركة فعلية.
 
 **v1.1 — 2026-10-24**  
 اعتماد رسمي من المرجع لبوابة القياس بعد موافقة المالك: 10/5/3 خلال 14 يوماً، قاعدة القرار بندان من الثلاثة. العدّ الرسمي يبدأ من الإطلاق الفعلي لا من تاريخ الاعتماد. بموجبه خُوّل بدء المهام 0–2.

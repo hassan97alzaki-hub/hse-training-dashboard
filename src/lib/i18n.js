@@ -483,6 +483,9 @@ const translations = {
     cloudTrialDaysRemaining: 'Days remaining: {count}',
     cloudTrialLastDay: 'last day {date} (Riyadh time)',
     cloudTrialAfterNote: 'When the trial ends your data is frozen, not deleted: you can still view and export all of it.',
+    cloudTrialEndedHeadline: 'Your trial has ended — view and export only',
+    cloudTrialEndedBody: 'Your data is kept, not deleted. Changes and new imports are switched off; you can still view everything and export it with Export CSV.',
+    cloudTrialEndedNext: 'The data is held for 30 days. To continue, contact us.',
 
     // Trial Mode (optional build)
     trialRegionLabel: 'Trial status',
@@ -1149,6 +1152,9 @@ const translations = {
     cloudTrialDaysRemaining: 'الأيام المتبقية: {count}',
     cloudTrialLastDay: 'آخر يوم {date} (بتوقيت الرياض)',
     cloudTrialAfterNote: 'عند انتهاء التجربة تُجمَّد بياناتك ولا تُحذف: يمكنك عرضها وتصديرها كاملة.',
+    cloudTrialEndedHeadline: 'انتهت تجربتك — للعرض والتصدير فقط',
+    cloudTrialEndedBody: 'بياناتك محفوظة ولم تُحذف. التعديل والاستيراد متوقفان؛ يمكنك عرض كل شيء وتصديره من زر Export CSV.',
+    cloudTrialEndedNext: 'نحتفظ بالبيانات 30 يوماً. للمتابعة تواصل معنا.',
 
     // الوضع التجريبي (بناء اختياري)
     trialRegionLabel: 'حالة التجربة',

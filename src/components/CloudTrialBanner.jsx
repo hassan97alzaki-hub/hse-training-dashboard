@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, Lock } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient.js';
-import { fetchCloudTrial, trialDaysRemaining } from '../lib/cloudTrial.js';
+import { fetchCloudTrial, trialDaysRemaining, trialHasEnded } from '../lib/cloudTrial.js';
 import { toReportingDateStr } from '../lib/clock.js';
 
 /**
- * Cloud trial banner: the days left in the workspace's seven-day trial.
+ * Cloud trial banner.
  *
- * Shown to the workspace owner only, while the trial runs. It renders nothing
- * in a local-only build, for a workspace that is not a trial, for any other
- * role, and once the trial has ended (SPECS-TRIAL v1.2, task 2). The freeze
- * itself is enforced by the database, not by this component.
+ * While the trial runs: the days left, to the workspace owner only
+ * (SPECS-TRIAL v1.2, task 2). Once it has ended: a read-only notice to every
+ * member, because every writer now has their saves refused and needs to know
+ * why (reference approval 2026-10-24). Nothing in a local-only build or for a
+ * workspace that is not a trial. The freeze itself is enforced by the
+ * database, not by this component.
  *
  * Props:
  * - t: translate function
@@ -26,7 +28,28 @@ export default function CloudTrialBanner({ t, load = () => fetchCloudTrial(getSu
     // Read once per page load: the end date does not move while the page is open.
   }, []);
 
-  if (!trial || trial.role !== 'owner') return null;
+  if (!trial) return null;
+
+  if (trialHasEnded(trial.trialEndsAt)) {
+    return (
+      <div
+        className="dq-card"
+        style={{ '--dq-accent': 'var(--critical)', marginBottom: 16 }}
+        role="status"
+        aria-live="polite"
+        data-testid="cloud-trial-ended"
+      >
+        <div className="dq-card-header" style={{ color: 'var(--critical)' }}>
+          <Lock size={16} />
+          {t('cloudTrialEndedHeadline')}
+        </div>
+        <div className="dq-issue">{t('cloudTrialEndedBody')}</div>
+        <div className="dq-issue text-muted">{t('cloudTrialEndedNext')}</div>
+      </div>
+    );
+  }
+
+  if (trial.role !== 'owner') return null;
   const days = trialDaysRemaining(trial.trialEndsAt);
   if (days === null) return null;
 

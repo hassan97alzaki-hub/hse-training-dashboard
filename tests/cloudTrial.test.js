@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createElement as h } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { trialDaysRemaining, fetchCloudTrial } from '../src/lib/cloudTrial.js';
+import { trialDaysRemaining, trialHasEnded, fetchCloudTrial } from '../src/lib/cloudTrial.js';
 import CloudTrialBanner from '../src/components/CloudTrialBanner.jsx';
 import { createI18n } from '../src/lib/i18n.js';
 
@@ -42,6 +42,15 @@ function fakeClient({ userId = 'u1', workspaceId = 'w1', role = 'owner', trialEn
   };
 }
 
+describe('trialHasEnded', () => {
+  it('is true from the end instant on, and never for a workspace that is not a trial', () => {
+    expect(trialHasEnded(END, atRiyadh('2026-10-30T23:59:59'))).toBe(false);
+    expect(trialHasEnded(END, atRiyadh('2026-10-31T00:00:00'))).toBe(true);
+    expect(trialHasEnded(null)).toBe(false);
+    expect(trialHasEnded('not a date')).toBe(false);
+  });
+});
+
 describe('fetchCloudTrial', () => {
   it('reads the role and the end date of the default workspace', async () => {
     expect(await fetchCloudTrial(fakeClient())).toEqual({ role: 'owner', trialEndsAt: END });
@@ -69,15 +78,28 @@ describe('CloudTrialBanner', () => {
     expect(screen.queryByTestId('cloud-trial-banner')).toBeNull();
   });
 
-  it('shows nothing once the trial has ended, or when there is no trial', async () => {
-    const past = new Date(Date.now() - 60 * 1000).toISOString();
-    const first = render(h(CloudTrialBanner, { t, load: async () => ({ role: 'owner', trialEndsAt: past }) }));
-    await new Promise((r) => setTimeout(r, 0));
+  const past = new Date(Date.now() - 60 * 1000).toISOString();
+
+  it('tells every member, not only the owner, that an ended trial is read-only', async () => {
+    for (const role of ['owner', 'supervisor', 'viewer']) {
+      const view = render(h(CloudTrialBanner, { t, load: async () => ({ role, trialEndsAt: past }) }));
+      await waitFor(() => expect(screen.getByTestId('cloud-trial-ended').textContent).toContain('view and export only'));
+      expect(screen.queryByTestId('cloud-trial-banner')).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it('says the same in Arabic', async () => {
+    render(h(CloudTrialBanner, { t: createI18n('ar').t, load: async () => ({ role: 'viewer', trialEndsAt: past }) }));
+    await waitFor(() => expect(screen.getByTestId('cloud-trial-ended').textContent).toContain('للعرض والتصدير فقط'));
+  });
+
+  it('shows nothing when there is no trial', async () => {
+    let resolved = false;
+    render(h(CloudTrialBanner, { t, load: async () => { resolved = true; return { role: 'owner', trialEndsAt: null }; } }));
+    await waitFor(() => expect(resolved).toBe(true));
     expect(screen.queryByTestId('cloud-trial-banner')).toBeNull();
-    first.unmount();
-    render(h(CloudTrialBanner, { t, load: async () => ({ role: 'owner', trialEndsAt: null }) }));
-    await new Promise((r) => setTimeout(r, 0));
-    expect(screen.queryByTestId('cloud-trial-banner')).toBeNull();
+    expect(screen.queryByTestId('cloud-trial-ended')).toBeNull();
   });
 
   it('speaks Arabic in the Arabic interface', async () => {

@@ -13,7 +13,10 @@ project_id = "hse-training-dashboard"
 major_version = 17
 
 [auth]
-enable_signup = true
+# Closed (reference approval 2026-10-24): every account is created by the
+# owner for a trial request. This file drives `supabase start` locally; the
+# hosted project is switched in the dashboard — see docs/TRIAL_CLOUD_RUNBOOK.md.
+enable_signup = false
 # Both sign-in paths are live: accounts created before the magic link existed
 # have passwords and keep using them.
 enable_confirmations = false

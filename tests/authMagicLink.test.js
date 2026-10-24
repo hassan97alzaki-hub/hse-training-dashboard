@@ -7,11 +7,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createElement as h } from 'react';
+import { render, screen } from '@testing-library/react';
+import { SignInForm } from '../src/components/AuthGate.jsx';
+import { createI18n } from '../src/lib/i18n.js';
 
 import * as supabaseClient from '../src/lib/supabaseClient.js';
 import {
   signIn,
-  signUp,
   signInWithMagicLink,
   requestPasswordReset,
   ensureWorkspace,
@@ -26,10 +29,6 @@ function fakeAuthClient({ otpError = null, rpcError = null, rpcData = 'ws-1' } =
       signInWithPassword(args) {
         calls.push(['signInWithPassword', args]);
         return Promise.resolve({ data: {}, error: null });
-      },
-      signUp(args) {
-        calls.push(['signUp', args]);
-        return Promise.resolve({ data: { session: {} }, error: null });
       },
       signInWithOtp(args) {
         calls.push(['signInWithOtp', args]);
@@ -72,12 +71,11 @@ describe('signInWithMagicLink', () => {
     expect(client.calls.at(-1)[1].email).toBe('person@example.com');
   });
 
-  // There is no separate registration for this path: the link is the whole
-  // sign-up. Turning this off would send a link that goes nowhere for anyone
-  // who has not already registered with a password.
-  it('creates the account if there is none', async () => {
+  // Self-sign-up is closed: accounts are created by the owner for each trial
+  // request. A link to an unknown address must not become a new account.
+  it('never creates an account', async () => {
     await signInWithMagicLink('new@example.com');
-    expect(client.calls.at(-1)[1].options.shouldCreateUser).toBe(true);
+    expect(client.calls.at(-1)[1].options.shouldCreateUser).toBe(false);
   });
 
   it('sends the reader back to the dashboard', async () => {
@@ -103,12 +101,6 @@ describe('the password paths, which the magic link does not replace', () => {
     const result = await signIn('person@example.com', 'hunter2hunter2');
     expect(result.success).toBe(true);
     expect(client.calls.at(-1)[0]).toBe('signInWithPassword');
-  });
-
-  it('still registers with a password', async () => {
-    const result = await signUp('person@example.com', 'hunter2hunter2');
-    expect(result.success).toBe(true);
-    expect(client.calls.at(-1)[0]).toBe('signUp');
   });
 
   it('still sends a reset link', async () => {
@@ -144,5 +136,20 @@ describe('a build with no backend', () => {
     const result = await call();
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/no account backend/i);
+  });
+});
+
+describe('the sign-in form, with self-sign-up closed', () => {
+  it('offers no way to create an account', () => {
+    render(h(SignInForm, { t: createI18n('en').t }));
+    expect(screen.queryByText(/create an account/i)).toBeNull();
+  });
+
+  it('sends a newcomer to the trial request form, in both languages', () => {
+    const { unmount } = render(h(SignInForm, { t: createI18n('en').t }));
+    expect(screen.getByRole('link', { name: 'Request a 7-day trial' }).getAttribute('href')).toBe('/trial');
+    unmount();
+    render(h(SignInForm, { t: createI18n('ar').t }));
+    expect(screen.getByRole('link', { name: 'اطلب تجربة 7 أيام' }).getAttribute('href')).toBe('/trial');
   });
 });

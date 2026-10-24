@@ -6,7 +6,7 @@
  * SPECS-TRIAL v1.2, task 2: once `workspaces.trial_ends_at` has passed, an
  * insert, update or delete on the training data must be refused even when it
  * is sent straight to the REST API, while reading still works. The rules live
- * in Postgres (20261024120000_trial-expiry.sql), so this script is the check:
+ * in Postgres (the two _trial-expiry migrations), so this script is the check:
  * it signs in as a real trial account, with the publishable key, and tries.
  *
  * Use a test account, never a customer's. Before running, end its trial and
@@ -97,6 +97,16 @@ record('training_records: insert refused', Boolean(trInsert), trInsert?.message 
 const { error: rqInsert } = await client.from('requirements')
   .insert({ id: probeId, department: 'FREEZE-PROBE', course_code: 'FREEZE-PROBE' });
 record('requirements: insert refused', Boolean(rqInsert), rqInsert?.message ?? 'THE ROW WAS WRITTEN');
+
+// The other seven tables are frozen too; one insert on each kind of master
+// data is enough to show the extension is applied.
+const { error: courseInsert } = await client.from('courses')
+  .insert({ id: probeId, code: probeId, name: 'FREEZE-PROBE' });
+record('courses: insert refused', Boolean(courseInsert), courseInsert?.message ?? 'THE ROW WAS WRITTEN');
+
+const { error: employeeInsert } = await client.from('employees')
+  .insert({ id: probeId, employee_id: probeId, name: 'FREEZE-PROBE', department: 'FREEZE-PROBE' });
+record('employees: insert refused', Boolean(employeeInsert), employeeInsert?.message ?? 'THE ROW WAS WRITTEN');
 
 // An update or delete the policy refuses matches no rows rather than raising
 // an error, so the proof is that nothing came back changed.

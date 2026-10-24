@@ -54,3 +54,29 @@ describe('the trial expiry migration', () => {
     expect(migration).toMatch(/is_workspace_frozen\(ws UUID\)[\s\S]*SECURITY DEFINER SET search_path = public/);
   });
 });
+
+describe('the freeze across every table', () => {
+  const extension = readFileSync(
+    resolve(dir, readdirSync(dir).find((file) => file.endsWith('_trial-expiry-all-tables.sql'))),
+    'utf8',
+  );
+  const covered = [migration, extension]
+    .flatMap((sql) => [...sql.matchAll(/ARRAY\[([^\]]+)\]\s*LOOP/g)])
+    .flatMap((m) => m[1].match(/'([a-z_]+)'/g).map((name) => name.slice(1, -1)));
+
+  // The nine data tables of 0003. A table added there later must be added
+  // here too, or a frozen trial can still write to it.
+  it('reaches all nine training-data tables', () => {
+    expect([...covered].sort()).toEqual([
+      'certificates', 'courses', 'departments', 'employee_contacts', 'employees',
+      'reminders_sent', 'requirements', 'requirements_approval', 'training_records',
+    ]);
+  });
+
+  it('uses the same restrictive policies and leaves reading alone', () => {
+    for (const command of ['INSERT', 'UPDATE', 'DELETE']) {
+      expect(extension).toMatch(new RegExp(`AS RESTRICTIVE FOR ${command} TO authenticated`));
+    }
+    expect(extension).not.toMatch(/FOR (SELECT|ALL)/);
+  });
+});

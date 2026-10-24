@@ -519,14 +519,12 @@ const translations = {
 
     // Auth gate
     signIn: 'Sign in',
-    createAccount: 'Create an account',
     resetPassword: 'Reset your password',
     authTitle: 'HSE Training Dashboard',
     authTagline: 'Track safety training compliance across your workforce.',
     emailAddress: 'Email address',
     emailPlaceholder: 'name@company.com',
     password: 'Password',
-    passwordHint: 'At least 8 characters.',
     working: 'Working…',
     signInInstead: 'Sign in instead',
     forgotPassword: 'Forgot your password?',
@@ -546,7 +544,8 @@ const translations = {
     sendMagicLink: 'Send a sign-in link',
     magicLinkSent: 'A sign-in link is on its way to {email}.',
     authPrivacy: 'Your training data belongs to your workspace. Only its members can read it.',
-    confirmEmail: 'Confirm your address. A message is on its way to {email}.',
+    noAccountYet: 'No account yet?',
+    requestTrialLink: 'Request a 7-day trial',
     resetLinkSent: 'A reset link is on its way to {email}.',
 
     // Certificate gallery
@@ -1185,14 +1184,12 @@ const translations = {
 
     // بوابة المصادقة
     signIn: 'تسجيل الدخول',
-    createAccount: 'إنشاء حساب',
     resetPassword: 'إعادة تعيين كلمة المرور',
     authTitle: 'لوحة تدريب السلامة والصحة والبيئة',
     authTagline: 'تابع امتثال تدريب السلامة عبر القوى العاملة.',
     emailAddress: 'البريد الإلكتروني',
     emailPlaceholder: 'name@company.com',
     password: 'كلمة المرور',
-    passwordHint: '٨ أحرف على الأقل.',
     working: 'جارٍ المعالجة…',
     signInInstead: 'تسجيل الدخول بدلاً من ذلك',
     forgotPassword: 'نسيت كلمة المرور؟',
@@ -1212,7 +1209,8 @@ const translations = {
     sendMagicLink: 'إرسال رابط الدخول',
     magicLinkSent: 'رابط الدخول في طريقه إلى {email}.',
     authPrivacy: 'بيانات التدريب تخص مساحة عملك. لا يقرأها إلا أعضاؤها.',
-    confirmEmail: 'أكّد عنوانك. رسالة في طريقها إلى {email}.',
+    noAccountYet: 'ليس لديك حساب؟',
+    requestTrialLink: 'اطلب تجربة 7 أيام',
     resetLinkSent: 'رابط إعادة التعيين في طريقه إلى {email}.',
 
     // معرض الشهادات

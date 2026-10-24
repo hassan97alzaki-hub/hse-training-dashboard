@@ -17,6 +17,7 @@ function devRouting() {
       server.middlewares.use((req, _res, next) => {
         const path = req.url.split('?')[0];
         if (path === '/') req.url = '/landing.html';
+        else if (path === '/trial' || path === '/trial/') req.url = '/trial.html';
         else if (path === '/app' || path.startsWith('/app/')) req.url = '/app.html';
         next();
       });
@@ -30,7 +31,12 @@ export default defineConfig({
     // The dashboard builds to `app.html`, not `index.html`. Vercel checks the
     // filesystem before it applies a rewrite, so a `dist/index.html` would
     // answer `/` itself and the landing page would never be served there.
-    rollupOptions: { input: { app: resolve(root, 'app.html') } },
+    rollupOptions: {
+      input: {
+        app: resolve(root, 'app.html'),
+        trial: resolve(root, 'trial.html'),
+      },
+    },
   },
   test: {
     globals: true,

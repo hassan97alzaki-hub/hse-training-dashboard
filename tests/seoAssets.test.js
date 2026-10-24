@@ -257,7 +257,7 @@ describe('app shell', () => {
   // never be served there.
   it('does not build to index.html', () => {
     const config = read('vite.config.js');
-    expect(config).toMatch(/input: \{ app: resolve\(root, 'app\.html'\) \}/);
+    expect(config).toMatch(/input: \{\s*app: resolve\(root, 'app\.html'\),/);
   });
 });
 
@@ -279,6 +279,8 @@ describe('vercel.json', () => {
   it('serves the landing page at / and the dashboard under /app', () => {
     expect(config.rewrites).toEqual([
       { source: '/', destination: '/landing.html' },
+      { source: '/trial', destination: '/trial.html' },
+      { source: '/trial/', destination: '/trial.html' },
       { source: '/app', destination: '/app.html' },
       { source: '/app/', destination: '/app.html' },
       { source: '/app/:path*', destination: '/app.html' },

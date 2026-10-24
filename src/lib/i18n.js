@@ -478,6 +478,12 @@ const translations = {
     importReplaceBody: '{removed} rows from your matrix will be removed and {added} rows from the file will be added. Your training records are not affected.',
     importReplaceConfirm: 'Replace',
 
+    // Cloud trial (workspace with trial_ends_at)
+    cloudTrialHeadline: 'Free 7-day trial',
+    cloudTrialDaysRemaining: 'Days remaining: {count}',
+    cloudTrialLastDay: 'last day {date} (Riyadh time)',
+    cloudTrialAfterNote: 'When the trial ends your data is frozen, not deleted: you can still view and export all of it.',
+
     // Trial Mode (optional build)
     trialRegionLabel: 'Trial status',
     trialHeadlineBefore: 'Free 7-day trial — not started yet',
@@ -1137,6 +1143,12 @@ const translations = {
     importReplaceTitle: 'استبدال مصفوفة المتطلبات؟',
     importReplaceBody: 'سيُحذف {removed} صفاً من مصفوفتك ويُضاف {added} صفاً من الملف. سجلات التدريب لا تتأثر.',
     importReplaceConfirm: 'استبدال',
+
+    // التجربة السحابية (مساحة لها trial_ends_at)
+    cloudTrialHeadline: 'تجربة مجانية 7 أيام',
+    cloudTrialDaysRemaining: 'الأيام المتبقية: {count}',
+    cloudTrialLastDay: 'آخر يوم {date} (بتوقيت الرياض)',
+    cloudTrialAfterNote: 'عند انتهاء التجربة تُجمَّد بياناتك ولا تُحذف: يمكنك عرضها وتصديرها كاملة.',
 
     // الوضع التجريبي (بناء اختياري)
     trialRegionLabel: 'حالة التجربة',

@@ -12,6 +12,14 @@ const doc = readFileSync(resolve(process.cwd(), 'docs/TRIAL_MEASUREMENT.md'), 'u
 const sql = [...doc.matchAll(/```sql\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
 
 describe('the trial measurement queries', () => {
+  it('exclude every internal test account listed in the runbook from all three counts', () => {
+    const listed = [...doc.split('## 4.')[1].matchAll(/`([^`]+@[^`]+)`/g)].map((m) => m[1]);
+    expect(listed.length).toBeGreaterThan(0);
+    for (const email of listed) expect(sql).toContain(`'${email}'`);
+    expect(sql.match(/NOT IN \(SELECT lower\(email\) FROM test_accounts\)/g)).toHaveLength(2);
+    expect(sql).toContain('AND w.id NOT IN (SELECT workspace_id FROM test_workspaces)');
+  });
+
   it('match interests by the keys the form stores, not by Arabic labels', () => {
     expect(sql).toContain(`interest @> '["reminders"]'`);
     expect(sql).toContain(`interest @> '["pricing"]'`);
@@ -33,7 +41,7 @@ describe('the trial measurement queries', () => {
     expect(sql).toContain(`timestamptz '2026-10-25 00:00+03' AS starts`);
     expect(sql).toContain(`timestamptz '2026-11-08 00:00+03' AS ends`);
     expect(sql).toContain(`timestamptz '2026-10-24 00:00+03' AS signups_from`);
-    expect(sql).toContain('created_at >= win.signups_from AND created_at < win.ends) AS signups');
+    expect(sql).toMatch(/created_at >= win\.signups_from AND created_at < win\.ends\s+AND lower\(work_email\) NOT IN \(SELECT lower\(email\) FROM test_accounts\)\) AS signups/);
     expect(sql).not.toContain('2026-10-21');
   });
 });

@@ -63,7 +63,7 @@ const html = `<!DOCTYPE html>
   <h1>HSE Training Dashboard<br><span class="accent">Compliance Made Simple</span></h1>
   <div class="ar">لوحة متابعة تدريبات السلامة — امتثال بلا عناء</div>
   <div class="rule"></div>
-  <div class="tags"><span>Free</span><span>English + عربي</span><span>Works Offline</span></div>
+  <div class="tags"><span>Free 7-day trial</span><span>English + عربي</span><span>Private workspace</span></div>
 </body>
 </html>`;
 

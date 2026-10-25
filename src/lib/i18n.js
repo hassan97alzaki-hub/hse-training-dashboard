@@ -9,7 +9,8 @@ const translations = {
     privacyNote: 'Local MVP — all data is processed in this browser only. No data is uploaded or stored externally.',
     // The cloud build stores data in the account's own database, so the
     // local-only claim above would be untrue there. Header picks between them.
-    privacyNoteCloud: 'Your data is stored in your own account. Only this account can read it.',
+    // R-4 (SPECS-TRIAL v1.4): no promise of cloud storage for imported files until R-3 stores them.
+    privacyNoteCloud: 'Records you add in the app are stored in your own workspace; only its members can read them. Imported files stay in this browser and are not saved to the cloud yet — import them again after a reload.',
     asOfDate: 'As Of Date',
     companyLabel: 'Company',
     projectLabel: 'Project',
@@ -679,7 +680,7 @@ const translations = {
     appTitle: 'لوحة امتثال تدريب السلامة والصحة والبيئة',
     appSubtitle: 'الصحة والسلامة والبيئة',
     privacyNote: 'نموذج محلي — تتم معالجة جميع البيانات في هذا المتصفح فقط. لا يتم رفع البيانات أو تخزينها خارجيًا.',
-    privacyNoteCloud: 'بياناتك محفوظة في حسابك الخاص. لا يقرأها إلا هذا الحساب.',
+    privacyNoteCloud: 'السجلات التي تضيفها في التطبيق محفوظة في مساحة عملك، ولا يقرؤها إلا أعضاؤها. الملفات المستوردة تبقى في هذا المتصفح ولا تُحفظ في السحابة بعد — أعد استيرادها بعد إعادة تحميل الصفحة.',
     asOfDate: 'تاريخ المرجع',
     companyLabel: 'الشركة',
     projectLabel: 'المشروع',

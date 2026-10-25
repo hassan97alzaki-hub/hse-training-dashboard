@@ -1,9 +1,9 @@
-# لوحة قياس التجربة (SPECS-TRIAL v1.2 — المهمة 3)
+# لوحة قياس التجربة (SPECS-TRIAL v1.4 — المهمة 3)
 
 أرقام بوابة القياس من أوامر SQL فقط، لا من الذاكرة ولا من لوحات بلا أمر.
 تُشغَّل في **SQL Editor** في Supabase بصلاحية المالك (الجداول لا تُقرأ من التطبيق).
 
-**نافذة العدّ:** 2026-10-24 → 2026-11-07 شاملة، بتوقيت الرياض (اعتماد المرجع).
+**نافذة العدّ (SPECS v1.4):** 2026-10-25 → 2026-11-07 شاملة، بتوقيت الرياض. القراءة الرسمية صباح 2026-11-08. تسجيلات 2026-10-24 تُحتسب في «المسجلين» فقط.
 
 **قاعدة القرار:** تجاوز **بندين من ثلاثة** على الأقل:
 
@@ -17,24 +17,26 @@
 
 ```sql
 WITH win AS (
-  SELECT timestamptz '2026-10-24 00:00+03' AS starts,
-         timestamptz '2026-11-08 00:00+03' AS ends
+  SELECT timestamptz '2026-10-25 00:00+03' AS starts,
+         timestamptz '2026-11-08 00:00+03' AS ends,
+         timestamptz '2026-10-24 00:00+03' AS signups_from
 )
 SELECT
   (SELECT count(*) FROM public.trial_signups, win
-    WHERE created_at >= win.starts AND created_at < win.ends) AS signups,
-  (SELECT count(DISTINCT tr.workspace_id)
-     FROM public.training_records tr
-     JOIN public.workspaces w ON w.id = tr.workspace_id, win
-    WHERE w.created_at >= win.starts AND w.created_at < win.ends) AS uploaded_data,
+    WHERE created_at >= win.signups_from AND created_at < win.ends) AS signups,
+  (SELECT count(*) FROM public.workspaces w, win
+    WHERE w.last_import_at >= win.starts AND w.last_import_at < win.ends
+      AND w.trial_ends_at IS NOT NULL) AS uploaded_data,
   (SELECT count(*) FROM public.trial_signups, win
     WHERE created_at >= win.starts AND created_at < win.ends
       AND (interest @> '["reminders"]' OR interest @> '["pricing"]')) AS buying_signal;
 ```
 
-- **signups:** طلبات نموذج `/trial` داخل النافذة.
-- **uploaded_data:** مساحات أُنشئت داخل النافذة وفيها سجل تدريب واحد على الأقل. مساحة المالك أُنشئت قبل النافذة فلا تُعدّ.
-- **buying_signal:** طلبات اختارت «التذكيرات» أو «السعر». يُضاف إليها يدوياً ما وصل بواتساب أو البريد، مع تسجيل مصدره.
+- **signups:** طلبات نموذج `/trial` من 2026-10-24 (يوم نشر النموذج الحي) حتى نهاية النافذة.
+- **uploaded_data:** مساحات تجريبية سجّلت استيراداً ناجحاً داخل النافذة — مؤشر R-1 (`workspaces.last_import_at`). تُسجَّل **واقعة** الاستيراد وعدد صفوفه فقط، لا بيانات الموظفين. `trial_ends_at IS NOT NULL` يستبعد مساحة المالك. من استورد قبل تفعيل المؤشر يُستكمل سؤالاً يدوياً مع تسجيل المصدر.
+- **buying_signal:** طلبات اختارت «التذكيرات» أو «السعر» داخل النافذة. يُضاف إليها يدوياً ما وصل بواتساب أو البريد، مع تسجيل مصدره.
+
+**تاريخ تفعيل مؤشر R-1:** يوم تطبيق migration ‏`20261025150000_workspace-last-import.sql` على Supabase ونشر الواجهة التي تستدعي `record_import()` — يُدوَّن هنا عند حدوثه.
 
 مفاتيح الاهتمام كما يخزنها النموذج: `reminders` / `reports` / `arabic` / `pricing`.
 

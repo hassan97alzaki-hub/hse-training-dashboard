@@ -248,8 +248,24 @@ describe('the privacy statement', () => {
       const { t } = createI18n(lang);
       expect(t('privacyNote'), lang).not.toBe('privacyNote');
       expect(t('privacyNoteCloud'), lang).not.toBe('privacyNoteCloud');
-      expect(t('privacyNoteCloud'), lang).not.toMatch(/browser|متصفح/i);
+      // The cloud wording must not repeat the local build's claim that all data stays in the browser.
+      expect(t('privacyNoteCloud'), lang).not.toBe(t('privacyNote'));
+      expect(t('privacyNoteCloud'), lang).not.toMatch(/browser only|processed in this browser|في هذا المتصفح فقط/i);
     }
+  });
+
+  // R-4 (SPECS-TRIAL v1.4): imported files are not stored in the cloud until
+  // R-3, so the cloud wording must say so and must not promise otherwise.
+  it('says imported files stay in the browser and does not promise to store them', async () => {
+    const { createI18n } = await import('../src/lib/i18n.js');
+    const en = createI18n('en').t('privacyNoteCloud');
+    const ar = createI18n('ar').t('privacyNoteCloud');
+    expect(en).toMatch(/Imported files stay in this browser/);
+    expect(en).toMatch(/not saved to the cloud/);
+    expect(en).not.toMatch(/Your data is stored/);
+    expect(ar).toMatch(/الملفات المستوردة تبقى في هذا المتصفح/);
+    expect(ar).toMatch(/لا تُحفظ في السحابة/);
+    expect(ar).not.toMatch(/بياناتك محفوظة في حسابك/);
   });
 
   it('is chosen from the build configuration, not hard-coded', () => {

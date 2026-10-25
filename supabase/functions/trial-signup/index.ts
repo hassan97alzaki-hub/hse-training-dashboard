@@ -6,10 +6,14 @@
 // without Deno. JWT verification is off for this function (config.toml):
 // the caller is an anonymous visitor, and the publishable key is not a JWT.
 //
+// Every new account and waiting-list entry is emailed to the owner when the
+// RESEND_API_KEY and NOTIFY_EMAIL secrets are set (../_shared/notifyOwner.js).
+//
 // Deploy: npx supabase functions deploy trial-signup --no-verify-jwt
 
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { provisionTrial } from '../_shared/provisionTrial.js';
+import { notifyOwner } from '../_shared/notifyOwner.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -40,7 +44,9 @@ Deno.serve(async (request) => {
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   try {
-    return reply(await provisionTrial(admin, input));
+    const notify = (event: object) =>
+      notifyOwner({ apiKey: Deno.env.get('RESEND_API_KEY'), to: Deno.env.get('NOTIFY_EMAIL'), event });
+    return reply(await provisionTrial(admin, input, { notify }));
   } catch (error) {
     console.error('trial-signup', error);
     return reply({ status: 'failed' }, 500);

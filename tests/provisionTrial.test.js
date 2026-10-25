@@ -131,3 +131,29 @@ describe('the trial-signup function config', () => {
     expect(config).toMatch(/\[functions\.trial-signup\]\s*\nverify_jwt = false/);
   });
 });
+
+describe('the owner alert', () => {
+  it('announces a new account with the request details', async () => {
+    const events = [];
+    await provisionTrial(fakeAdmin({ slots: 5 }), valid, { notify: async (e) => events.push(e) });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ status: 'created', slotsLeft: 5, row: { company_name: 'Gulf Contracting Co' } });
+  });
+
+  it('announces a waiting-list entry', async () => {
+    const events = [];
+    await provisionTrial(fakeAdmin({ slots: 0 }), valid, { notify: async (e) => events.push(e) });
+    expect(events.map((e) => e.status)).toEqual(['waitlist']);
+  });
+
+  it('announces nothing for a refused request', async () => {
+    const events = [];
+    await provisionTrial(fakeAdmin(), { ...valid, password: 'x' }, { notify: async (e) => events.push(e) });
+    expect(events).toHaveLength(0);
+  });
+
+  it('keeps the sign-up when the alert fails', async () => {
+    const result = await provisionTrial(fakeAdmin(), valid, { notify: async () => { throw new Error('mail down'); } });
+    expect(result).toEqual({ status: 'created' });
+  });
+});

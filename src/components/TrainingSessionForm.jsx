@@ -37,6 +37,14 @@ export function TrainingSessionForm({
   const [showAll, setShowAll] = useState(Boolean(prefill?.employeeId));
   const [error, setError] = useState('');
 
+  // An imported record's course may not be in the catalogue. Keep it in the
+  // list so the form shows the course being edited instead of "—" (BL-006).
+  const courseOptions = useMemo(() => {
+    const code = prefill?.courseCode;
+    if (!code || courses.some(c => c?.code === code)) return courses;
+    return [...courses, { code, name: prefill?.courseName ?? '' }];
+  }, [courses, prefill?.courseCode, prefill?.courseName]);
+
   const course = courses.find(c => c?.code === courseCode);
 
   const attendees = useMemo(() => {
@@ -146,8 +154,8 @@ export function TrainingSessionForm({
             style={styles.input}
           >
             <option value="">—</option>
-            {courses.map(c => (
-              <option key={c.code} value={c.code}>{`${c.code} — ${c.name}`}</option>
+            {courseOptions.map(c => (
+              <option key={c.code} value={c.code}>{c.name ? `${c.code} — ${c.name}` : c.code}</option>
             ))}
           </select>
         </label>

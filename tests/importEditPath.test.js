@@ -1,7 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { createElement } from 'react';
+import { render, screen, cleanup } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 
 import { newImportRecordId, withImportIds } from '../src/lib/importIds.js';
 import { applySavedRecords, toEngineRecord } from '../src/lib/savedRecords.js';
+import { TrainingSessionForm } from '../src/components/TrainingSessionForm.jsx';
+import { createI18n } from '../src/lib/i18n.js';
+
+const { t } = createI18n('en');
 
 describe('import record ids (BL-007)', () => {
   it('are unique and carry no row number', () => {
@@ -65,5 +72,30 @@ describe('dashboard lists after a save (BL-004)', () => {
     const next = applySavedRecords({ imported, manual }, rows, null);
     expect(next.imported).toBe(imported);
     expect(next.manual.map(r => r.Record_ID)).toEqual(['rec_1', 'rec_9']);
+  });
+});
+
+describe('edit form course field (BL-006)', () => {
+  afterEach(cleanup);
+
+  it('shows the course of an imported record that is not in the catalogue', () => {
+    render(createElement(TrainingSessionForm, {
+      courses: [], people: [{ Employee_ID: 'E1', Department: 'OPS', Job_Title: 'OPR' }], requirements: [],
+      prefill: { recordId: 'imp_a', employeeId: 'E1', courseCode: 'H2S001', courseName: 'H2S Safety', expiryDate: '2026-10-25' },
+      onSaved: () => {}, onClose: () => {}, t,
+    }));
+    const select = screen.getByTestId('course-select');
+    expect(select.value).toBe('H2S001');
+    expect(select.selectedOptions[0].textContent).toBe('H2S001 — H2S Safety');
+  });
+
+  it('does not add a catalogue course twice', () => {
+    render(createElement(TrainingSessionForm, {
+      courses: [{ code: 'H2S001', name: 'H2S Safety', validityMonths: 12 }], people: [], requirements: [],
+      prefill: { recordId: 'imp_a', employeeId: 'E1', courseCode: 'H2S001', courseName: 'Other name' },
+      onSaved: () => {}, onClose: () => {}, t,
+    }));
+    const options = [...screen.getByTestId('course-select').options].map(o => o.value);
+    expect(options).toEqual(['', 'H2S001']);
   });
 });

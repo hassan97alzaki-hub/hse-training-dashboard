@@ -1022,6 +1022,7 @@ export default function App({
                     completionStatus: item.record?.Completion_Status ?? 'Completed',
                     employeeId: item.Employee_ID,
                     courseCode: item.Course_Code,
+                    courseName: item.Course_Name ?? '',
                     issueDate: item.Issue_Date ?? '',
                     expiryDate: item.Expiry_Date ?? '',
                     certificateNumber: item.Certificate_Number ?? '',

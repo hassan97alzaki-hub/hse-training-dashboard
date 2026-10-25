@@ -550,7 +550,7 @@ const translations = {
     magicLinkSent: 'A sign-in link is on its way to {email}.',
     authPrivacy: 'Your training data belongs to your workspace. Only its members can read it.',
     noAccountYet: 'No account yet?',
-    requestTrialLink: 'Request a 7-day trial',
+    requestTrialLink: 'Start a 7-day trial',
     resetLinkSent: 'A reset link is on its way to {email}.',
 
     // Certificate gallery
@@ -1220,7 +1220,7 @@ const translations = {
     magicLinkSent: 'رابط الدخول في طريقه إلى {email}.',
     authPrivacy: 'بيانات التدريب تخص مساحة عملك. لا يقرأها إلا أعضاؤها.',
     noAccountYet: 'ليس لديك حساب؟',
-    requestTrialLink: 'اطلب تجربة 7 أيام',
+    requestTrialLink: 'ابدأ تجربة 7 أيام',
     resetLinkSent: 'رابط إعادة التعيين في طريقه إلى {email}.',
 
     // معرض الشهادات

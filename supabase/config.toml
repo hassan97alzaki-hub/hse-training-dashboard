@@ -20,3 +20,9 @@ enable_signup = false
 # Both sign-in paths are live: accounts created before the magic link existed
 # have passwords and keep using them.
 enable_confirmations = false
+
+# The trial request form calls this function before the visitor has an
+# account, with the publishable key, which is not a JWT. The function checks
+# its input itself and holds the service-role key on the server side.
+[functions.trial-signup]
+verify_jwt = false

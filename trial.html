@@ -20,7 +20,8 @@
     fieldset { border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:grid; gap:6px; }
     fieldset legend { font-weight:600; font-size:.95rem; padding:0 4px; }
     .check { display:flex; gap:8px; align-items:center; font-weight:400; }
-    .hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+    /* Clipped in place, not pushed off-screen: a large negative offset becomes horizontal scroll in RTL. */
+    .hp { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
     button { font: inherit; font-weight:600; color:#fff; background: var(--accent); border:0; border-radius:8px; padding:11px 16px; cursor:pointer; }
     button:disabled { opacity:.55; cursor:default; }
     button.ghost { background:transparent; color: var(--accent); border:1px solid var(--line); }
@@ -41,8 +42,8 @@
     <strong>HSE Training Dashboard</strong>
     <button class="ghost" type="button" id="lang-toggle">English</button>
   </div>
-  <h1 data-t="title">طلب تجربة 7 أيام</h1>
-  <p class="lede" data-t="lede">أرسل بياناتك وسنوافيك ببيانات الدخول. لا نطلب بطاقة ائتمان.</p>
+  <h1 data-t="title">ابدأ تجربتك المجانية 7 أيام</h1>
+  <p class="lede" data-t="lede">اختر كلمة مرور، وتُفتح لوحتك فوراً. لا نطلب بطاقة ائتمان.</p>
 
   <form id="trial-form" novalidate>
     <label>
@@ -53,6 +54,11 @@
       <span data-t="email">البريد العملي</span>
       <input name="workEmail" type="email" required maxlength="254" autocomplete="email" />
       <span class="hint hidden" id="mail-warning" data-t="freeMail">بريد عام (جيميل أو غيره). يمكن المتابعة، لكن بريد الشركة أسرع للتحقق.</span>
+    </label>
+    <label>
+      <span data-t="password">اختر كلمة مرور</span>
+      <input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" />
+      <span class="hint" data-t="passwordHint">8 أحرف على الأقل. تدخل بهذا البريد وكلمة المرور.</span>
     </label>
     <label>
       <span data-t="country">الدولة (اختياري)</span>
@@ -82,15 +88,15 @@
       <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
     </div>
 
-    <button type="submit" id="submit" data-t="submit">أرسل الطلب</button>
+    <button type="submit" id="submit" data-t="submit">ابدأ تجربتي</button>
     <p class="msg" id="status" role="status" aria-live="polite"></p>
     <div id="done" class="hidden">
-      <p class="msg ok" data-t="received">استلمنا طلبك، وسنوافيك ببيانات الدخول خلال يوم عمل واحد.</p>
+      <p class="msg ok" data-t="received">تجربتك جاهزة. نفتح لوحتك الآن…</p>
       <a class="wa hidden" id="wa" target="_blank" rel="noopener" data-t="wa">تابع عبر واتساب</a>
     </div>
   </form>
 
-  <footer data-t="footer">الطلب يُرسل إلى قاعدة بيانات التجربة فقط. لا نطلب أسماء موظفين أو أرقام هوية.</footer>
+  <footer data-t="footer">حسابك وبياناتك في مساحة عمل خاصة بشركتك. لا نطلب أرقام هوية أو إقامة.</footer>
 </main>
 <script type="module" src="/src/trial/main.js"></script>
 </body>

@@ -80,6 +80,7 @@ import WelcomeOnboarding from './components/WelcomeOnboarding.jsx';
 import Footer from './components/Footer.jsx';
 import { isSupabaseConfigured } from './lib/supabaseClient.js';
 import { withImportIds } from './lib/importIds.js';
+import { applySavedRecords } from './lib/savedRecords.js';
 
 import './styles/dashboard.css';
 
@@ -887,21 +888,11 @@ export default function App({
             requirements={mergedRequirements}
             prefill={sessionForm.prefill}
             t={t}
-            onSaved={(records) => setManualRecords(prev => {
-              const mapped = records.map(r => ({
-                Record_ID: r.id,
-                Employee_ID: r.employee_id,
-                Course_Code: r.course_code,
-                Completion_Status: r.completion_status ?? 'Completed',
-                Issue_Date: r.issue_date ?? null,
-                Expiry_Date: r.expiry_date ?? null,
-                Certificate_Number: r.certificate_number ?? null,
-              }));
-              const editedId = sessionForm.prefill?.recordId;
-              return editedId
-                ? prev.map(r => (r.Record_ID === editedId ? mapped[0] : r))
-                : [...prev, ...mapped];
-            })}
+            onSaved={(records) => {
+              const editedId = sessionForm.prefill?.recordId ?? null;
+              setImportedRecords(prev => applySavedRecords({ imported: prev, manual: [] }, records, editedId).imported);
+              setManualRecords(prev => applySavedRecords({ imported: [], manual: prev }, records, editedId).manual);
+            }}
             onClose={() => setSessionForm(null)}
           />
         )}

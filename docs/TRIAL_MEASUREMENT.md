@@ -20,15 +20,27 @@ WITH win AS (
   SELECT timestamptz '2026-10-25 00:00+03' AS starts,
          timestamptz '2026-11-08 00:00+03' AS ends,
          timestamptz '2026-10-24 00:00+03' AS signups_from
+),
+-- Internal test accounts (§4). Add each new one here and in §4.
+test_accounts(email) AS (
+  VALUES ('hassan97alzaki+trialtest1@gmail.com')
+),
+test_workspaces AS (
+  SELECT m.workspace_id FROM public.workspace_members m
+  JOIN auth.users u ON u.id = m.user_id
+  WHERE lower(u.email) IN (SELECT lower(email) FROM test_accounts)
 )
 SELECT
   (SELECT count(*) FROM public.trial_signups, win
-    WHERE created_at >= win.signups_from AND created_at < win.ends) AS signups,
+    WHERE created_at >= win.signups_from AND created_at < win.ends
+      AND lower(work_email) NOT IN (SELECT lower(email) FROM test_accounts)) AS signups,
   (SELECT count(*) FROM public.workspaces w, win
     WHERE w.last_import_at >= win.starts AND w.last_import_at < win.ends
-      AND w.trial_ends_at IS NOT NULL) AS uploaded_data,
+      AND w.trial_ends_at IS NOT NULL
+      AND w.id NOT IN (SELECT workspace_id FROM test_workspaces)) AS uploaded_data,
   (SELECT count(*) FROM public.trial_signups, win
     WHERE created_at >= win.starts AND created_at < win.ends
+      AND lower(work_email) NOT IN (SELECT lower(email) FROM test_accounts)
       AND (interest @> '["reminders"]' OR interest @> '["pricing"]')) AS buying_signal;
 ```
 
@@ -37,6 +49,8 @@ SELECT
 - **buying_signal:** طلبات اختارت «التذكيرات» أو «السعر» داخل النافذة. يُضاف إليها يدوياً ما وصل بواتساب أو البريد، مع تسجيل مصدره.
 
 **تاريخ تفعيل مؤشر R-1:** **2026-10-25 نحو 18:25 بتوقيت الرياض.** migration ‏`20261025150000_workspace-last-import.sql` طُبّقت بـ `npm run db:push` (المالك)، والواجهة التي تستدعي `record_import()` نُشرت بدمج PR #33 (`a2e7a18`). التحقق: `GET /rest/v1/workspaces?select=last_import_at,last_import_rows` يرجع 200، و`POST /rest/v1/rpc/record_import` بلا دخول يرجع `permission denied`، والحزمة الحية تحتوي `record_import`. ما قبل هذا الوقت يُستكمل سؤالاً يدوياً.
+
+- **test_accounts:** حسابات الاختبار الداخلية تُستبعد من البنود الثلاثة (§4).
 
 مفاتيح الاهتمام كما يخزنها النموذج: `reminders` / `reports` / `arabic` / `pricing`.
 
@@ -53,3 +67,12 @@ ORDER BY last_sign_in DESC NULLS LAST;
 ## 3. تسجيل القراءة
 
 بعد كل قراءة: التاريخ + الأرقام الثلاثة في سجل المتابعة. القراءة الرسمية للقرار يوم **2026-11-08** بعد انتهاء النافذة.
+
+## 4. حسابات الاختبار المستبعدة
+
+حسابات أنشأها المالك لفحص المنتج، لا عملاء. تُستبعد من أرقام البوابة الثلاثة بقائمة `test_accounts` في استعلام §1.
+
+| البريد | الشركة | التاريخ | السبب |
+|---|---|---|---|
+| `hassan97alzaki+trialtest1@gmail.com` | `TEST — E2E` | 2026-10-25 | فحص قبول المسار 1 على الإنتاج (استيراد + تعديل الصف 2 + العزل) |
+

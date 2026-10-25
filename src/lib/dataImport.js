@@ -11,6 +11,7 @@ import {
   normalizeRequirementsRecord,
   isValidDateStr,
 } from './normalization.js';
+import { newImportRecordId } from './importIds.js';
 
 // ============================================================
 // CSV IMPORT (PapaParse)
@@ -211,8 +212,9 @@ export async function importTrainingFile(file) {
     const rawTR = rawRec.Training_Required;
     const normalized = normalizeTrainingRecord(rawRec);
     normalized._raw_Training_Required = rawTR;
-    // Stable identity for the edit path: an edit of this row writes under this id.
-    normalized.Record_ID = `imp_row_${i + 2}`;
+    // Identity for the edit path: an edit of this row writes under this id,
+    // which must be unique across files and workspaces (see importIds.js).
+    normalized.Record_ID = newImportRecordId();
 
     const rowErrors = validateTrainingRow(normalized, i);
     if (rowErrors.length > 0) {

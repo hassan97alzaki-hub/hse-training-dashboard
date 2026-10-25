@@ -36,7 +36,7 @@ SELECT
 - **uploaded_data:** مساحات تجريبية سجّلت استيراداً ناجحاً داخل النافذة — مؤشر R-1 (`workspaces.last_import_at`). تُسجَّل **واقعة** الاستيراد وعدد صفوفه فقط، لا بيانات الموظفين. `trial_ends_at IS NOT NULL` يستبعد مساحة المالك. من استورد قبل تفعيل المؤشر يُستكمل سؤالاً يدوياً مع تسجيل المصدر.
 - **buying_signal:** طلبات اختارت «التذكيرات» أو «السعر» داخل النافذة. يُضاف إليها يدوياً ما وصل بواتساب أو البريد، مع تسجيل مصدره.
 
-**تاريخ تفعيل مؤشر R-1:** يوم تطبيق migration ‏`20261025150000_workspace-last-import.sql` على Supabase ونشر الواجهة التي تستدعي `record_import()` — يُدوَّن هنا عند حدوثه.
+**تاريخ تفعيل مؤشر R-1:** **2026-10-25 نحو 18:25 بتوقيت الرياض.** migration ‏`20261025150000_workspace-last-import.sql` طُبّقت بـ `npm run db:push` (المالك)، والواجهة التي تستدعي `record_import()` نُشرت بدمج PR #33 (`a2e7a18`). التحقق: `GET /rest/v1/workspaces?select=last_import_at,last_import_rows` يرجع 200، و`POST /rest/v1/rpc/record_import` بلا دخول يرجع `permission denied`، والحزمة الحية تحتوي `record_import`. ما قبل هذا الوقت يُستكمل سؤالاً يدوياً.
 
 مفاتيح الاهتمام كما يخزنها النموذج: `reminders` / `reports` / `arabic` / `pricing`.
 

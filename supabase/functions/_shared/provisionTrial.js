@@ -24,9 +24,15 @@ function isAlreadyRegistered(error) {
 /**
  * @param {object} admin - Supabase client with the service-role key
  * @param {object} input - the form values as sent, plus `sourceLanding` and `password`
+ * @param {{notify?: (event: object) => Promise<unknown>}} options - told of every
+ *   new account and waiting-list entry; its failure never changes the result
  * @returns {Promise<{status: string, errors?: object}>}
  */
-export async function provisionTrial(admin, input = {}) {
+export async function provisionTrial(admin, input = {}, { notify } = {}) {
+  const tell = async (event) => {
+    try { await notify?.(event); } catch { /* the sign-up stands either way */ }
+  };
+
   const result = toTrialRow(input, input.sourceLanding);
   const errors = { ...result.errors };
   if (!isAcceptablePassword(input.password)) errors.password = true;
@@ -43,6 +49,8 @@ export async function provisionTrial(admin, input = {}) {
     const { error } = await admin.from('trial_signups').insert({ ...row, honeypot: null });
     // A repeat from the same address is still on the list.
     if (error && error.code !== '23505') return { status: 'failed' };
+    // A repeat is not news; only the first entry is announced.
+    if (!error) await tell({ status: 'waitlist', row });
     return { status: 'waitlist' };
   }
 
@@ -75,5 +83,6 @@ export async function provisionTrial(admin, input = {}) {
     return { status: 'failed' };
   }
 
+  await tell({ status: 'created', row, slotsLeft: slots });
   return { status: 'created' };
 }

@@ -18,8 +18,9 @@ describe('the trial measurement queries', () => {
     expect(sql).not.toMatch(/التذكيرات|السعر/);
   });
 
-  it('join workspaces by their id, so the upload count cannot match every workspace', () => {
-    expect(sql).toContain('JOIN public.workspaces w ON w.id = tr.workspace_id');
+  it('count uploads from the R-1 import event of trial workspaces only (SPECS v1.4)', () => {
+    expect(sql).toContain('w.last_import_at >= win.starts AND w.last_import_at < win.ends');
+    expect(sql).toContain('w.trial_ends_at IS NOT NULL');
     expect(sql).not.toMatch(/select workspace_id from workspaces/i);
   });
 
@@ -28,9 +29,11 @@ describe('the trial measurement queries', () => {
     expect(sql).not.toMatch(/auth\.users\s+group by workspace_id/i);
   });
 
-  it('count inside the approved window, 2026-10-24 to 2026-11-07 in Riyadh', () => {
-    expect(sql).toContain(`timestamptz '2026-10-24 00:00+03'`);
-    expect(sql).toContain(`timestamptz '2026-11-08 00:00+03'`);
+  it('count inside the v1.4 window, 2026-10-25 to 2026-11-07 in Riyadh, with sign-ups from 2026-10-24', () => {
+    expect(sql).toContain(`timestamptz '2026-10-25 00:00+03' AS starts`);
+    expect(sql).toContain(`timestamptz '2026-11-08 00:00+03' AS ends`);
+    expect(sql).toContain(`timestamptz '2026-10-24 00:00+03' AS signups_from`);
+    expect(sql).toContain('created_at >= win.signups_from AND created_at < win.ends) AS signups');
     expect(sql).not.toContain('2026-10-21');
   });
 });

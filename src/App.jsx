@@ -81,6 +81,7 @@ import Footer from './components/Footer.jsx';
 import { isSupabaseConfigured } from './lib/supabaseClient.js';
 import { withImportIds } from './lib/importIds.js';
 import { applySavedRecords } from './lib/savedRecords.js';
+import { recordImportEvent } from './lib/importEvent.js';
 
 import './styles/dashboard.css';
 
@@ -599,6 +600,7 @@ export default function App({
         setEmployeeMaster(null);
         setImportedRecords(result.validRecords);
         setSourceFileName(result.sourceFileName);
+        void recordImportEvent(result.validRecords.length);
         showKind(BANNER_KIND.IMPORT_SUCCESS, result.importSummary.invalid > 0 ? 'warning' : 'success', {
           validRecords: result.importSummary.valid,
           invalidRecords: result.importSummary.invalid,
@@ -627,6 +629,7 @@ export default function App({
     setLastImportResult(result);
     setEmployeeMaster(conversion.employees);
     setImportedRecords(withImportIds(result.validRecords));
+    void recordImportEvent(result.validRecords.length);
     setRequirements(conversion.requirements);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.DERIVED);
     setSourceFileName(fileName);
@@ -666,6 +669,7 @@ export default function App({
       setDisplayLookups(result.view.prepared.lookups);
       setEmployeeMaster(result.view.prepared.employees);
       setImportedRecords(withImportIds(result.view.prepared.records));
+      void recordImportEvent(result.view.prepared.records.length);
       setRequirements(result.view.prepared.requirements);
       setRequirementsSource(REQUIREMENTS_PROVENANCE.APPROVED);
       setSourceFileName(productionPreview.fileName);

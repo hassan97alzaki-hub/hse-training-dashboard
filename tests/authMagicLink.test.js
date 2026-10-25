@@ -147,9 +147,9 @@ describe('the sign-in form, with self-sign-up closed', () => {
 
   it('sends a newcomer to the trial request form, in both languages', () => {
     const { unmount } = render(h(SignInForm, { t: createI18n('en').t }));
-    expect(screen.getByRole('link', { name: 'Request a 7-day trial' }).getAttribute('href')).toBe('/trial');
+    expect(screen.getByRole('link', { name: 'Start a 7-day trial' }).getAttribute('href')).toBe('/trial');
     unmount();
     render(h(SignInForm, { t: createI18n('ar').t }));
-    expect(screen.getByRole('link', { name: 'اطلب تجربة 7 أيام' }).getAttribute('href')).toBe('/trial');
+    expect(screen.getByRole('link', { name: 'ابدأ تجربة 7 أيام' }).getAttribute('href')).toBe('/trial');
   });
 });

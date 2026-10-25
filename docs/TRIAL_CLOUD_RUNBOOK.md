@@ -19,37 +19,27 @@
 
 إضافة المستخدمين من **Add user** تبقى تعمل بعد الإغلاق، وهي الطريق الوحيد لإنشاء حساب.
 
-## 1. إنشاء حساب تجريبي (المهمة 1)
+## 1. إنشاء حساب تجريبي — تلقائي (قرار المالك 2026-10-25)
 
-1. Authentication ← Add user: البريد من `trial_signups`، كلمة مرور مؤقتة.
-2. **قبل** أن يسجّل العميل دخوله، أنشئ مساحته وابدأ عدّاد الأيام السبعة. هذا الترتيب مهم:
-   أول دخول بلا مساحة يُنشئ مساحة عادية (`NULL`) لا تنتهي.
+لا إجراء يدوي. العميل يملأ نموذج `/trial` ويختار كلمة مرور، فتنفّذ الدالة `trial-signup` على Supabase:
+
+1. إنشاء المستخدم مؤكَّداً (`email_confirm`، بلا رسالة بريد حتى شراء النطاق).
+2. `provision_trial()` في معاملة واحدة: المساحة بنهاية منتصف ليل الرياض بعد 7 أيام، العضوية owner، صف `trial_signups`.
+3. دخول مباشر إلى `/app`.
+
+- **السقف:** 20 مساحة تجريبية (`trial_slots_left()`). بعدها يُسجَّل الطلب في `trial_signups` ويظهر للزائر «قائمة الانتظار» دون إنشاء حساب.
+- **دورك:** رسالة ترحيب بواتساب لكل مسجّل جديد (القسم 2 يعرضهم)، ولا شيء غيرها.
+- **النشر:** بعد أي تعديل على الدالة: `npx supabase functions deploy trial-signup --no-verify-jwt`.
+
+**احتياط يدوي** (إن تعطلت الدالة): Add user ثم:
 
 ```sql
 DO $$
-DECLARE
-  account_email TEXT := '<البريد من trial_signups>';
-  company TEXT := '<اسم الشركة>';
-  uid UUID;
-  ws UUID;
+DECLARE uid UUID := (SELECT id FROM auth.users WHERE email = '<البريد>');
 BEGIN
-  SELECT id INTO uid FROM auth.users WHERE email = account_email;
-  IF uid IS NULL THEN RAISE EXCEPTION 'No account for %', account_email; END IF;
-  IF EXISTS (SELECT 1 FROM public.workspace_members WHERE user_id = uid) THEN
-    RAISE EXCEPTION 'Account % already has a workspace', account_email;
-  END IF;
-  -- نهاية التجربة: منتصف ليل الرياض في بداية اليوم الثامن، فاليوم الحالي هو اليوم الأول.
-  INSERT INTO public.workspaces (name, trial_ends_at)
-  VALUES (company, (((now() AT TIME ZONE 'Asia/Riyadh')::date + 7)::timestamp AT TIME ZONE 'Asia/Riyadh'))
-  RETURNING id INTO ws;
-  INSERT INTO public.workspace_members (workspace_id, user_id, role) VALUES (ws, uid, 'owner');
-  RAISE NOTICE 'Workspace % — trial ends % (Riyadh)', ws,
-    (SELECT trial_ends_at AT TIME ZONE 'Asia/Riyadh' FROM public.workspaces WHERE id = ws);
+  PERFORM public.provision_trial(uid, '<اسم الشركة>', '<البريد>', NULL, NULL, NULL, '[]'::jsonb, '/ar');
 END $$;
 ```
-
-3. أرسل بيانات الدخول بالرسالة 2 من SPECS (واتساب يدوياً).
-4. الحد الأقصى 20 حساباً تجريبياً؛ بعدها قائمة انتظار.
 
 ## 2. حالة كل التجارب
 

@@ -1,12 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
-import { readSupabaseConfig } from '../lib/supabaseClient.js';
-import { toTrialRow } from '../lib/trialSignup.js';
+import { getSupabaseClient } from '../lib/supabaseClient.js';
+import { toTrialRow, isAcceptablePassword } from '../lib/trialSignup.js';
 
 const EN = {
-  title: 'Request a 7-day trial',
-  lede: 'Send your details and we will reply with login details. No credit card.',
+  title: 'Start your 7-day trial',
+  lede: 'Choose a password and your dashboard opens straight away. No credit card.',
   company: 'Company name',
   email: 'Work email',
+  password: 'Choose a password',
+  passwordHint: 'At least 8 characters. You sign in with this email and password.',
   freeMail: 'Free-mail address (Gmail or similar). You can continue, but a company address is verified faster.',
   country: 'Country (optional)',
   headcount: 'Employees in scope (approximate, optional)',
@@ -17,30 +18,32 @@ const EN = {
   i_reports: 'Reports for audits',
   i_arabic: 'Arabic support',
   i_pricing: 'Pricing',
-  submit: 'Send request',
-  received: 'We received your request. We will send login details within one working day.',
+  submit: 'Start my trial',
+  received: 'Your trial is ready. Opening your dashboard…',
   wa: 'Follow up on WhatsApp',
-  footer: 'The request goes to the trial database only. We do not ask for employee names or ID numbers.',
+  footer: 'Your account and data stay in your own workspace. We never ask for national ID or iqama numbers.',
 };
 
 const MESSAGES = {
   ar: {
     invalid: 'تحقق من الحقول المعلَّمة.',
-    duplicate: 'وصلنا طلب بهذا البريد من قبل. سنرد عليك قريباً.',
-    failed: 'تعذّر الإرسال الآن. حاول لاحقاً.',
+    exists: 'يوجد حساب بهذا البريد. سجّل دخولك من صفحة اللوحة.',
+    waitlist: 'اكتملت مقاعد التجربة الحالية، وأضفناك إلى قائمة الانتظار. سنتواصل معك فور توفر مقعد.',
+    signInFailed: 'أُنشئ حسابك، لكن تعذّر الدخول تلقائياً. ادخل من صفحة اللوحة بالبريد وكلمة المرور.',
+    failed: 'تعذّر الإرسال الآن. حاول لاحقاً أو تواصل معنا بواتساب.',
     notConfigured: 'النموذج غير متاح في هذه النسخة.',
     waText: 'طلب تجربة 7 أيام — HSE Training Dashboard',
   },
   en: {
     invalid: 'Check the highlighted fields.',
-    duplicate: 'A request with this email was already received. We will reply soon.',
-    failed: 'Sending failed for now. Try again later.',
+    exists: 'An account with this email already exists. Sign in from the dashboard page.',
+    waitlist: 'The current trial places are taken, and you are on the waiting list. We will contact you as soon as one opens.',
+    signInFailed: 'Your account is ready, but signing in automatically failed. Sign in from the dashboard page with your email and password.',
+    failed: 'Sending failed for now. Try again later or reach us on WhatsApp.',
     notConfigured: 'The form is not available in this build.',
     waText: '7-day trial request — HSE Training Dashboard',
   },
 };
-
-const DUPLICATE_CODE = '23505';
 
 const form = document.getElementById('trial-form');
 const submit = document.getElementById('submit');
@@ -56,10 +59,9 @@ for (const el of document.querySelectorAll('[data-t]')) AR.set(el, el.innerHTML)
 const waNumber = String(import.meta.env.VITE_TRIAL_WHATSAPP_NUMBER ?? '').replace(/\D/g, '');
 waLink.classList.toggle('hidden', !waNumber);
 
-const config = readSupabaseConfig(import.meta.env);
-const client = config.configured
-  ? createClient(config.url, config.anonKey, { auth: { persistSession: false, autoRefreshToken: false } })
-  : null;
+// The shared client keeps the session, so the dashboard at /app opens
+// signed in once the trial account exists.
+const client = getSupabaseClient();
 
 let lang = 'ar';
 
@@ -88,12 +90,22 @@ function readForm() {
     fileFormat: data.get('fileFormat'),
     interest: data.getAll('interest'),
     honeypot: data.get('website'),
+    password: data.get('password'),
   };
 }
 
 function setStatus(text, kind) {
   status.textContent = text;
   status.className = `msg ${kind}`;
+}
+
+function showLink(text, href, label) {
+  status.className = 'msg bad';
+  status.textContent = `${text} `;
+  const link = document.createElement('a');
+  link.href = href;
+  link.textContent = label;
+  status.append(link);
 }
 
 function markInvalid(errors) {
@@ -118,22 +130,40 @@ form.addEventListener('submit', async (event) => {
     return;
   }
 
-  const result = toTrialRow(readForm(), lang === 'ar' ? '/ar' : '/en');
-  if (!result.ok) {
-    markInvalid(result.errors);
+  const input = { ...readForm(), sourceLanding: lang === 'ar' ? '/ar' : '/en' };
+  const result = toTrialRow(input, input.sourceLanding);
+  const errors = { ...result.errors };
+  if (!isAcceptablePassword(input.password)) errors.password = true;
+  if (Object.keys(errors).length > 0) {
+    markInvalid(errors);
     setStatus(MESSAGES[lang].invalid, 'bad');
     return;
   }
 
+  // The account is made on the server, by the trial-signup Edge Function:
+  // the service-role key it needs never comes near this page.
   submit.disabled = true;
-  const { error } = await client.from('trial_signups').insert(result.row);
-  submit.disabled = false;
+  const { data, error } = await client.functions.invoke('trial-signup', { body: input });
+  const outcome = error ? 'failed' : data?.status;
 
-  if (error?.code === DUPLICATE_CODE) {
-    setStatus(MESSAGES[lang].duplicate, 'bad');
+  if (outcome === 'invalid') {
+    submit.disabled = false;
+    markInvalid(data.errors ?? {});
+    setStatus(MESSAGES[lang].invalid, 'bad');
     return;
   }
-  if (error) {
+  if (outcome === 'exists') {
+    submit.disabled = false;
+    showLink(MESSAGES[lang].exists, '/app', lang === 'ar' ? 'افتح اللوحة' : 'Open the dashboard');
+    return;
+  }
+  if (outcome === 'waitlist') {
+    form.querySelectorAll('input, select, button, fieldset').forEach((el) => { el.disabled = true; });
+    setStatus(MESSAGES[lang].waitlist, 'ok');
+    return;
+  }
+  if (outcome !== 'created') {
+    submit.disabled = false;
     setStatus(MESSAGES[lang].failed, 'bad');
     return;
   }
@@ -141,6 +171,17 @@ form.addEventListener('submit', async (event) => {
   form.querySelectorAll('input, select, button, fieldset').forEach((el) => { el.disabled = true; });
   status.textContent = '';
   done.classList.remove('hidden');
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email: String(input.workEmail).trim().toLowerCase(),
+    password: String(input.password),
+  });
+  if (signInError) {
+    done.classList.add('hidden');
+    showLink(MESSAGES[lang].signInFailed, '/app', lang === 'ar' ? 'افتح اللوحة' : 'Open the dashboard');
+    return;
+  }
+  window.location.assign('/app');
 });
 
 toggle.addEventListener('click', () => applyLanguage(lang === 'ar' ? 'en' : 'ar'));

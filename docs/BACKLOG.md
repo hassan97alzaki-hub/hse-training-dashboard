@@ -58,3 +58,13 @@ Open items found during development and acceptance. Each item states where it wa
 - **Expected effects:** (a) when a second workspace edits an imported row with the same row number, RLS hides the first workspace's row, the insert hits the primary key and the edit fails; (b) in one workspace, editing row *n* of a different file updates the row stored from an earlier file, i.e. another employee's record can be overwritten.
 - **Verify:** owner, with two trial accounts on production: import any file in both, edit row 2 in both; then in one account import a different file and edit row 2 again.
 - **Priority:** high if confirmed — affects trial users during the measurement window.
+
+## BL-008 — Imported training rows are never stored; the gate counts only typed records
+
+- **Found:** 2026-10-25, code review during the BL-004..BL-007 check. **From code; not checked against production data.**
+- **Facts:** the only writers to `training_records` are `addTrainingRecords` and `updateTrainingRecord` (`src/lib/requirementsService.js`), called only from the "Record training" form. `handleTrainingImport`, `handleApproveMatrix` and `handleApproveProductionPackage` in `App.jsx` put imported rows in React state (`importedRecords`) only.
+- **Effects:**
+  1. A trial user who imports a file and reloads the page sees the data gone and must import again.
+  2. The cloud privacy line says "Your data is stored in your own account" (`privacyNoteCloud`), which is not true for imported training rows.
+  3. Gate item "uploaded training data" (`docs/TRIAL_MEASUREMENT.md`, SPECS-TRIAL §4 task 3) counts workspaces with rows in `training_records`. A workspace that only imported a file counts as **0**. The item measures "typed or edited a record in the app", not "uploaded data", and undercounts.
+- **Priority:** high for the gate decision of 2026-11-07/08; product decision needed.

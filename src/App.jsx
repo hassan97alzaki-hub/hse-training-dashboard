@@ -79,6 +79,7 @@ import { ReminderSender } from './components/ReminderSender.jsx';
 import WelcomeOnboarding from './components/WelcomeOnboarding.jsx';
 import Footer from './components/Footer.jsx';
 import { isSupabaseConfigured } from './lib/supabaseClient.js';
+import { withImportIds } from './lib/importIds.js';
 
 import './styles/dashboard.css';
 
@@ -624,7 +625,7 @@ export default function App({
     const result = toImportResult(conversion, fileName);
     setLastImportResult(result);
     setEmployeeMaster(conversion.employees);
-    setImportedRecords(result.validRecords);
+    setImportedRecords(withImportIds(result.validRecords));
     setRequirements(conversion.requirements);
     setRequirementsSource(REQUIREMENTS_PROVENANCE.DERIVED);
     setSourceFileName(fileName);
@@ -663,7 +664,7 @@ export default function App({
       setApprovedState(result.state);
       setDisplayLookups(result.view.prepared.lookups);
       setEmployeeMaster(result.view.prepared.employees);
-      setImportedRecords(result.view.prepared.records);
+      setImportedRecords(withImportIds(result.view.prepared.records));
       setRequirements(result.view.prepared.requirements);
       setRequirementsSource(REQUIREMENTS_PROVENANCE.APPROVED);
       setSourceFileName(productionPreview.fileName);

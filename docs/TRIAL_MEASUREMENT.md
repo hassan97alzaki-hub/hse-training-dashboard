@@ -25,10 +25,22 @@ WITH win AS (
 test_accounts(email) AS (
   VALUES ('hassan97alzaki+trialtest1@gmail.com')
 ),
+-- Test workspaces are listed by created date and import size as well as by
+-- member e-mail: a test user deleted from Authentication no longer links to
+-- its workspace (happened 2026-11-10). Keep both lists in sync with §4.
+test_workspace_marks(created_day, rows) AS (
+  VALUES (date '2026-10-25', 27)
+),
 test_workspaces AS (
   SELECT m.workspace_id FROM public.workspace_members m
   JOIN auth.users u ON u.id = m.user_id
   WHERE lower(u.email) IN (SELECT lower(email) FROM test_accounts)
+  UNION
+  SELECT w.id FROM public.workspaces w
+  JOIN test_workspace_marks t
+    ON (w.created_at AT TIME ZONE 'Asia/Riyadh')::date = t.created_day
+   AND w.last_import_rows = t.rows
+   AND w.trial_ends_at IS NOT NULL
 )
 SELECT
   (SELECT count(*) FROM public.trial_signups, win
@@ -66,6 +78,8 @@ ORDER BY last_sign_in DESC NULLS LAST;
 
 ## 3. تسجيل القراءة
 
+**القراءة الرسمية للبوابة الأولى (2026-11-10):** المسجلون 5، رفعوا بيانات 0، إشارة شراء 4 — بند واحد من ثلاثة، البوابة لم تُتجاوَز. القرار والجولة الثانية في `docs/GATE-1-DECISION.md`.
+
 بعد كل قراءة: التاريخ + الأرقام الثلاثة في سجل المتابعة. القراءة الرسمية للقرار يوم **2026-11-08** بعد انتهاء النافذة.
 
 ## 4. حسابات الاختبار المستبعدة
@@ -74,5 +88,5 @@ ORDER BY last_sign_in DESC NULLS LAST;
 
 | البريد | الشركة | التاريخ | السبب |
 |---|---|---|---|
-| `hassan97alzaki+trialtest1@gmail.com` | `TEST — E2E` | 2026-10-25 | فحص قبول المسار 1 على الإنتاج (استيراد + تعديل الصف 2 + العزل) |
+| `hassan97alzaki+trialtest1@gmail.com` | `TEST — E2E` | 2026-10-25 | فحص قبول المسار 1 على الإنتاج (استيراد + تعديل الصف 2 + العزل). مستخدمه حُذف من Authentication لاحقاً؛ مساحته تُستبعد بالعلامة (2026-10-25، 27 صفاً) في `test_workspace_marks` |
 
